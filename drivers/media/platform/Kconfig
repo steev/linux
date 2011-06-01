@@ -185,6 +185,14 @@ config VIDEO_MX2_EMMAPRP
 config VIDEO_IMX_IPU_COMMON
 	tristate
 
+config VIDEO_IMX_IPU_OVL
+	tristate "i.MX51/53 IPUv3 based overlay driver"
+	depends on VIDEO_DEV && DRM_IMX_IPUV3
+	select V4L2_MEM2MEM_DEV
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEO_IMX_IPU_COMMON
+	---help---
+	  This is a v4l2 overlay video driver for the i.MX51/53.
 
 config VIDEO_SAMSUNG_EXYNOS_GSC
 	tristate "Samsung Exynos G-Scaler driver"
