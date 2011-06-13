@@ -332,4 +332,10 @@ struct ipu_client_platformdata {
 	int dma[2];
 };
 
+int ipu_image_convert(struct ipu_soc *ipu, struct ipu_image *in, struct ipu_image *out,
+		void (*complete)(void *ctx, int err), void *ctx);
+int ipu_image_deinterlace_convert(struct ipu_soc *ipu, struct ipu_image *in_p,
+		struct ipu_image *in, struct ipu_image *in_n, struct ipu_image *out,
+		void (*complete)(void *ctx, int err), void *complete_context);
+
 #endif /* __DRM_IPU_H__ */
