@@ -831,8 +831,18 @@ static int ipu_submodules_init(struct ipu_soc *ipu,
 		goto err_smfc;
 	}
 
+	ret = ipu_ic_init(ipu, dev, ipu_base + devtype->cm_ofs +
+			IPU_CM_IC_REG_OFS, ipu_base + devtype->tpm_ofs,
+			ipu_base + devtype->vdi_ofs);
+	if (ret) {
+		unit = "ic";
+		goto err_ic;
+	}
+
 	return 0;
 
+err_ic:
+	ipu_smfc_exit(ipu);
 err_smfc:
 	ipu_dp_exit(ipu);
 err_dp:
@@ -952,6 +962,7 @@ static void ipu_submodules_exit(struct ipu_soc *ipu)
 	ipu_dc_exit(ipu);
 	ipu_di_exit(ipu, 1);
 	ipu_di_exit(ipu, 0);
+	ipu_ic_exit(ipu);
 }
 
 static int platform_remove_devices_fn(struct device *dev, void *unused)
@@ -1009,6 +1020,18 @@ static const struct ipu_platform_reg client_reg[] = {
 		},
 		.reg_offset = IPU_CM_CSI1_REG_OFS,
 		.name = "imx-ipuv3-camera",
+	}, {
+		.pdata = {
+			.dma[0] = IPUV3_CHANNEL_MEM_FG_SYNC,
+		},
+		.name = "imx-ipuv3-scaler",
+	}, {
+		.pdata = {
+			.dma[0] = IPUV3_CHANNEL_MEM_FG_SYNC,
+		},
+		.name = "imx-ipuv3-ovl",
+	}, {
+		.name = "imx-ipuv3-vdic",
 	},
 };
 
@@ -1106,6 +1129,7 @@ static int __devinit ipu_probe(struct platform_device *pdev)
 	unsigned long ipu_base;
 	int i, ret, irq_sync, irq_err;
 	const struct ipu_devtype *devtype;
+	u32 reg;
 
 	devtype = of_id->data;
 
@@ -1192,6 +1216,9 @@ static int __devinit ipu_probe(struct platform_device *pdev)
 
 	ipu_reset(ipu);
 
+	/* Set sync refresh channels as high priority */
+	ipu_idmac_write(ipu, 0x18800000, IDMAC_CHA_PRI(0));
+
 	/* Set MCU_T to divide MCU access window into 2 */
 	ipu_cm_write(ipu, 0x00400000L | (IPU_MCU_T_DEFAULT << 18),
 			IPU_DISP_GEN);
@@ -1199,6 +1226,14 @@ static int __devinit ipu_probe(struct platform_device *pdev)
 	ret = ipu_submodules_init(ipu, pdev, ipu_base, ipu->clk);
 	if (ret)
 		goto failed_submodules_init;
+
+	reg = ipu_cm_read(ipu, IPU_FS_PROC_FLOW1);
+	reg |= (5 << 24);
+	ipu_cm_write(ipu, reg, IPU_FS_PROC_FLOW1);
+
+	reg = ipu_cm_read(ipu, IPU_CONF);
+	reg |= IPU_CONF_IC_INPUT;
+	ipu_cm_write(ipu, reg, IPU_CONF);
 
 	ret = ipu_add_client_devices(ipu, ipu_base);
 	if (ret) {
