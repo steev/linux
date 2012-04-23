@@ -28,6 +28,9 @@
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
 #include <linux/vmalloc.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_i2c.h>
 
 #include <media/soc_camera.h>
 #include <media/v4l2-common.h>
@@ -1503,6 +1506,61 @@ static int video_dev_create(struct soc_camera_device *icd)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+int of_soc_camera_host_nr(struct device_node *np, int id)
+{
+	/* FIXME */
+	return (int)np + id;
+}
+
+static int soc_camera_of_add_device(struct soc_camera_device *icd)
+{
+	struct platform_device *camera_pdev;
+	struct soc_camera_link *icl = icd->link;
+	int ret;
+
+	if (icd->control)
+		return 0;
+
+	if (!icl->module_name) {
+		dev_err(icd->pdev, "Missing module name\n");
+		return -EINVAL;
+	}
+
+	camera_pdev = platform_device_alloc(icl->module_name, icl->bus_id);
+	if (!camera_pdev) {
+		dev_err(icd->pdev, "Failed to allocate platform device %s.%d\n",
+			icl->module_name, icl->bus_id);
+		return -ENOMEM;
+	}
+
+	/* Become camera's parent device, so it can find our icd in drvdata */
+	camera_pdev->dev.parent = icd->pdev;
+
+	ret = platform_device_add(camera_pdev);
+	if (ret < 0) {
+		platform_device_put(camera_pdev);
+		camera_pdev = NULL;
+	}
+
+	return ret;
+}
+
+static void soc_camera_of_del_device(struct soc_camera_device *icd)
+{
+	struct soc_camera_link *icl = icd->link;
+
+	if (icd->control && icl->module_name) {
+		platform_device_unregister(to_platform_device(icd->control));
+		icd->control = NULL;
+	}
+}
+#else
+int of_soc_camera_host_nr(struct device_node *np, int id) {
+	return 0;
+}
+#endif
+
 /*
  * Called from soc_camera_probe() above (with .video_lock held???)
  */
@@ -1530,13 +1588,44 @@ static int __devinit soc_camera_pdrv_probe(struct platform_device *pdev)
 {
 	struct soc_camera_link *icl = pdev->dev.platform_data;
 	struct soc_camera_device *icd;
-
-	if (!icl)
-		return -EINVAL;
+	int ret;
 
 	icd = devm_kzalloc(&pdev->dev, sizeof(*icd), GFP_KERNEL);
 	if (!icd)
 		return -ENOMEM;
+
+#ifdef CONFIG_OF
+	/* If there is no platform data, try retrieving it from the device tree */
+	if (!icl) {
+		struct device_node *np = pdev->dev.of_node;
+		struct of_phandle_args args;
+
+		icl = devm_kzalloc(&pdev->dev, sizeof(*icl), GFP_KERNEL);
+		if (!icl)
+			return -ENOMEM;
+
+		of_property_read_u32(np, "soc-camera,bus_id", &icl->bus_id);
+		of_property_read_string(np, "soc-camera,module_name", &icl->module_name);
+		of_parse_phandle_with_args(np, "csi", "#csi-cells", 0, &args);
+		icl->bus_id = of_soc_camera_host_nr(args.np, args.args[0]);
+		of_node_put(args.np);
+
+		ret = of_parse_phandle_with_args(np, "sensor", "#sensor-cells", 0, &args);
+		if (ret == 0) {
+			struct i2c_client *client = of_find_i2c_device_by_node(args.np);
+			icd->control = &client->dev;
+		}
+		of_node_put(args.np);
+
+		icl->add_device = soc_camera_of_add_device;
+		icl->del_device = soc_camera_of_del_device;
+
+		pr_debug("Read from device tree: 0x%x, \"%s\"\n", icl->bus_id, icl->module_name);
+	}
+#else
+	if (!icl)
+		return -ENOMEM;
+#endif
 
 	icd->iface = icl->bus_id;
 	icd->link = icl;
@@ -1566,12 +1655,20 @@ static int __devexit soc_camera_pdrv_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id soc_camera_dt_ids[] = {
+	{ .compatible = "soc-camera" },
+	{ /* sentinel */ }
+};
+#endif
+
 static struct platform_driver __refdata soc_camera_pdrv = {
 	.probe = soc_camera_pdrv_probe,
 	.remove  = __devexit_p(soc_camera_pdrv_remove),
 	.driver  = {
 		.name	= "soc-camera-pdrv",
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(soc_camera_dt_ids),
 	},
 };
 
