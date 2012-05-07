@@ -1111,6 +1111,26 @@ static void soc_camera_free_i2c(struct soc_camera_device *icd)
 #define soc_camera_free_i2c(icd)	do {} while (0)
 #endif
 
+DECLARE_COMPLETION(soc_camera_bind_completion);
+
+static int soc_camera_bus_notify(struct notifier_block *nb,
+				 unsigned long action, void *data)
+{
+	/* We are only interested in device addition */
+	if (action == BUS_NOTIFY_BOUND_DRIVER) {
+		struct device *dev = data;
+		pr_debug("soc_camera: bound driver %s\n", dev_name(dev));
+
+		complete(&soc_camera_bind_completion);
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block soc_camera_bus_notifier = {
+	.notifier_call = soc_camera_bus_notify
+};
+
 static int soc_camera_video_start(struct soc_camera_device *icd);
 static int video_dev_create(struct soc_camera_device *icd);
 /* Called during host-driver probe */
@@ -1166,14 +1186,17 @@ static int soc_camera_probe(struct soc_camera_device *icd)
 		if (icl->module_name)
 			ret = request_module(icl->module_name);
 
+		init_completion(&soc_camera_bind_completion);
+		bus_register_notifier(&platform_bus_type, &soc_camera_bus_notifier);
 		ret = icl->add_device(icd);
 		if (ret < 0)
 			goto eadddev;
 
-		/*
-		 * FIXME: this is racy, have to use driver-binding notification,
-		 * when it is available
-		 */
+		/* After creating the device, wait until the driver is bound ... */
+		wait_for_completion_timeout(&soc_camera_bind_completion, msecs_to_jiffies(1000));
+		bus_unregister_notifier(&platform_bus_type, &soc_camera_bus_notifier);
+
+		/* ... because only then control is guaranteed to be initialized */
 		control = to_soc_camera_control(icd);
 		if (!control || !control->driver || !dev_get_drvdata(control) ||
 		    !try_module_get(control->driver->owner)) {
