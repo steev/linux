@@ -971,6 +971,7 @@ static void platform_device_unregister_children(struct platform_device *pdev)
 struct ipu_platform_reg {
 	struct ipu_client_platformdata pdata;
 	const char *name;
+	int reg_offset;
 };
 
 static const struct ipu_platform_reg client_reg[] = {
@@ -992,30 +993,58 @@ static const struct ipu_platform_reg client_reg[] = {
 			.dma[1] = -EINVAL,
 		},
 		.name = "imx-ipuv3-crtc",
+	}, {
+		.pdata = {
+			.csi = 0,
+			.dma[0] = IPUV3_CHANNEL_CSI0,
+			.dma[1] = -EINVAL,
+		},
+		.reg_offset = IPU_CM_CSI0_REG_OFS,
+		.name = "imx-ipuv3-camera",
+	}, {
+		.pdata = {
+			.csi = 1,
+			.dma[0] = IPUV3_CHANNEL_CSI1,
+			.dma[1] = -EINVAL,
+		},
+		.reg_offset = IPU_CM_CSI1_REG_OFS,
+		.name = "imx-ipuv3-camera",
 	},
 };
 
 static int ipu_client_id;
 
 static int ipu_add_subdevice_pdata(struct device *dev,
-		const struct ipu_platform_reg *reg)
+		const struct ipu_platform_reg *reg, unsigned long cm_base)
 {
 	struct platform_device *pdev;
+	struct resource res;
 
-	pdev = platform_device_register_data(dev, reg->name, ipu_client_id++,
-			&reg->pdata, sizeof(struct ipu_platform_reg));
+	if (reg->reg_offset) {
+		memset(&res, 0, sizeof(res));
+		res.flags = IORESOURCE_MEM;
+		res.start = cm_base + reg->reg_offset;
+		res.end = res.start + PAGE_SIZE - 1;
+		printk("resource: 0x%08x - 0x%08x\n", res.start, res.end);
+		pdev = platform_device_register_resndata(dev, reg->name,
+			ipu_client_id++, &res, 1, &reg->pdata,
+			sizeof(reg->pdata));
+	} else {
+		pdev = platform_device_register_data(dev, reg->name,
+			ipu_client_id++, &reg->pdata, sizeof(reg->pdata));
+	}
 
 	return pdev ? 0 : -EINVAL;
 }
 
-static int ipu_add_client_devices(struct ipu_soc *ipu)
+static int ipu_add_client_devices(struct ipu_soc *ipu, unsigned long ipu_base)
 {
 	int ret;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(client_reg); i++) {
 		const struct ipu_platform_reg *reg = &client_reg[i];
-		ret = ipu_add_subdevice_pdata(ipu->dev, reg);
+		ret = ipu_add_subdevice_pdata(ipu->dev, reg, ipu_base + ipu->devtype->cm_ofs);
 		if (ret)
 			goto err_register;
 	}
@@ -1171,7 +1200,7 @@ static int __devinit ipu_probe(struct platform_device *pdev)
 	if (ret)
 		goto failed_submodules_init;
 
-	ret = ipu_add_client_devices(ipu);
+	ret = ipu_add_client_devices(ipu, ipu_base);
 	if (ret) {
 		dev_err(&pdev->dev, "adding client devices failed with %d\n",
 				ret);
