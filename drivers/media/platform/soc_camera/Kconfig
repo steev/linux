@@ -37,6 +37,13 @@ config VIDEO_MX3
 	---help---
 	  This is a v4l2 driver for the i.MX3x Camera Sensor Interface
 
+config VIDEO_MX5
+	tristate "i.MX51/53 Camera Sensor Interface driver"
+	depends on VIDEO_DEV && DRM_IMX_IPUV3 && SOC_CAMERA
+	select VIDEOBUF2_DMA_CONTIG
+	---help---
+	  This is a v4l2 driver for the i.MX51/53 Camera Sensor Interface
+
 config VIDEO_PXA27x
 	tristate "PXA27x Quick Capture Interface driver"
 	depends on VIDEO_DEV && PXA27x && SOC_CAMERA
