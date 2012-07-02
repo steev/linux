@@ -19,6 +19,7 @@
 #include <media/v4l2-subdev.h>
 #include <media/soc_camera.h>
 #include <media/soc_camera_platform.h>
+#include <linux/of.h>
 
 struct soc_camera_platform_priv {
 	struct v4l2_subdev subdev;
@@ -142,8 +143,62 @@ static int soc_camera_platform_probe(struct platform_device *pdev)
 	struct soc_camera_device *icd;
 	int ret;
 
+#ifdef CONFIG_OF
+	if (!p) {
+		struct device_node *np = pdev->dev.parent->of_node;
+		u32 format_depth;
+
+		p = devm_kzalloc(&pdev->dev, sizeof(*p), GFP_KERNEL);
+		if (!p)
+			return -ENOMEM;
+
+		of_property_read_string(np, "format-name", &p->format_name);
+		of_property_read_u32(np, "format-depth", &format_depth);
+		p->format_depth = format_depth;
+
+		of_property_read_u32(np, "frame-width", &p->format.width);
+		of_property_read_u32(np, "frame-height", &p->format.height);
+
+		of_property_read_u32(np, "mbus,format", &p->format.code);
+		of_property_read_u32(np, "mbus,field", &p->format.field);
+		of_property_read_u32(np, "mbus,colorspace", &p->format.colorspace);
+
+		if (of_property_read_bool(np, "mbus,master"))
+			p->mbus_param |= V4L2_MBUS_MASTER;
+		if (of_property_read_bool(np, "mbus,slave"))
+			p->mbus_param |= V4L2_MBUS_SLAVE;
+		if (of_property_read_bool(np, "mbus,pclk-sample-rising"))
+			p->mbus_param |= V4L2_MBUS_PCLK_SAMPLE_RISING;
+		if (of_property_read_bool(np, "mbus,pclk-sample-falling"))
+			p->mbus_param |= V4L2_MBUS_PCLK_SAMPLE_FALLING;
+		if (of_property_read_bool(np, "mbus,vsync-active-high"))
+			p->mbus_param |= V4L2_MBUS_VSYNC_ACTIVE_HIGH;
+		if (of_property_read_bool(np, "mbus,vsync-active-low"))
+			p->mbus_param |= V4L2_MBUS_VSYNC_ACTIVE_LOW;
+		if (of_property_read_bool(np, "mbus,hsync-active-high"))
+			p->mbus_param |= V4L2_MBUS_HSYNC_ACTIVE_HIGH;
+		if (of_property_read_bool(np, "mbus,hsync-active-low"))
+			p->mbus_param |= V4L2_MBUS_VSYNC_ACTIVE_LOW;
+		if (of_property_read_bool(np, "mbus,data-active-high"))
+			p->mbus_param |= V4L2_MBUS_DATA_ACTIVE_HIGH;
+		if (of_property_read_bool(np, "mbus,data-active-low"))
+			p->mbus_param |= V4L2_MBUS_DATA_ACTIVE_LOW;
+
+		of_property_read_u32(np, "mbus-type", &p->mbus_type);
+
+		pr_debug("Read from device tree: %s (%d x %d) fmt=%x\n",
+			 p->format_name, p->format.width, p->format.height, p->format.code);
+
+		/*
+		 * Try retrieving the icd from the parent soc_camera.
+		 * This only works as long as soc_camera creates us.
+		 */
+		p->icd = dev_get_drvdata(pdev->dev.parent);
+	}
+#else
 	if (!p)
 		return -EINVAL;
+#endif
 
 	if (!p->icd) {
 		dev_err(&pdev->dev,
@@ -192,10 +247,18 @@ static int soc_camera_platform_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id soc_camera_platform_dt_ids[] = {
+	{ .compatible = "soc-camera-platform" },
+	{ /* sentinel */ }
+};
+#endif
+
 static struct platform_driver soc_camera_platform_driver = {
 	.driver 	= {
 		.name	= "soc_camera_platform",
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(soc_camera_platform_dt_ids),
 	},
 	.probe		= soc_camera_platform_probe,
 	.remove		= soc_camera_platform_remove,
