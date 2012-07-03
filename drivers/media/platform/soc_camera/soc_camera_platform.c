@@ -33,7 +33,10 @@ static struct soc_camera_platform_priv *get_priv(struct platform_device *pdev)
 static int soc_camera_platform_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct soc_camera_platform_info *p = v4l2_get_subdevdata(sd);
-	return p->set_capture(p, enable);
+	if (p->set_capture)
+		return p->set_capture(p, enable);
+	else
+		return 0;
 }
 
 static int soc_camera_platform_fill_fmt(struct v4l2_subdev *sd,
