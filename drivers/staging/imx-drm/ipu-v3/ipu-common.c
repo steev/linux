@@ -594,6 +594,18 @@ int ipu_idmac_enable_channel(struct ipuv3_channel *channel)
 	struct ipu_soc *ipu = channel->ipu;
 	u32 val;
 	unsigned long flags;
+	unsigned long timeout;
+
+	timeout = jiffies + msecs_to_jiffies(50);
+	while (ipu_idmac_read(ipu, IDMAC_CHA_BUSY(channel->num)) &
+			idma_mask(channel->num)) {
+		if (time_after(jiffies, timeout)) {
+			dev_warn(ipu->dev, "disabling busy idmac channel %d\n",
+					channel->num);
+			break;
+		}
+		cpu_relax();
+	}
 
 	spin_lock_irqsave(&ipu->lock, flags);
 
