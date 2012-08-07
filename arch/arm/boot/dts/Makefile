@@ -46,6 +46,7 @@ dtb-$(CONFIG_ARCH_MSM) += msm8660-surf.dtb \
 dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
 	armada-xp-db.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx51-babbage.dtb \
+	imx51-efikamx.dtb \
 	imx53-ard.dtb \
 	imx53-evk.dtb \
 	imx53-qsb.dtb \
