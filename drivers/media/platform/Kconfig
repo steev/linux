@@ -203,6 +203,14 @@ config VIDEO_IMX_IPU_SCALER
 	---help---
 	  This is a v4l2 scaler video driver for the i.MX51/53.
 
+config VIDEO_IMX_IPU_VDIC
+	tristate "i.MX51/53 IPUv3 based deinterlacer driver"
+	depends on VIDEO_DEV && DRM_IMX_IPUV3
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEO_IMX_IPU_COMMON
+	---help---
+	  This is a v4l2 deinterlacer video driver for the i.MX51/53.
+
 config VIDEO_SAMSUNG_EXYNOS_GSC
 	tristate "Samsung Exynos G-Scaler driver"
 	depends on VIDEO_DEV && VIDEO_V4L2 && ARCH_EXYNOS5
