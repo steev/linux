@@ -587,6 +587,14 @@ int __devinit imx_pinctrl_probe(struct platform_device *pdev,
 	if (!ipctl->base)
 		return -EBUSY;
 
+	/* work around */
+	{
+	        u32 reg;
+		reg = readl(ipctl->base + 4);
+		reg |= BIT(13); /* usb_otg_id select gpio_1 */
+		writel(reg, ipctl->base + 4);
+	}
+
 	imx_pinctrl_desc.name = dev_name(&pdev->dev);
 	imx_pinctrl_desc.pins = info->pins;
 	imx_pinctrl_desc.npins = info->npins;
