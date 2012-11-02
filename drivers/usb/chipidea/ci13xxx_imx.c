@@ -21,12 +21,16 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/regmap.h>
+#include <linux/mfd/syscon.h>
 
 #include "ci.h"
 #include "ci13xxx_imx.h"
 
 #define pdev_to_phy(pdev) \
 	((struct usb_phy *)platform_get_drvdata(pdev))
+#define IOMUXC_IOMUXC_GPR1			0x00000004
+#define USB_OTG_ID_SEL_BIT			(1<<13)
 
 struct ci13xxx_imx_data {
 	struct device_node *phy_np;
@@ -133,6 +137,8 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct regulator *reg_vbus;
 	struct pinctrl *pinctrl;
+	struct regmap *iomuxc_gpr;
+	u32 gpr1 = 0;
 	int ret;
 
 	if (of_find_property(pdev->dev.of_node, "fsl,usbmisc", NULL)
@@ -248,6 +254,22 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	} else if (ci->is_otg) {
 		ci->otg.set_vbus = ci13xxx_otg_set_vbus;
 		ci->reg_vbus = data->reg_vbus;
+	}
+
+	if (ci->is_otg) {
+		iomuxc_gpr = syscon_regmap_lookup_by_compatible
+			("fsl,imx6q-iomuxc-gpr");
+		if (!IS_ERR(iomuxc_gpr)) {
+			/* Select USB ID pin at iomuxc grp1 */
+			regmap_read(iomuxc_gpr, IOMUXC_IOMUXC_GPR1, &gpr1);
+			regmap_write(iomuxc_gpr, IOMUXC_IOMUXC_GPR1,
+					gpr1 | USB_OTG_ID_SEL_BIT);
+		} else {
+			/* only imx6 platform has gpr, do not return error */
+			dev_warn(&pdev->dev,
+				"failed to find imx6q-iomuxc-gpr regmap:%ld\n",
+				PTR_ERR(iomuxc_gpr));
+		}
 	}
 
 	pm_runtime_no_callbacks(&pdev->dev);
