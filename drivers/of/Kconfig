@@ -67,6 +67,10 @@ config OF_MDIO
 	help
 	  OpenFirmware MDIO bus (Ethernet PHY) accessors
 
+config OF_USBPHY
+	depends on USB
+	def_bool y
+
 config OF_PCI
 	def_tristate PCI
 	depends on PCI
