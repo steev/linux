@@ -106,6 +106,10 @@ static int host_start(struct ci13xxx *ci)
 	if (usb_disabled())
 		return -ENODEV;
 
+	hw_portsc_configure(ci);
+
+	mdelay(10);
+
 	hcd = usb_create_hcd(&ci_ehci_hc_driver, ci->dev, dev_name(ci->dev));
 	if (!hcd)
 		return -ENOMEM;

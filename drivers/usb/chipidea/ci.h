@@ -330,6 +330,8 @@ static inline u32 hw_test_and_write(struct ci13xxx *ci, enum ci13xxx_regs reg,
 	return (val & mask) >> ffs_nr(mask);
 }
 
+void hw_portsc_configure(struct ci13xxx *ci);
+
 int hw_device_reset(struct ci13xxx *ci, u32 mode);
 
 int hw_port_test_set(struct ci13xxx *ci, u8 mode);

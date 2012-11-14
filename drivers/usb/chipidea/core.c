@@ -68,6 +68,8 @@
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/chipidea.h>
+#include <linux/of_usbphy.h>
+#include <linux/phy.h>
 
 #include "ci.h"
 #include "udc.h"
@@ -213,6 +215,23 @@ static int hw_device_init(struct ci13xxx *ci, void __iomem *base)
 	return 0;
 }
 
+void hw_portsc_configure(struct ci13xxx *ci)
+{
+	if (ci->platdata->flags & CI13XXX_PORTSC_PTW_16BIT)
+		hw_write(ci, OP_PORTSC, PORTSC_PTW, 0x1 << ffs_nr(PORTSC_PTW));
+
+	if (ci->platdata->flags & CI13XXX_PORTSC_PTS_UTMI) {
+		hw_write(ci, OP_PORTSC, PORTSC_PTS, 0x0 << ffs_nr(PORTSC_PTS));
+		hw_write(ci, OP_PORTSC, PORTSC_STS, 0x0 << ffs_nr(PORTSC_STS));
+	} else if (ci->platdata->flags & CI13XXX_PORTSC_PTS_ULPI) {
+		hw_write(ci, OP_PORTSC, PORTSC_PTS, 0x2 << ffs_nr(PORTSC_PTS));
+		hw_write(ci, OP_PORTSC, PORTSC_STS, 0x0 << ffs_nr(PORTSC_STS));
+	} else if (ci->platdata->flags & CI13XXX_PORTSC_PTS_FSLS) {
+		hw_write(ci, OP_PORTSC, PORTSC_PTS, 0x3 << ffs_nr(PORTSC_PTS));
+		hw_write(ci, OP_PORTSC, PORTSC_STS, 0x1 << ffs_nr(PORTSC_STS));
+	}
+}
+
 /**
  * hw_device_reset: resets chip (execute without interruption)
  * @ci: the controller
@@ -236,6 +255,8 @@ int hw_device_reset(struct ci13xxx *ci, u32 mode)
 
 	if (ci->platdata->flags & CI13XXX_DISABLE_STREAMING)
 		hw_write(ci, OP_USBMODE, USBMODE_CI_SDIS, USBMODE_CI_SDIS);
+
+	hw_portsc_configure(ci);
 
 	/* USBMODE should be configured step by step */
 	hw_write(ci, OP_USBMODE, USBMODE_CM, USBMODE_CM_IDLE);
@@ -491,6 +512,32 @@ void ci13xxx_remove_device(struct platform_device *pdev)
 	ida_simple_remove(&ci_ida, pdev->id);
 }
 EXPORT_SYMBOL_GPL(ci13xxx_remove_device);
+
+void ci13xxx_get_dr_flags(struct device_node *of_node, struct ci13xxx_platform_data *pdata)
+{
+	int interface = of_get_usbphy_mode(of_node);
+
+	switch (interface) {
+	case USBPHY_INTERFACE_MODE_UTMI:
+		pdata->flags |= CI13XXX_PORTSC_PTS_UTMI;
+		break;
+	case USBPHY_INTERFACE_MODE_UTMIW:
+		pdata->flags |= CI13XXX_PORTSC_PTS_UTMI |
+			CI13XXX_PORTSC_PTW_16BIT;
+		break;
+	case USBPHY_INTERFACE_MODE_ULPI:
+		pdata->flags |= CI13XXX_PORTSC_PTS_ULPI;
+		break;
+	case USBPHY_INTERFACE_MODE_SERIAL:
+		pdata->flags |= CI13XXX_PORTSC_PTS_FSLS;
+		break;
+	case USBPHY_INTERFACE_MODE_NA:
+	default:
+		pr_err("no phy interface defined\n");
+	}
+
+}
+EXPORT_SYMBOL_GPL(ci13xxx_get_dr_flags);
 
 void ci13xxx_get_dr_mode(struct device_node *of_node, struct ci13xxx_platform_data *pdata)
 {

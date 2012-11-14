@@ -155,6 +155,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		       CI13XXX_PULLUP_ON_VBUS |
 		       CI13XXX_DISABLE_STREAMING |
 		       CI13XXX_REGS_SHARED,
+	ci13xxx_get_dr_flags(pdev->dev.of_node, pdata);
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data) {

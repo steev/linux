@@ -20,6 +20,12 @@ struct ci13xxx_platform_data {
 #define CI13XXX_DISABLE_STREAMING	BIT(3)
 #define CI13XXX_DR_MODE_HOST		BIT(4)
 #define CI13XXX_DR_MODE_PERIPHERAL	BIT(5)
+#define CI13XXX_PORTSC_PTW_8BIT		BIT(6)
+#define CI13XXX_PORTSC_PTW_16BIT	BIT(7)
+#define CI13XXX_PORTSC_PTS_UTMI		BIT(8)
+#define CI13XXX_PORTSC_PTS_ULPI		BIT(9)
+#define CI13XXX_PORTSC_PTS_FSLS		BIT(10)
+
 #define CI13XXX_DR_MODE_MASK \
 	(CI13XXX_DR_MODE_HOST | CI13XXX_DR_MODE_PERIPHERAL)
 
@@ -40,5 +46,8 @@ void ci13xxx_remove_device(struct platform_device *pdev);
 
 /* Parse of-tree "dr_mode" property */
 void ci13xxx_get_dr_mode(struct device_node *of_node, struct ci13xxx_platform_data *pdata);
+
+/* Parse of-tree "flags" */
+void ci13xxx_get_dr_flags(struct device_node *of_node, struct ci13xxx_platform_data *pdata);
 
 #endif
