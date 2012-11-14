@@ -1058,6 +1058,9 @@ static int ep_enable(struct usb_ep *ep,
 	int retval = 0;
 	unsigned long flags;
 
+	unsigned short max = 0;
+	unsigned char mult = 0;
+
 	if (ep == NULL || desc == NULL)
 		return -EINVAL;
 
@@ -1075,6 +1078,7 @@ static int ep_enable(struct usb_ep *ep,
 	mEp->type = usb_endpoint_type(desc);
 
 	mEp->ep.maxpacket = usb_endpoint_maxp(desc);
+	max = usb_endpoint_maxp(desc);
 
 	dbg_event(_usb_addr(mEp), "ENABLE", 0);
 
@@ -1082,8 +1086,12 @@ static int ep_enable(struct usb_ep *ep,
 
 	if (mEp->type == USB_ENDPOINT_XFER_CONTROL)
 		mEp->qh.ptr->cap |=  QH_IOS;
-	else if (mEp->type == USB_ENDPOINT_XFER_ISOC)
-		mEp->qh.ptr->cap &= ~QH_MULT;
+	else if (mEp->type == USB_ENDPOINT_XFER_ISOC) {
+		/* Calculate transactions needed for high bandwidth iso */
+		mult = (unsigned char)(1 + ((max >> 11) & 0x03));
+		max = max & 0x7ff;	/* bit 0~10 */
+		mEp->qh.ptr->cap |= (mult << 30);
+	}
 	else
 		mEp->qh.ptr->cap &= ~QH_ZLT;
 
