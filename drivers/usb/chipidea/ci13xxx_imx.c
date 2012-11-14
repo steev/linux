@@ -259,6 +259,8 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		}
 	}
 
+	ci13xxx_get_dr_mode(pdev->dev.of_node, pdata);
+
 	plat_ci = ci13xxx_add_device(&pdev->dev,
 				pdev->resource, pdev->num_resources,
 				pdata);

@@ -4,6 +4,9 @@ Required properties:
 - compatible: Should be "fsl,imx27-usb"
 - reg: Should contain registers location and length
 - interrupts: Should contain controller interrupt
+- dr_mode: indicates the working mode for "fsl,imx27-usb" compatible
+  controllers. Can be "host", "peripheral", or "otg". Defaults to
+  "otg" if not defined.
 
 Optional properties:
 - fsl,usbphy: phandler of usb phy that connects to the only one port
@@ -22,4 +25,5 @@ usb@02184000 { /* USB OTG */
 	fsl,usbmisc = <&usbmisc 0>;
 	disable-over-current;
 	external-vbus-divider;
+	dr_mode= "otg";
 };

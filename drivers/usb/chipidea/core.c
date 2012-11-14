@@ -63,6 +63,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
+#include <linux/of_platform.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg.h>
@@ -491,6 +492,23 @@ void ci13xxx_remove_device(struct platform_device *pdev)
 }
 EXPORT_SYMBOL_GPL(ci13xxx_remove_device);
 
+void ci13xxx_get_dr_mode(struct device_node *of_node, struct ci13xxx_platform_data *pdata)
+{
+	const unsigned char *dr_mode;
+
+	dr_mode = of_get_property(of_node, "dr_mode", NULL);
+	if (!dr_mode)
+		return;
+
+	if (!strcmp(dr_mode, "host"))
+		pdata->flags |= CI13XXX_DR_MODE_HOST;
+	else if (!strcmp(dr_mode, "peripheral"))
+		pdata->flags |= CI13XXX_DR_MODE_PERIPHERAL;
+	else if (!strcmp(dr_mode, "otg"))
+		pdata->flags |= CI13XXX_DR_MODE_HOST | CI13XXX_DR_MODE_PERIPHERAL;
+}
+EXPORT_SYMBOL_GPL(ci13xxx_get_dr_mode);
+
 static int __devinit ci_hdrc_probe(struct platform_device *pdev)
 {
 	struct device	*dev = &pdev->dev;
@@ -561,13 +579,22 @@ static int __devinit ci_hdrc_probe(struct platform_device *pdev)
 	hw_write(ci, OP_OTGSC, OTGSC_INT_STATUS_BITS, OTGSC_INT_STATUS_BITS);
 
 	/* initialize role(s) before the interrupt is requested */
-	ret = ci_hdrc_host_init(ci);
-	if (ret)
-		dev_info(dev, "doesn't support host\n");
+	/* default to otg */
+	if (!(ci->platdata->flags & CI13XXX_DR_MODE_MASK))
+		ci->platdata->flags |= CI13XXX_DR_MODE_HOST |
+			CI13XXX_DR_MODE_PERIPHERAL;
 
-	ret = ci_hdrc_gadget_init(ci);
-	if (ret)
-		dev_info(dev, "doesn't support gadget, ret=%d\n", ret);
+	if (ci->platdata->flags & CI13XXX_DR_MODE_HOST) {
+		ret = ci_hdrc_host_init(ci);
+		if (ret)
+			dev_info(dev, "doesn't support host\n");
+	}
+
+	if (ci->platdata->flags & CI13XXX_DR_MODE_PERIPHERAL) {
+		ret = ci_hdrc_gadget_init(ci);
+		if (ret)
+			dev_info(dev, "doesn't support gadget\n");
+	}
 
 	if (!ci->roles[CI_ROLE_HOST] && !ci->roles[CI_ROLE_GADGET]) {
 		dev_err(dev, "no supported roles\n");

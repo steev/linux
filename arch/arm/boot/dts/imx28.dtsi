@@ -909,6 +909,7 @@
 			clocks = <&clks 60>;
 			fsl,usbphy = <&usbphy0>;
 			status = "disabled";
+			dr_mode = "otg";
 		};
 
 		usb1: usb@80090000 {
@@ -918,6 +919,7 @@
 			clocks = <&clks 61>;
 			fsl,usbphy = <&usbphy1>;
 			status = "disabled";
+			dr_mode = "host";
 		};
 
 		dflpt@800c0000 {
