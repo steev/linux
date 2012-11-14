@@ -506,6 +506,15 @@ static int ipu_crtc_init(struct ipu_crtc *ipu_crtc,
 {
 	int ret;
 
+	ret = imx_drm_add_crtc(&ipu_crtc->base,
+			&ipu_crtc->imx_crtc,
+			&ipu_crtc_helper_funcs, THIS_MODULE,
+			ipu_crtc->dev->parent->of_node, pdata->di);
+	if (ret) {
+		dev_err(ipu_crtc->dev, "adding crtc failed with %d.\n", ret);
+		return ret;
+	}
+
 	ret = ipu_get_resources(ipu_crtc, pdata);
 	if (ret) {
 		dev_err(ipu_crtc->dev, "getting resources failed with %d.\n",
@@ -513,21 +522,7 @@ static int ipu_crtc_init(struct ipu_crtc *ipu_crtc,
 		return ret;
 	}
 
-	ret = imx_drm_add_crtc(&ipu_crtc->base,
-			&ipu_crtc->imx_crtc,
-			&ipu_crtc_helper_funcs, THIS_MODULE,
-			ipu_crtc->dev->parent->of_node, pdata->di);
-	if (ret) {
-		dev_err(ipu_crtc->dev, "adding crtc failed with %d.\n", ret);
-		goto err_put_resources;
-	}
-
 	return 0;
-
-err_put_resources:
-	ipu_put_resources(ipu_crtc);
-
-	return ret;
 }
 
 static int __devinit ipu_drm_probe(struct platform_device *pdev)
