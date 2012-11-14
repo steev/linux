@@ -94,14 +94,6 @@ EXPORT_SYMBOL_GPL(usbmisc_get_init_data);
 
 /* End of common functions shared by usbmisc drivers*/
 
-static struct ci13xxx_platform_data ci13xxx_imx_platdata __devinitdata  = {
-	.name			= "ci13xxx_imx",
-	.flags			= CI13XXX_REQUIRE_TRANSCEIVER |
-				  CI13XXX_DISABLE_STREAMING |
-				  CI13XXX_REGS_SHARED,
-	.capoffset		= DEF_CAPOFFSET,
-};
-
 static int ci13xxx_otg_set_vbus(struct usb_otg *otg, bool enabled)
 {
 	struct ci13xxx	*ci = container_of(otg, struct ci13xxx, otg);
@@ -136,6 +128,7 @@ static int ci13xxx_otg_set_vbus(struct usb_otg *otg, bool enabled)
 static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 {
 	struct ci13xxx_imx_data *data;
+	struct ci13xxx_platform_data *pdata;
 	struct platform_device *plat_ci, *phy_pdev;
 	struct ci13xxx	*ci;
 	struct device_node *phy_np;
@@ -149,6 +142,19 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	if (of_find_property(pdev->dev.of_node, "fsl,usbmisc", NULL)
 		&& !usbmisc_ops)
 		return -EPROBE_DEFER;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&pdev->dev, "Failed to allocate CI13xxx-IMX pdata!\n");
+		return -ENOMEM;
+	}
+
+	pdata->name = "ci13xxx_imx";
+	pdata->capoffset = DEF_CAPOFFSET;
+	pdata->flags = CI13XXX_REQUIRE_TRANSCEIVER |
+		       CI13XXX_PULLUP_ON_VBUS |
+		       CI13XXX_DISABLE_STREAMING |
+		       CI13XXX_REGS_SHARED,
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data) {
@@ -230,7 +236,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	else
 		reg_vbus = NULL;
 
-	ci13xxx_imx_platdata.phy = data->phy;
+	pdata->phy = data->phy;
 
 	if (!pdev->dev.dma_mask) {
 		pdev->dev.dma_mask = devm_kzalloc(&pdev->dev,
@@ -255,7 +261,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 
 	plat_ci = ci13xxx_add_device(&pdev->dev,
 				pdev->resource, pdev->num_resources,
-				&ci13xxx_imx_platdata);
+				pdata);
 	if (IS_ERR(plat_ci)) {
 		ret = PTR_ERR(plat_ci);
 		dev_err(&pdev->dev,
