@@ -211,8 +211,13 @@ static int __devinit imx_pd_probe(struct platform_device *pdev)
 	}
 
 	edidp = of_get_property(np, "edid", &imxpd->edid_len);
-	if (edidp)
+	if (edidp) {
 		imxpd->edid = kmemdup(edidp, imxpd->edid_len, GFP_KERNEL);
+	} else {
+		ret = of_get_drm_display_mode(np, &imxpd->mode, 0);
+		if (!ret)
+			imxpd->mode_valid = 1;
+	}
 
 	ret = of_property_read_string(np, "interface-pix-fmt", &fmt);
 	if (!ret) {
