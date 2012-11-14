@@ -51,6 +51,7 @@
 #define PORTSC_PTS            (BIT(31) | BIT(30))
 #define PORTSC_PTW            BIT(28)
 #define PORTSC_STS            BIT(29)
+#define PORTSC_PFSC           BIT(24)
 
 /* DEVLC */
 #define DEVLC_PSPD            (0x03UL << 25)

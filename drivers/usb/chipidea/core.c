@@ -230,6 +230,9 @@ void hw_portsc_configure(struct ci13xxx *ci)
 		hw_write(ci, OP_PORTSC, PORTSC_PTS, 0x3 << ffs_nr(PORTSC_PTS));
 		hw_write(ci, OP_PORTSC, PORTSC_STS, 0x1 << ffs_nr(PORTSC_STS));
 	}
+
+	if (ci->platdata->flags & CI13XXX_PORTSC_PFSC)
+		hw_write(ci, OP_PORTSC, PORTSC_PFSC, 0x1 << ffs_nr(PORTSC_PFSC));
 }
 
 /**
@@ -536,6 +539,8 @@ void ci13xxx_get_dr_flags(struct device_node *of_node, struct ci13xxx_platform_d
 		pr_err("no phy interface defined\n");
 	}
 
+	if (of_find_property(of_node, "force-full-speed", NULL))
+		pdata->flags |= CI13XXX_PORTSC_PFSC;
 }
 EXPORT_SYMBOL_GPL(ci13xxx_get_dr_flags);
 
