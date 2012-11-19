@@ -129,6 +129,7 @@ struct hw_bank {
  * @vbus_active: is VBUS active
  * @transceiver: pointer to USB PHY, if any
  * @hcd: pointer to usb_hcd for ehci host driver
+ * @otg: for otg support
  */
 struct ci13xxx {
 	struct device			*dev;
@@ -164,6 +165,7 @@ struct ci13xxx {
 	bool				global_phy;
 	struct usb_phy			*transceiver;
 	struct usb_hcd			*hcd;
+	struct usb_otg      otg;
 };
 
 static inline struct ci_role_driver *ci_role(struct ci13xxx *ci)
