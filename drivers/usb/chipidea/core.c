@@ -307,27 +307,16 @@ static void ci_handle_id_switch(struct ci13xxx *ci)
 			ci_role(ci)->name, ci->roles[role]->name);
 
 		/* 1. Finish the current role */
-		if (ci->role == CI_ROLE_GADGET) {
-			usb_gadget_vbus_disconnect(&ci->gadget);
-			/* host doesn't care B_SESSION_VALID event */
-			hw_write(ci, OP_OTGSC, OTGSC_BSVIE, ~OTGSC_BSVIE);
-			hw_write(ci, OP_OTGSC, OTGSC_BSVIS, OTGSC_BSVIS);
-			ci->role = CI_ROLE_END;
-			/* reset controller */
-			hw_device_reset(ci, USBMODE_CM_IDLE);
-		} else if (ci->role == CI_ROLE_HOST) {
-			ci_role_stop(ci);
-			/* reset controller */
-			hw_device_reset(ci, USBMODE_CM_IDLE);
-		}
+		ci_role_stop(ci);
+		hw_device_reset(ci, USBMODE_CM_IDLE);
 
 		/* 2. Turn on/off vbus according to coming role */
-		if (ci_otg_role(ci) == CI_ROLE_GADGET) {
+		if (role == CI_ROLE_GADGET) {
 			otg_set_vbus(&ci->otg, false);
 			/* wait vbus lower than OTGSC_BSV */
 			hw_wait_reg(ci, OP_OTGSC, OTGSC_BSV, 0,
 					CI_VBUS_STABLE_TIMEOUT);
-		} else if (ci_otg_role(ci) == CI_ROLE_HOST) {
+		} else if (role == CI_ROLE_HOST) {
 			otg_set_vbus(&ci->otg, true);
 			/* wait vbus higher than OTGSC_AVV */
 			hw_wait_reg(ci, OP_OTGSC, OTGSC_AVV, OTGSC_AVV,
@@ -335,13 +324,7 @@ static void ci_handle_id_switch(struct ci13xxx *ci)
 		}
 
 		/* 3. Begin the new role */
-		if (ci_otg_role(ci) == CI_ROLE_GADGET) {
-			ci->role = role;
-			hw_write(ci, OP_OTGSC, OTGSC_BSVIS, OTGSC_BSVIS);
-			hw_write(ci, OP_OTGSC, OTGSC_BSVIE, OTGSC_BSVIE);
-		} else if (ci_otg_role(ci) == CI_ROLE_HOST) {
-			ci_role_start(ci, role);
-		}
+		ci_role_start(ci, role);
 	}
 }
 
@@ -584,7 +567,7 @@ static int __devinit ci_hdrc_probe(struct platform_device *pdev)
 
 	ret = ci_hdrc_gadget_init(ci);
 	if (ret)
-		dev_info(dev, "doesn't support gadget\n");
+		dev_info(dev, "doesn't support gadget, ret=%d\n", ret);
 
 	if (!ci->roles[CI_ROLE_HOST] && !ci->roles[CI_ROLE_GADGET]) {
 		dev_err(dev, "no supported roles\n");
@@ -608,23 +591,39 @@ static int __devinit ci_hdrc_probe(struct platform_device *pdev)
 		/* if otg is supported, create struct usb_otg */
 		ci_hdrc_otg_init(ci);
 
-	ret = ci_role_start(ci, ci->role);
-	if (ret) {
-		dev_err(dev, "can't start %s role, ret=%d\n",
-				ci_role(ci)->name, ret);
-		ret = -ENODEV;
-		goto rm_wq;
+	otgsc = hw_read(ci, OP_OTGSC, ~0);
+
+	/*
+	 * If the gadget is supported, call its init unconditionally,
+	 * We need to support load gadget module at init.rc.
+	 */
+	if (ci->roles[CI_ROLE_GADGET]) {
+		ret = ci->roles[CI_ROLE_GADGET]->init(ci);
+		if (ret) {
+			dev_err(dev, "can't init %s role, ret=%d\n",
+					ci_role(ci)->name, ret);
+			ret = -ENODEV;
+			goto rm_wq;
+		}
+		/*
+		 * if it is device mode:
+		 * - Enable vbus detect
+		 * - If it has already connected to host, notify udc
+		 */
+		if (ci->role == CI_ROLE_GADGET) {
+			hw_write(ci, OP_OTGSC, OTGSC_BSVIE, OTGSC_BSVIE);
+			ci_handle_vbus_change(ci);
+		}
 	}
 
-	otgsc = hw_read(ci, OP_OTGSC, ~0);
-	/*
-	 * if it is device mode:
-	 * - Enable vbus detect
-	 * - If it has already connected to host, notify udc
-	 */
-	if (ci->role == CI_ROLE_GADGET) {
-		hw_write(ci, OP_OTGSC, OTGSC_BSVIE, OTGSC_BSVIE);
-		ci_handle_vbus_change(ci);
+	if (ci->role == CI_ROLE_HOST) {
+		ret = ci->roles[CI_ROLE_HOST]->init(ci);
+		if (ret) {
+			dev_err(dev, "can't init %s role, ret=%d\n",
+					ci_role(ci)->name, ret);
+			ret = -ENODEV;
+			goto rm_wq;
+		}
 	}
 
 	platform_set_drvdata(pdev, ci);
@@ -662,7 +661,7 @@ static int __devexit ci_hdrc_remove(struct platform_device *pdev)
 	destroy_workqueue(ci->wq);
 	device_remove_file(ci->dev, &dev_attr_role);
 	free_irq(ci->irq, ci);
-	ci_role_stop(ci);
+	ci_role_destroy(ci);
 
 	return 0;
 }

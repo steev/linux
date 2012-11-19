@@ -151,8 +151,10 @@ int ci_hdrc_host_init(struct ci13xxx *ci)
 	if (!rdrv)
 		return -ENOMEM;
 
+	rdrv->init	= host_start;
 	rdrv->start	= host_start;
 	rdrv->stop	= host_stop;
+	rdrv->destroy	= host_stop;
 	rdrv->irq	= host_irq;
 	rdrv->name	= "host";
 	ci->roles[CI_ROLE_HOST] = rdrv;

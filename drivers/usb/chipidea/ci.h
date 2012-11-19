@@ -67,14 +67,18 @@ enum ci_role {
 
 /**
  * struct ci_role_driver - host/gadget role driver
- * start: start this role
- * stop: stop this role
+ * init: init this role (used at module probe)
+ * start: start this role (used at id switch)
+ * stop: stop this role (used at id switch)
+ * destroy: destroy this role (used at module remove)
  * irq: irq handler for this role
  * name: role name string (host/gadget)
  */
 struct ci_role_driver {
+	int		(*init)(struct ci13xxx *);
 	int		(*start)(struct ci13xxx *);
 	void		(*stop)(struct ci13xxx *);
+	void		(*destroy)(struct ci13xxx *);
 	irqreturn_t	(*irq)(struct ci13xxx *);
 	const char	*name;
 };
@@ -207,6 +211,17 @@ static inline void ci_role_stop(struct ci13xxx *ci)
 	ci->roles[role]->stop(ci);
 }
 
+static inline void ci_role_destroy(struct ci13xxx *ci)
+{
+	enum ci_role role = ci->role;
+
+	if (role == CI_ROLE_END)
+		return;
+
+	ci->role = CI_ROLE_END;
+
+	ci->roles[role]->destroy(ci);
+}
 /******************************************************************************
  * REGISTERS
  *****************************************************************************/

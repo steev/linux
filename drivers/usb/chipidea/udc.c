@@ -1780,6 +1780,22 @@ free_qh_pool:
 	return retval;
 }
 
+static int udc_id_switch_for_device(struct ci13xxx *ci)
+{
+	hw_write(ci, OP_OTGSC, OTGSC_BSVIS, OTGSC_BSVIS);
+	hw_write(ci, OP_OTGSC, OTGSC_BSVIE, OTGSC_BSVIE);
+
+	return 0;
+}
+
+static void udc_id_switch_for_host(struct ci13xxx *ci)
+{
+	usb_gadget_vbus_disconnect(&ci->gadget);
+	/* host doesn't care B_SESSION_VALID event */
+	hw_write(ci, OP_OTGSC, OTGSC_BSVIE, ~OTGSC_BSVIE);
+	hw_write(ci, OP_OTGSC, OTGSC_BSVIS, OTGSC_BSVIS);
+}
+
 /**
  * udc_remove: parent remove must call this to remove UDC
  *
@@ -1825,8 +1841,10 @@ int ci_hdrc_gadget_init(struct ci13xxx *ci)
 	if (!rdrv)
 		return -ENOMEM;
 
-	rdrv->start	= udc_start;
-	rdrv->stop	= udc_stop;
+	rdrv->init	= udc_start;
+	rdrv->start	= udc_id_switch_for_device;
+	rdrv->stop	= udc_id_switch_for_host;
+	rdrv->destroy	= udc_stop;
 	rdrv->irq	= udc_irq;
 	rdrv->name	= "gadget";
 	ci->roles[CI_ROLE_GADGET] = rdrv;
