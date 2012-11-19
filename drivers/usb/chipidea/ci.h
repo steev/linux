@@ -130,6 +130,7 @@ struct hw_bank {
  * @transceiver: pointer to USB PHY, if any
  * @hcd: pointer to usb_hcd for ehci host driver
  * @otg: for otg support
+ * @events: events for otg, and handled at ci_role_work
  */
 struct ci13xxx {
 	struct device			*dev;
@@ -140,6 +141,7 @@ struct ci13xxx {
 	enum ci_role			role;
 	bool				is_otg;
 	struct work_struct		work;
+	struct delayed_work		dwork;
 	struct workqueue_struct		*wq;
 
 	struct dma_pool			*qh_pool;
@@ -166,6 +168,9 @@ struct ci13xxx {
 	struct usb_phy			*transceiver;
 	struct usb_hcd			*hcd;
 	struct usb_otg      otg;
+#define CI_ID		0
+#define CI_B_SESS_VALID	1
+	unsigned long events;
 };
 
 static inline struct ci_role_driver *ci_role(struct ci13xxx *ci)

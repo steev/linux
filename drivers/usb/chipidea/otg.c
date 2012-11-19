@@ -55,6 +55,7 @@ int ci_hdrc_otg_init(struct ci13xxx *ci)
 	ci->otg.set_host = ci_otg_set_host;
 	if (!IS_ERR_OR_NULL(ci->transceiver))
 		ci->transceiver->otg = &ci->otg;
+	hw_write(ci, OP_OTGSC, OTGSC_IDIE, OTGSC_IDIE);
 
 	return 0;
 }
