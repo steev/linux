@@ -88,7 +88,6 @@ EXPORT_SYMBOL_GPL(usbmisc_get_init_data);
 static struct ci13xxx_platform_data ci13xxx_imx_platdata __devinitdata  = {
 	.name			= "ci13xxx_imx",
 	.flags			= CI13XXX_REQUIRE_TRANSCEIVER |
-				  CI13XXX_PULLUP_ON_VBUS |
 				  CI13XXX_DISABLE_STREAMING,
 	.capoffset		= DEF_CAPOFFSET,
 };
