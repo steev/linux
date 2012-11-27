@@ -83,6 +83,9 @@ int usbmisc_get_init_data(struct device *dev, struct usbmisc_usb_device *usbdev)
 	if (of_find_property(np, "disable-over-current", NULL))
 		usbdev->disable_oc = 1;
 
+	if (of_find_property(np, "external-vbus-divider", NULL))
+		usbdev->evdo = 1;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(usbmisc_get_init_data);
@@ -229,6 +232,15 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 			"Can't register ci_hdrc platform device, err=%d\n",
 			ret);
 		goto put_np;
+	}
+
+	if (usbmisc_ops && usbmisc_ops->post) {
+		ret = usbmisc_ops->post(&pdev->dev);
+		if (ret) {
+			dev_err(&pdev->dev,
+				"usbmisc post failed, ret=%d\n", ret);
+			goto put_np;
+		}
 	}
 
 	data->ci_pdev = plat_ci;
