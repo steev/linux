@@ -530,16 +530,16 @@ static void s3c24xx_serial_pm(struct uart_port *port, unsigned int level,
 	switch (level) {
 	case 3:
 		if (!IS_ERR(ourport->baudclk))
-			clk_disable(ourport->baudclk);
+			clk_disable_unprepare(ourport->baudclk);
 
-		clk_disable(ourport->clk);
+		clk_disable_unprepare(ourport->clk);
 		break;
 
 	case 0:
-		clk_enable(ourport->clk);
+		clk_prepare_enable(ourport->clk);
 
 		if (!IS_ERR(ourport->baudclk))
-			clk_enable(ourport->baudclk);
+			clk_prepare_enable(ourport->baudclk);
 
 		break;
 	default:
@@ -713,11 +713,11 @@ static void s3c24xx_serial_set_termios(struct uart_port *port,
 		s3c24xx_serial_setsource(port, clk_sel);
 
 		if (!IS_ERR(ourport->baudclk)) {
-			clk_disable(ourport->baudclk);
+			clk_disable_unprepare(ourport->baudclk);
 			ourport->baudclk = ERR_PTR(-EINVAL);
 		}
 
-		clk_enable(clk);
+		clk_prepare_enable(clk);
 
 		ourport->baudclk = clk;
 		ourport->baudclk_rate = clk ? clk_get_rate(clk) : 0;
@@ -1287,9 +1287,9 @@ static int s3c24xx_serial_resume(struct device *dev)
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
 
 	if (port) {
-		clk_enable(ourport->clk);
+		clk_prepare_enable(ourport->clk);
 		s3c24xx_serial_resetport(port, s3c24xx_port_to_cfg(port));
-		clk_disable(ourport->clk);
+		clk_disable_unprepare(ourport->clk);
 
 		uart_resume_port(&s3c24xx_uart_drv, port);
 	}
@@ -1646,7 +1646,8 @@ static struct s3c24xx_serial_drv_data s5pv210_serial_drv_data = {
 #endif
 
 #if defined(CONFIG_CPU_EXYNOS4210) || defined(CONFIG_SOC_EXYNOS4212) || \
-	defined(CONFIG_SOC_EXYNOS4412) || defined(CONFIG_SOC_EXYNOS5250)
+	defined(CONFIG_SOC_EXYNOS4412) || defined(CONFIG_SOC_EXYNOS5250) || \
+	defined(CONFIG_SOC_EXYNOS5440)
 static struct s3c24xx_serial_drv_data exynos4210_serial_drv_data = {
 	.info = &(struct s3c24xx_uart_info) {
 		.name		= "Samsung Exynos4 UART",
