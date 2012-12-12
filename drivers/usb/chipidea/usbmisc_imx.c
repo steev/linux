@@ -23,12 +23,12 @@
 #define MX25_USB_PHY_CTRL_OFFSET	0x08
 #define MX25_BM_EXTERNAL_VBUS_DIVIDER	BIT(23)
 
-#define MX53_USB_OTG_PHY_CTRL_0_OFFSET	0x08
-#define MX53_USB_UH2_CTRL_OFFSET	0x14
-#define MX53_USB_UH3_CTRL_OFFSET	0x18
-#define MX53_BM_OVER_CUR_DIS_H1		BIT(5)
-#define MX53_BM_OVER_CUR_DIS_OTG	BIT(8)
-#define MX53_BM_OVER_CUR_DIS_UHx	BIT(30)
+#define MX5X_USB_OTG_PHY_CTRL_0_OFFSET	0x08
+#define MX5X_USB_UH2_CTRL_OFFSET	0x14
+#define MX5X_USB_UH3_CTRL_OFFSET	0x18
+#define MX5X_BM_OVER_CUR_DIS_H1		BIT(5)
+#define MX5X_BM_OVER_CUR_DIS_OTG	BIT(8)
+#define MX5X_BM_OVER_CUR_DIS_UHx	BIT(30)
 
 #define MX6_BM_OVER_CUR_DIS		BIT(7)
 
@@ -87,7 +87,7 @@ static int usbmisc_imx25_post(struct device *dev)
 	return 0;
 }
 
-static int usbmisc_imx53_init(struct device *dev)
+static int usbmisc_imx5x_init(struct device *dev)
 {
 	struct usbmisc_usb_device *usbdev;
 	void __iomem *reg = NULL;
@@ -102,20 +102,20 @@ static int usbmisc_imx53_init(struct device *dev)
 		spin_lock_irqsave(&usbmisc->lock, flags);
 		switch (usbdev->index) {
 		case 0:
-			reg = usbmisc->base + MX53_USB_OTG_PHY_CTRL_0_OFFSET;
-			val = readl(reg) | MX53_BM_OVER_CUR_DIS_OTG;
+			reg = usbmisc->base + MX5X_USB_OTG_PHY_CTRL_0_OFFSET;
+			val = readl(reg) | MX5X_BM_OVER_CUR_DIS_OTG;
 			break;
 		case 1:
-			reg = usbmisc->base + MX53_USB_OTG_PHY_CTRL_0_OFFSET;
-			val = readl(reg) | MX53_BM_OVER_CUR_DIS_H1;
+			reg = usbmisc->base + MX5X_USB_OTG_PHY_CTRL_0_OFFSET;
+			val = readl(reg) | MX5X_BM_OVER_CUR_DIS_H1;
 			break;
 		case 2:
-			reg = usbmisc->base + MX53_USB_UH2_CTRL_OFFSET;
-			val = readl(reg) | MX53_BM_OVER_CUR_DIS_UHx;
+			reg = usbmisc->base + MX5X_USB_UH2_CTRL_OFFSET;
+			val = readl(reg) | MX5X_BM_OVER_CUR_DIS_UHx;
 			break;
 		case 3:
-			reg = usbmisc->base + MX53_USB_UH3_CTRL_OFFSET;
-			val = readl(reg) | MX53_BM_OVER_CUR_DIS_UHx;
+			reg = usbmisc->base + MX5X_USB_UH3_CTRL_OFFSET;
+			val = readl(reg) | MX5X_BM_OVER_CUR_DIS_UHx;
 			break;
 		}
 		if (reg && val)
@@ -152,8 +152,8 @@ static const struct usbmisc_ops imx25_usbmisc_ops = {
 	.post = usbmisc_imx25_post,
 };
 
-static const struct usbmisc_ops imx53_usbmisc_ops = {
-	.init = usbmisc_imx53_init,
+static const struct usbmisc_ops imx5x_usbmisc_ops = {
+	.init = usbmisc_imx5x_init,
 };
 
 static const struct usbmisc_ops imx6q_usbmisc_ops = {
@@ -162,7 +162,7 @@ static const struct usbmisc_ops imx6q_usbmisc_ops = {
 
 static const struct of_device_id usbmisc_imx_dt_ids[] = {
 	{ .compatible = "fsl,imx25-usbmisc", .data = (void *)&imx25_usbmisc_ops },
-	{ .compatible = "fsl,imx53-usbmisc", .data = (void *)&imx53_usbmisc_ops },
+	{ .compatible = "fsl,imx5x-usbmisc", .data = (void *)&imx5x_usbmisc_ops },
 	{ .compatible = "fsl,imx6q-usbmisc", .data = (void *)&imx6q_usbmisc_ops },
 	{ /* sentinel */ }
 };
