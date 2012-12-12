@@ -256,11 +256,14 @@
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_usbotg_1>;
 				fsl,usbmisc = <&usbmisc 0>;
+				clocks = <&clks 43>, <&clks 43>, <&clks 43>;
+				clock-names = "ipg", "ahb", "per";
 				dr_mode = "host";
 				phy-mode = "utmi";
 				status = "okay";
 				};
 
+/* Commented out as it needs pinctrl corrected.
 			usbhost1: usb@73f80200 {
 				compatible = "fsl,imx51-usb", "fsl,imx27-usb";
 				pinctrl-names = "default";
@@ -270,10 +273,12 @@
 				ext-clk;
 				status = "okay";
 			};
-
-			usbmisc: usbmisc@73f00000 {
+*/
+			usbmisc: usbmisc@73f80000 {
 				#index-cells = <1>;
 				compatible = "fsl,imx5x-usbmisc";
+				clocks = <&clks 124>;
+				clock-names = "phy";
 				reg = <0x73f80800 0x200>;
 			};
 
