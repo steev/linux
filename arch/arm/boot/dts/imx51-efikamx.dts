@@ -252,14 +252,29 @@
 			};
 
 			usbotg: usb@73f80000 {
+				compatible = "fsl,imx51-usb", "fsl,imx27-usb";
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_usbotg_1>;
-				vbus-supply = <&vusb_reg>;
+				fsl,usbmisc = <&usbmisc 0>;
+				dr_mode = "host";
+				phy-mode = "utmi";
 				status = "okay";
 				};
 
 			usbhost1: usb@73f80200 {
+				compatible = "fsl,imx51-usb", "fsl,imx27-usb";
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_usbotg_1>;
+				fsl,usbmisc = <&usbmisc 1>;
+				phy-mode = "ulpi";
+				ext-clk;
 				status = "okay";
+			};
+
+			usbmisc: usbmisc@73f00000 {
+				#index-cells = <1>;
+				compatible = "fsl,imx5x-usbmisc";
+				reg = <0x73f80800 0x200>;
 			};
 
 			uart1: serial@73fbc000 {
