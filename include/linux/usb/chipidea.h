@@ -17,6 +17,7 @@ struct ci13xxx_platform_data {
 	unsigned long	 flags;
 #define CI13XXX_REGS_SHARED		BIT(0)
 #define CI13XXX_REQUIRE_TRANSCEIVER	BIT(1)
+#define CI13XXX_PULLUP_ON_VBUS		BIT(2)
 #define CI13XXX_DISABLE_STREAMING	BIT(3)
 #define CI13XXX_DR_MODE_HOST		BIT(4)
 #define CI13XXX_DR_MODE_PERIPHERAL	BIT(5)
