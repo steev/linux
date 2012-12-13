@@ -98,6 +98,7 @@ int ipu_idmac_disable_channel(struct ipuv3_channel *channel);
 
 void ipu_idmac_set_double_buffer(struct ipuv3_channel *channel,
 		bool doublebuffer);
+int ipu_idmac_get_current_buffer(struct ipuv3_channel *channel);
 void ipu_idmac_select_buffer(struct ipuv3_channel *channel, u32 buf_num);
 
 /*
@@ -154,6 +155,20 @@ int ipu_dp_setup_channel(struct ipu_dp *dp,
 int ipu_dp_set_window_pos(struct ipu_dp *, u16 x_pos, u16 y_pos);
 int ipu_dp_set_global_alpha(struct ipu_dp *dp, bool enable, u8 alpha,
 		bool bg_chan);
+
+/*
+ * IPU CMOS Sensor Interface (csi) functions
+ */
+int ipu_csi_enable(struct ipu_soc *ipu, int csi);
+int ipu_csi_disable(struct ipu_soc *ipu, int csi);
+
+/*
+ * IPU Sensor Multiple FIFO Controller (SMFC) functions
+ */
+int ipu_smfc_enable(struct ipu_soc *ipu);
+int ipu_smfc_disable(struct ipu_soc *ipu);
+int ipu_smfc_map_channel(struct ipu_soc *ipu, int channel, int csi_id, int mipi_id);
+int ipu_smfc_set_burstsize(struct ipu_soc *ipu, int channel, int burstsize);
 
 #define IPU_CPMEM_WORD(word, ofs, size) ((((word) * 160 + (ofs)) << 8) | (size))
 
@@ -293,6 +308,7 @@ static inline void ipu_cpmem_interlaced_scan(struct ipu_ch_param *p,
 
 void ipu_cpmem_set_yuv_planar(struct ipu_ch_param __iomem *p, u32 pixel_format,
 			int stride, int height);
+void ipu_cpmem_set_yuv_interleaved(struct ipu_ch_param *p, u32 pixel_format);
 void ipu_cpmem_set_yuv_planar_full(struct ipu_ch_param __iomem *p,
 		u32 pixel_format, int stride, int u_offset, int v_offset);
 int ipu_cpmem_set_fmt(struct ipu_ch_param __iomem *cpmem, u32 pixelformat);
@@ -308,11 +324,18 @@ static inline void ipu_cpmem_set_burstsize(struct ipu_ch_param __iomem *p,
 };
 
 struct ipu_client_platformdata {
+	int csi;
 	int di;
 	int dc;
 	int dp;
 	int dmfc;
 	int dma[2];
 };
+
+int ipu_image_convert(struct ipu_soc *ipu, struct ipu_image *in, struct ipu_image *out,
+		void (*complete)(void *ctx, int err), void *ctx);
+int ipu_image_deinterlace_convert(struct ipu_soc *ipu, struct ipu_image *in_p,
+		struct ipu_image *in, struct ipu_image *in_n, struct ipu_image *out,
+		void (*complete)(void *ctx, int err), void *complete_context);
 
 #endif /* __DRM_IPU_H__ */

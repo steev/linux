@@ -304,4 +304,8 @@ static inline u32 soc_camera_grp_id(const struct soc_camera_device *icd)
 void soc_camera_lock(struct vb2_queue *vq);
 void soc_camera_unlock(struct vb2_queue *vq);
 
+struct device_node;
+
+int of_soc_camera_host_nr(struct device_node *np, int id);
+
 #endif

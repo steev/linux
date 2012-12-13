@@ -466,8 +466,13 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 	unsigned long round;
 	struct clk *parent;
 
-	dev_dbg(di->ipu->dev, "disp %d: panel size = %d x %d\n",
-		di->id, sig->width, sig->height);
+	h_total = sig->width + sig->h_sync_width + sig->h_start_width +
+		sig->h_end_width;
+	v_total = sig->height + sig->v_sync_width + sig->v_start_width +
+		sig->v_end_width;
+
+	dev_dbg(di->ipu->dev, "disp %d: panel size = %d x %d (%d x %d), %lu Hz\n",
+		di->id, sig->width, sig->height, h_total, v_total, sig->pixelclock);
 
 	if ((sig->v_sync_width == 0) || (sig->h_sync_width == 0))
 		return -EINVAL;
@@ -491,11 +496,6 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 		round = clk_round_rate(di->clk_di_pixel, sig->pixelclock);
 
 	ret = clk_set_rate(di->clk_di_pixel, round);
-
-	h_total = sig->width + sig->h_sync_width + sig->h_start_width +
-		sig->h_end_width;
-	v_total = sig->height + sig->v_sync_width + sig->v_start_width +
-		sig->v_end_width;
 
 	mutex_lock(&di_mutex);
 

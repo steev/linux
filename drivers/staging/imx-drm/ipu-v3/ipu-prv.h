@@ -151,6 +151,9 @@ struct ipuv3_channel {
 struct ipu_dc_priv;
 struct ipu_dmfc_priv;
 struct ipu_di;
+struct ipu_smfc_priv;
+struct ipu_ic_priv;
+
 struct ipu_devtype;
 
 struct ipu_soc {
@@ -178,6 +181,8 @@ struct ipu_soc {
 	struct ipu_dp_priv	*dp_priv;
 	struct ipu_dmfc_priv	*dmfc_priv;
 	struct ipu_di		*di_priv[2];
+	struct ipu_smfc_priv	*smfc_priv;
+	struct ipu_ic_priv	*ic_priv;
 };
 
 void ipu_srm_dp_sync_update(struct ipu_soc *ipu);
@@ -202,5 +207,12 @@ void ipu_dc_exit(struct ipu_soc *ipu);
 
 int ipu_cpmem_init(struct ipu_soc *ipu, struct device *dev, unsigned long base);
 void ipu_cpmem_exit(struct ipu_soc *ipu);
+
+int ipu_smfc_init(struct ipu_soc *ipu, struct device *dev, unsigned long base);
+void ipu_smfc_exit(struct ipu_soc *ipu);
+
+int ipu_ic_init(struct ipu_soc *ipu, struct device *dev, unsigned long ic_base,
+		unsigned long tpm_base, unsigned long vdi_base);
+void ipu_ic_exit(struct ipu_soc *ipu);
 
 #endif				/* __IPU_PRV_H__ */
