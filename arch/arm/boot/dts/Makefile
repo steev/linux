@@ -81,6 +81,7 @@ dtb-$(CONFIG_ARCH_MVEBU) += armada-370-db.dtb \
 	armada-xp-db.dtb \
 	armada-xp-openblocks-ax3-4.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx51-babbage.dtb \
+	imx51-efikamx.dtb \
 	imx51-genesi-efika-sb.dtb \
 	imx53-ard.dtb \
 	imx53-evk.dtb \
