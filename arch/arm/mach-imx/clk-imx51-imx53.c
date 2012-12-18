@@ -37,7 +37,7 @@ static const char *ssi_ext1_com_sels[] = { "ssi_ext1_podf", "ssi1_root_gate", };
 static const char *ssi_ext2_com_sels[] = { "ssi_ext2_podf", "ssi2_root_gate", };
 static const char *emi_slow_sel[] = { "main_bus", "ahb", };
 static const char *usb_phy_sel_str[] = { "osc", "usb_phy_podf", };
-static const char *mx51_ipu_di0_sel[] = { "di_pred", "osc", "ckih1", "tve_di", };
+static const char *mx51_ipu_di0_sel[] = { "di_pred" }; //, "osc", "ckih1", "tve_di", };
 static const char *mx53_ipu_di0_sel[] = { "di_pred", "osc", "ckih1", "di_pll4_podf", "dummy", "ldb_di0_gate", };
 static const char *mx53_ldb_di0_sel[] = { "pll3_sw", "pll4_sw", };
 static const char *mx51_ipu_di1_sel[] = { "di_pred", "osc", "ckih1", "tve_di", "ipp_di1", };
@@ -251,15 +251,11 @@ static void __init mx5_clocks_common_init(unsigned long rate_ckil,
 	clk_register_clkdev(clk[uart4_ipg_gate], "ipg", "imx21-uart.3");
 	clk_register_clkdev(clk[uart5_per_gate], "per", "imx21-uart.4");
 	clk_register_clkdev(clk[uart5_ipg_gate], "ipg", "imx21-uart.4");
-	clk_register_clkdev(clk[ecspi1_per_gate], "per", "imx51-ecspi.0");
-	clk_register_clkdev(clk[ecspi1_ipg_gate], "ipg", "imx51-ecspi.0");
-	clk_register_clkdev(clk[ecspi2_per_gate], "per", "imx51-ecspi.1");
-	clk_register_clkdev(clk[ecspi2_ipg_gate], "ipg", "imx51-ecspi.1");
-	clk_register_clkdev(clk[cspi_ipg_gate], NULL, "imx35-cspi.2");
 	clk_register_clkdev(clk[pwm1_ipg_gate], "pwm", "mxc_pwm.0");
 	clk_register_clkdev(clk[pwm2_ipg_gate], "pwm", "mxc_pwm.1");
 	clk_register_clkdev(clk[i2c1_gate], NULL, "imx21-i2c.0");
 	clk_register_clkdev(clk[i2c2_gate], NULL, "imx21-i2c.1");
+	clk_register_clkdev(clk[i2c2_gate], NULL, "83fc4000.i2c");
 	clk_register_clkdev(clk[usboh3_per_gate], "per", "mxc-ehci.0");
 	clk_register_clkdev(clk[usboh3_gate], "ipg", "mxc-ehci.0");
 	clk_register_clkdev(clk[usboh3_gate], "ahb", "mxc-ehci.0");
@@ -355,7 +351,6 @@ int __init mx51_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 
 	mx5_clocks_common_init(rate_ckil, rate_osc, rate_ckih1, rate_ckih2);
 
-	clk_register_clkdev(clk[hsi2c_gate], NULL, "imx21-i2c.2");
 	clk_register_clkdev(clk[mx51_mipi], "mipi_hsp", NULL);
 	clk_register_clkdev(clk[vpu_gate], NULL, "imx51-vpu.0");
 	clk_register_clkdev(clk[fec_gate], NULL, "imx27-fec.0");
@@ -375,6 +370,13 @@ int __init mx51_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 	clk_register_clkdev(clk[esdhc4_ipg_gate], "ipg", "sdhci-esdhc-imx51.3");
 	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx51.3");
 	clk_register_clkdev(clk[esdhc4_per_gate], "per", "sdhci-esdhc-imx51.3");
+
+	clk_set_parent(clk[ipu_di0_sel], clk[di_pred]);
+	clk_set_rate(clk[di_pred], 216000000);
+
+/*	clk_set_parent(clk[per_root], clk[ipg]);
+	clk_set_rate(clk[i2c2_gate], 100000);
+	clk_prepare_enable(clk[i2c2_gate]);*/
 
 	/* set the usboh3 parent to pll2_sw */
 	clk_set_parent(clk[usboh3_sel], clk[pll2_sw]);

@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
  */
+#define DEBUG 1
+
 #include <linux/module.h>
 #include <linux/export.h>
 #include <linux/device.h>
@@ -416,6 +418,9 @@ static int ipu_set_interface_pix_fmt(struct drm_crtc *crtc, u32 encoder_type,
 	case DRM_MODE_ENCODER_LVDS:
 		ipu_crtc->di_clkflags = IPU_DI_CLKMODE_SYNC |
 			IPU_DI_CLKMODE_EXT;
+		break;
+	case DRM_MODE_ENCODER_TMDS:
+		ipu_crtc->di_clkflags = IPU_DI_CLKMODE_EXT;
 		break;
 	case DRM_MODE_ENCODER_NONE:
 		ipu_crtc->di_clkflags = 0;

@@ -323,8 +323,8 @@
 				i2c2 {
 					pinctrl_i2c2_1: i2c2grp-1 {
 						fsl,pins = <
-							449 0x400001ed	/* MX51_PAD_KEY_COL4__I2C2_SCL */
-							454 0x400001ed	/* MX51_PAD_KEY_COL5__I2C2_SDA */
+							449 0x4001b8b1	/* MX51_PAD_KEY_COL4__I2C2_SCL */
+							454 0x4001b8b1	/* MX51_PAD_KEY_COL5__I2C2_SDA */
 						>;
 					};
 				};

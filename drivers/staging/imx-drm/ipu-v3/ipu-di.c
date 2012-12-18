@@ -12,6 +12,8 @@
  * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
  */
+#define DEBUG 1
+
 #include <linux/export.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -237,6 +239,8 @@ static u8 clk_di_get_parent(struct clk_hw *hw)
 
 	val = ipu_di_read(di, DI_GENERAL);
 
+	dev_dbg(di->ipu->dev, "%s: val: %u\n", __func__, val);
+
 	return val & DI_GEN_DI_CLK_EXT ? 1 : 0;
 }
 
@@ -246,6 +250,8 @@ static int clk_di_set_parent(struct clk_hw *hw, u8 index)
 	u32 val;
 
 	val = ipu_di_read(di, DI_GENERAL);
+
+	dev_dbg(di->ipu->dev, "%s: index: %u\n", __func__, index);
 
 	if (index)
 		val |= DI_GEN_DI_CLK_EXT;
@@ -465,6 +471,8 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 	int ret;
 	unsigned long round;
 	struct clk *parent;
+	u32 rounded_rate;
+	u32 rounded_parent;
 
 	h_total = sig->width + sig->h_sync_width + sig->h_start_width +
 		sig->h_end_width;
@@ -477,6 +485,7 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 	if ((sig->v_sync_width == 0) || (sig->h_sync_width == 0))
 		return -EINVAL;
 
+	//sig->clkflags |= IPU_DI_CLKMODE_EXT;
 	if (sig->clkflags & IPU_DI_CLKMODE_EXT)
 		parent = di->clk_di;
 	else
@@ -644,6 +653,7 @@ int ipu_di_init(struct ipu_soc *ipu, struct device *dev, int id,
 		return -ENOMEM;
 
 	ipu->di_priv[id] = di;
+	di->ipu = ipu;
 
 	di->clk_di = devm_clk_get(dev, id ? "di1" : "di0");
 	if (IS_ERR(di->clk_di))
@@ -680,7 +690,6 @@ int ipu_di_init(struct ipu_soc *ipu, struct device *dev, int id,
 	dev_info(dev, "DI%d base: 0x%08lx remapped to %p\n",
 			id, base, di->base);
 	di->inuse = false;
-	di->ipu = ipu;
 
 	return 0;
 

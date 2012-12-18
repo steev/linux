@@ -219,14 +219,20 @@
 				hog {
 					pinctrl_hog: hoggrp {
 						fsl,pins = <
-							51 0x85		/* MX51_PAD_NANDF_RB3__GPIO_3_11 + 100k pullup (PCBID2) */
-							53 0x85		/* MX51_PAD_NANDF_CS0__GPIO_3_16 + 100k pullup (PCBID0) */
-							54 0x85		/* MX51_PAD_NANDF_CS1__GPIO_3_17 + 100k pullup (PCBID1) */
-							402 0x85	/* MX51_PAD_CSPI1_SS0__GPIO4_24 */
-							405 0x85	/* MX51_PAD_CSPI1_SS1__GPIO4_25 */
-							694 0x85	/* MX51_PAD_GPIO1_0__SD1_CD */
-							697 0x85	/* MX51_PAD_GPIO1_1__SD1_WP */
-							740 0x85	/* MX51_PAD_GPIO1_6__GPIO1_6 (PMIC interrupt)*/
+							51 0x85			/* MX51_PAD_NANDF_RB3__GPIO_3_11 + 100k pullup (PCBID2) */
+							53 0x85			/* MX51_PAD_NANDF_CS0__GPIO_3_16 + 100k pullup (PCBID0) */
+							54 0x85			/* MX51_PAD_NANDF_CS1__GPIO_3_17 + 100k pullup (PCBID1) */
+							402 0x85		/* MX51_PAD_CSPI1_SS0__GPIO4_24 */
+							405 0x85		/* MX51_PAD_CSPI1_SS1__GPIO4_25 */
+							694 0x85		/* MX51_PAD_GPIO1_0__SD1_CD */
+							697 0x85		/* MX51_PAD_GPIO1_1__SD1_WP */
+							740 0x40000085		/* MX51_PAD_GPIO1_6__GPIO1_6 (PMIC interrupt) */
+							514 0x85		/* MX51_PAD_DISPB2_SER_DIN__GPIO3_5 (SII902x reset) */
+							511 0x85		/* MX51_PAD_DI1_D1_CS__GPIO3_4 (SII902x enable) */
+							521 0x85		/* MX51_PAD_DISPB2_SER_CLK__GPIO3_7 (VGA enable) */
+							169 0x40000085		/* MX51_PAD_EIM_DTACK__GPIO2_31 (power button) */
+							517 0x40000085		/* MX51_PAD_DISPB2_SER_DIO__GPIO3_6 (SII902x irq) */
+							186 0x40000085		/* MX51_PAD_NANDF_CLE__GPIO3_6 */
 						>;
 					};
 				};
@@ -246,6 +252,39 @@
 							491 0x1d5
 							494 0x1d5
 							498 0x1d5
+						>;
+					};
+				};
+
+				display {
+					pinctrl_display_1: displaygrp-1 {
+						fsl,pins = <
+							583 0x10		/* MX51_PAD_DI1_PIN3__DI1_PIN3 */
+							584 0x10		/* MX51_PAD_DI1_PIN2__DI1_PIN2 */
+							528 0x10		/* MX51_PAD_DISP1_DAT0__DISP1_DAT0 */
+							529 0x10		/* MX51_PAD_DISP1_DAT1__DISP1_DAT1 */
+							530 0x10		/* MX51_PAD_DISP1_DAT2__DISP1_DAT2 */
+							531 0x10		/* MX51_PAD_DISP1_DAT3__DISP1_DAT3 */
+							532 0x10		/* MX51_PAD_DISP1_DAT4__DISP1_DAT4 */
+							533 0x10		/* MX51_PAD_DISP1_DAT5__DISP1_DAT5 */
+							535 0x10		/* MX51_PAD_DISP1_DAT6__DISP1_DAT6 */
+							537 0x10		/* MX51_PAD_DISP1_DAT7__DISP1_DAT7 */
+							539 0x10		/* MX51_PAD_DISP1_DAT8__DISP1_DAT8 */
+							541 0x10		/* MX51_PAD_DISP1_DAT9__DISP1_DAT9 */
+							543 0x10		/* MX51_PAD_DISP1_DAT10__DISP1_DAT10 */
+							545 0x10		/* MX51_PAD_DISP1_DAT11__DISP1_DAT11 */
+							547 0x10		/* MX51_PAD_DISP1_DAT12__DISP1_DAT12 */
+							549 0x10		/* MX51_PAD_DISP1_DAT13__DISP1_DAT13 */
+							551 0x10		/* MX51_PAD_DISP1_DAT14__DISP1_DAT14 */
+							553 0x10		/* MX51_PAD_DISP1_DAT15__DISP1_DAT15 */
+							555 0x10		/* MX51_PAD_DISP1_DAT16__DISP1_DAT16 */
+							557 0x10		/* MX51_PAD_DISP1_DAT17__DISP1_DAT17 */
+							559 0x10		/* MX51_PAD_DISP1_DAT18__DISP1_DAT18 */
+							563 0x10		/* MX51_PAD_DISP1_DAT19__DISP1_DAT19 */
+							567 0x10		/* MX51_PAD_DISP1_DAT20__DISP1_DAT20 */
+							571 0x10		/* MX51_PAD_DISP1_DAT21__DISP1_DAT21 */
+							575 0x10		/* MX51_PAD_DISP1_DAT22__DISP1_DAT22 */
+							579 0x10		/* MX51_PAD_DISP1_DAT23__DISP1_DAT23 */
 						>;
 					};
 				};
@@ -277,8 +316,8 @@
 			usbmisc: usbmisc@73f80000 {
 				#index-cells = <1>;
 				compatible = "fsl,imx5x-usbmisc";
-				clocks = <&clks 124>;
-				clock-names = "phy";
+			//	clocks = <&clks 124>;
+			//	clock-names = "phy";
 				reg = <0x73f80800 0x200>;
 			};
 
@@ -300,14 +339,50 @@
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_i2c2_1>;
 				status = "okay";
+				clock-frequency = <100000>;
 
-				codec: sgtl5000@0a {
+				/*codec: sgtl5000@0a {
 					compatible = "fsl,sgtl5000";
 					reg = <0x0a>;
 					clock-frequency = <12288000>;
 					VDDA-supply = <&vdig_reg>;
 					VDDIO-supply = <&vvideo_reg>;
 					VDDD-supply = <&vgen1_reg>;
+				};*/
+
+				hdmi: sii9022@39 {
+					compatible = "sii,sii9022";
+					reg = <0x39>;
+					interrupt-parent = <&gpio3>;
+					interrupts = <6 0x8>;
+					gpios = <   &gpio3 5 0		/* reset */
+						    &gpio3 4 0		/* enable (active low) */
+						    &gpio3 7 0		/* vga (active low) */
+						//    &gpio3 6 0
+						>;	/* interrupt */
+
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_display_1>;
+					crtcs = <&ipu 0>;
+					interface_pix_fmt = "rgb24";
+
+/*
+					display-timings {
+						native-mode = <&timing0>;
+						timing0: 480p30 {
+							// 640x480p30
+							clock-frequency = <30000000>;
+							hactive = <640>;
+							vactive = <480>;
+							hfront-porch = <25>;
+							hback-porch = <25>;
+							hsync-len = <25>;
+							vback-porch = <2>;
+							vfront-porch = <2>;
+							vsync-len = <2>;
+							hsync-active = <1>;
+						};
+					};*/
 				};
 			};
 
@@ -317,6 +392,34 @@
 				status = "okay";
 			};
 		};
+
+
+/*
+		display@di1 {
+			compatible = "fsl,imx-parallel-display";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_display_1>;
+			crtcs = <&ipu 1>;
+			interface_pix_fmt = "rgb24";
+			status = "okay";
+
+			display-timings {
+				native-mode = <&timing0>;
+				timing0: 480p30 {
+					// 640x480p30
+					clock-frequency = <30000000>;
+					hactive = <640>;
+					vactive = <480>;
+					hfront-porch = <25>;
+					hback-porch = <25>;
+					hsync-len = <25>;
+					vback-porch = <2>;
+					vfront-porch = <2>;
+					vsync-len = <2>;
+					hsync-active = <1>;
+				};
+			};
+		};*/
 	};
 
 	gpio-keys {
@@ -335,24 +438,24 @@
 
 		red {
 			label = "red";
-			gpios = <&gpio3 13>;
+			gpios = <&gpio3 15 0>;
 			linux,default-trigger = "ide-disk";
 		};
 
 		green {
 			label = "green";
-			gpios = <&gpio3 14>;
+			gpios = <&gpio3 14 0>;
 			linux,default-trigger = "default-on";
 		};
 
 		blue {
 			label = "blue";
-			gpios = <&gpio3 15>;
+			gpios = <&gpio3 13 0>;
 			linux,default-trigger = "mmc0";
 		};
 	};
 
-	sound {
+	/*sound {
 		compatible = "fsl,imx-audio-sgtl5000";
 		model = "efikamx-sgtl5000";
 		ssi-controller = <&ssi2>;
@@ -363,5 +466,5 @@
 		audio-codec = <&codec>;
 		mux-int-port = <2>;
 		mux-ext-port = <3>;
-	};
+	};*/
 };

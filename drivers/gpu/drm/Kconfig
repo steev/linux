@@ -46,6 +46,13 @@ config DRM_LOAD_EDID_FIRMWARE
 	  default case is N. Details and instructions how to build your own
 	  EDID data are given in Documentation/EDID/HOWTO.txt.
 
+config DRM_KMS_ENCON
+	tristate
+	depends on DRM
+	help
+	  helper for KMS drivers which use connectors and encoders with
+	  a 1:1 relationship
+
 config DRM_TTM
 	tristate
 	depends on DRM

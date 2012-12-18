@@ -34,6 +34,7 @@
 
 /** Includes *******************************************************************
 *******************************************************************************/
+#define DEBUG 1
 
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -294,12 +295,12 @@ static void __init i2c_imx_set_clk(struct imx_i2c_struct *i2c_imx,
 		+ (i2c_clk_rate / 2) - 1) / (i2c_clk_rate / 2);
 
 	/* dev_dbg() can't be used, because adapter is not yet registered */
-#ifdef CONFIG_I2C_DEBUG_BUS
+//#ifdef CONFIG_I2C_DEBUG_BUS
 	dev_dbg(&i2c_imx->adapter.dev, "<%s> I2C_CLK=%d, REQ DIV=%d\n",
 		__func__, i2c_clk_rate, div);
 	dev_dbg(&i2c_imx->adapter.dev, "<%s> IFDR[IC]=0x%x, REAL DIV=%d\n",
 		__func__, i2c_clk_div[i][1], i2c_clk_div[i][0]);
-#endif
+//#endif
 }
 
 static irqreturn_t i2c_imx_isr(int irq, void *dev_id)
