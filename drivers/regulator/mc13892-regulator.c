@@ -34,6 +34,7 @@
 #define MC13892_POWERCTL0_VCOINCELLEN		(1<<23)
 
 #define MC13892_SWITCHERS0_SWxHI		(1<<23)
+#define MC13892_SWxHI_SEL_OFFSET		20
 
 #define MC13892_SWITCHERS0			24
 #define MC13892_SWITCHERS0_SW1VSEL		0
@@ -431,7 +432,7 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 		 * if the HI bit is actually set
 		 */
 
-		val += 20; // later: make me a define since magic values are teh suck
+		val += MC13892_SWxHI_SEL_OFFSET;
 
 		dev_dbg(rdev_get_dev(rdev), "%s HI bit is set, so I'm going to use %d instead (which is %d uV)\n", __func__, val,  rdev->desc->volt_table[val]);
 	} else {
