@@ -421,12 +421,23 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 
 	if ((mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) &&
 	    (val & MC13892_SWITCHERS0_SWxHI)) {
-		val += 20; // later: make me a define since magic values are teh suck
-		dev_dbg(rdev_get_dev(rdev), "%s HI bit is set, so I'm going to use %d instead (which is %d uV)\n", __func__, val,  rdev->desc->volt_table[val]);
-	}
 
-	val = (val & mc13892_regulators[id].vsel_mask)
-		>> mc13892_regulators[id].vsel_shift;
+		/* mask off all the extraneous bits, including HI */
+		val &= mc13892_regulators[id].vsel_mask;
+
+		/*
+		 * now we have a raw index into a selector table,
+		 * add the base for the lowest selector for voltage
+		 * if the HI bit is actually set
+		 */
+
+		val += 20; // later: make me a define since magic values are teh suck
+
+		dev_dbg(rdev_get_dev(rdev), "%s HI bit is set, so I'm going to use %d instead (which is %d uV)\n", __func__, val,  rdev->desc->volt_table[val]);
+	} else {
+		val = (val & mc13892_regulators[id].vsel_mask)
+			>> mc13892_regulators[id].vsel_shift;
+	}
 
 	dev_dbg(rdev_get_dev(rdev), "%s post-lookup id: %d (used mask: 0x%08x shift: 0x%08x) val: %d\n", __func__, id,
 			mc13892_regulators[id].vsel_mask, mc13892_regulators[id].vsel_shift, val);
