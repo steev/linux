@@ -409,7 +409,21 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 	if (ret)
 		return ret;
 
-	dev_dbg(rdev_get_dev(rdev), "%s pre-lookup id: %d val: 0x%08x\n", __func__, id, val);
+	dev_dbg(rdev_get_dev(rdev), "%s pre-lookup id: %d val: %d\n", __func__, id, val);
+
+	/*
+	 * Figure out if the HI bit is set inside the switcher mode register
+	 * since this means the selector value we return is offset into the
+	 * selector table. SW1 does not apply as it does not support the HI
+	 * bit (even though it's in the SPI bitmap in the documentation). For
+	 * more information on the SW1 restriction, see set_voltage_sel below.
+	 */
+
+	if ((mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) &&
+	    (val & MC13892_SWITCHERS0_SWxHI)) {
+		val += 20; // later: make me a define since magic values are teh suck
+		dev_dbg(rdev_get_dev(rdev), "%s HI bit is set, so I'm going to use %d instead (which is %d uV)\n". __func__, val,  rdev->desc->volt_table[val]);
+	}
 
 	val = (val & mc13892_regulators[id].vsel_mask)
 		>> mc13892_regulators[id].vsel_shift;
