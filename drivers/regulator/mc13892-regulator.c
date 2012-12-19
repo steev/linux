@@ -10,6 +10,7 @@
  * published by the Free Software Foundation.
  */
 
+#define DEBUG 1
 #include <linux/mfd/mc13892.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/driver.h>
@@ -19,6 +20,9 @@
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/module.h>
+#ifdef DEBUG
+#include <linux/delay.h>
+#endif
 #include "mc13xxx.h"
 
 #define MC13892_REVISION			7
@@ -398,7 +402,7 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 	int ret, id = rdev_get_id(rdev);
 	unsigned int val;
 
-	dev_dbg(rdev_get_dev(rdev), "%s id: %d\n", __func__, id);
+	dev_dbg(rdev_get_dev(rdev), "%s id: %d vsel_reg: %d\n", __func__, id, mc13892_regulators[id].vsel_reg);
 
 	mc13xxx_lock(priv->mc13xxx);
 	ret = mc13xxx_reg_read(priv->mc13xxx,
@@ -407,10 +411,13 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 	if (ret)
 		return ret;
 
+	dev_dbg(rdev_get_dev(rdev), "%s pre-lookup id: %d val: 0x%08x\n", __func__, id, val);
+
 	val = (val & mc13892_regulators[id].vsel_mask)
 		>> mc13892_regulators[id].vsel_shift;
 
-	dev_dbg(rdev_get_dev(rdev), "%s id: %d val: %d\n", __func__, id, val);
+	dev_dbg(rdev_get_dev(rdev), "%s post-lookup id: %d (used mask: 0x%08x shift: 0x%08x) val: %d\n", __func__, id,
+			mc13892_regulators[id].vsel_mask, mc13892_regulators[id].vsel_shift, val);
 
 	return val;
 }
@@ -421,11 +428,18 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 	struct mc13xxx_regulator_priv *priv = rdev_get_drvdata(rdev);
 	int volt, mask, id = rdev_get_id(rdev);
 	u32 reg_value;
+#ifdef DEBUG
+	u32 reg_old;
+#endif
 	int ret;
+
+	dev_dbg(rdev_get_dev(rdev), "%s id: %d selector: %d\n", __func__, id, selector);
 
 	volt = rdev->desc->volt_table[selector];
 	mask = mc13892_regulators[id].vsel_mask;
 	reg_value = selector << mc13892_regulators[id].vsel_shift;
+
+	dev_dbg(rdev_get_dev(rdev), "%s pre-voltage-check volt: %d mask: 0x%08x value: 0x%08x\n", __func__, volt, mask, reg_value);
 
 	if (volt > 1375000) {
 		mask |= MC13892_SWITCHERS0_SWxHI;
@@ -434,6 +448,21 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 		mask |= MC13892_SWITCHERS0_SWxHI;
 		reg_value &= ~MC13892_SWITCHERS0_SWxHI;
 	}
+
+	dev_dbg(rdev_get_dev(rdev), "%s post-voltage-check mask: 0x%08x value: 0x%08x (setting 0x%08x)\n", __func__, mask, reg_value, reg_value & mask);
+
+#ifdef DEBUG
+	mc13xxx_lock(priv->mc13xxx);
+	ret = mc13xxx_reg_read(priv->mc13xxx,
+		mc13892_regulators[id].reg, &reg_old);
+	mc13xxx_unlock(priv->mc13xxx);
+
+	dev_dbg(rdev_get_dev(rdev), "%s original register value: 0x%08x (masked 0x%08x)\n", __func__, reg_old, reg_old & mask);
+	dev_dbg(rdev_get_dev(rdev), "%s i am going to write this: 0x%08x\n", __func__, (reg_old & ~mask) | (reg_value & mask));
+	dev_dbg(rdev_get_dev(rdev), "%s vsel_reg: %d\n", __func__, mc13892_regulators[id].vsel_reg);
+	dev_dbg(rdev_get_dev(rdev), "%s reg: %d\n", __func__, mc13892_regulators[id].reg);
+	msleep(1000);
+#endif
 
 	mc13xxx_lock(priv->mc13xxx);
 	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].reg, mask,

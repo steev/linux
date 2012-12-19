@@ -13,6 +13,7 @@
  *
  */
 
+#define DEBUG 1
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/debugfs.h>
@@ -2176,10 +2177,14 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 	unsigned int selector;
 	int old_selector = -1;
 
+	rdev_dbg(rdev, "%s id: %d min_uV: %d max_uV: %d\n", __func__, rdev_get_id(rdev), min_uV, max_uV);
+
 	trace_regulator_set_voltage(rdev_get_name(rdev), min_uV, max_uV);
 
 	min_uV += rdev->constraints->uV_offset;
 	max_uV += rdev->constraints->uV_offset;
+
+	rdev_dbg(rdev, "%s id: %d constraints-added min_uV: %d max_uV: %d\n", __func__, rdev_get_id(rdev), min_uV, max_uV);
 
 	/*
 	 * If we can't obtain the old selector there is not enough
@@ -2188,21 +2193,30 @@ static int _regulator_do_set_voltage(struct regulator_dev *rdev,
 	if (_regulator_is_enabled(rdev) &&
 	    rdev->desc->ops->set_voltage_time_sel &&
 	    rdev->desc->ops->get_voltage_sel) {
+		rdev_dbg(rdev, "%s id: %d calling get_voltage_sel\n", __func__, rdev_get_id(rdev));
+
 		old_selector = rdev->desc->ops->get_voltage_sel(rdev);
-		if (old_selector < 0)
+		if (old_selector < 0) {
+			rdev_dbg(rdev, "rdev %s id: %d returning %d\n", __func__, rdev_get_id(rdev), old_selector);
+
 			return old_selector;
+		}
 	}
 
 	if (rdev->desc->ops->set_voltage) {
+		rdev_dbg(rdev, "%s id: %d calling set_voltage\n", __func__, rdev_get_id(rdev));
 		ret = rdev->desc->ops->set_voltage(rdev, min_uV, max_uV,
 						   &selector);
 
 		if (ret >= 0) {
-			if (rdev->desc->ops->list_voltage)
+			if (rdev->desc->ops->list_voltage) {
 				best_val = rdev->desc->ops->list_voltage(rdev,
 									 selector);
-			else
+				rdev_dbg(rdev, "%s id: %d called list_voltage selector: %d got best_val: %d\n", __func__, rdev_get_id(rdev), selector, best_val);
+			} else {
 				best_val = _regulator_get_voltage(rdev);
+				rdev_dbg(rdev, "%s id: %d called get_voltage got best_val: %d\n", __func__, rdev_get_id(rdev), best_val);
+			}
 		}
 
 	} else if (rdev->desc->ops->set_voltage_sel) {
@@ -2315,6 +2329,8 @@ int regulator_set_voltage(struct regulator *regulator, int min_uV, int max_uV)
 	ret = regulator_check_consumers(rdev, &min_uV, &max_uV);
 	if (ret < 0)
 		goto out;
+
+	rdev_dbg(rdev, "%s id: %d about to call set voltage min_uV: %d max_uV: %d\n", __func__, rdev_get_id(rdev), min_uV, max_uV);
 
 	ret = _regulator_do_set_voltage(rdev, min_uV, max_uV);
 

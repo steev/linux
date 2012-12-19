@@ -88,7 +88,7 @@
 							reg_1V8_DIG1: sw4 {
 								/* 1V8_DIG1 - PUS_1 (1.8V IO supply) */
 								regulator-name = "1V8_DIG1";
-								regulator-min-microvolt = <1400000>;
+								regulator-min-microvolt = <1800000>;
 								regulator-max-microvolt = <1800000>;
 								regulator-boot-on;
 								regulator-always-on;
@@ -238,6 +238,7 @@
 				hog {
 					pinctrl_hog: hoggrp {
 						fsl,pins = <
+							169 0x800000c0	/* MX51_PAD_EIM_DTACK__GPIO2_31 (Power button) */
 							51 0x85		/* MX51_PAD_NANDF_RB3__GPIO_3_11 + 100k pullup (PCBID2) */
 							53 0x85		/* MX51_PAD_NANDF_CS0__GPIO_3_16 + 100k pullup (PCBID0) */
 							54 0x85		/* MX51_PAD_NANDF_CS1__GPIO_3_17 + 100k pullup (PCBID1) */
@@ -246,6 +247,8 @@
 							694 0x85	/* MX51_PAD_GPIO1_0__SD1_CD */
 							697 0x85	/* MX51_PAD_GPIO1_1__SD1_WP */
 							740 0x85	/* MX51_PAD_GPIO1_6__GPIO1_6 (PMIC interrupt)*/
+							737 0x80000000	/* MX51_PAD_GPIO1_5__GPIO1_5 (USB hub reset, 0 = reset) */
+							63  0x80000000	/* MX51_PAD_EIM_D27__GPIO2_9 (USB phy reset, 0 = reset) */
 						>;
 					};
 				};
@@ -333,4 +336,10 @@
 		mux-int-port = <2>;
 		mux-ext-port = <3>;
 	};
+};
+
+&pata {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pata_1>;
+	status = "okay";
 };
