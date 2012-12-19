@@ -440,8 +440,6 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 
 	}
 
-	val >>= mc13892_regulators[id].vsel_shift;
-
 	dev_dbg(rdev_get_dev(rdev), "%s post-lookup id: %d (used mask: 0x%08x shift: 0x%08x) val: %d\n", __func__, id,
 			mc13892_regulators[id].vsel_mask, mc13892_regulators[id].vsel_shift, val);
 
