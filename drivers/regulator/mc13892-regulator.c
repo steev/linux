@@ -422,7 +422,7 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 	if ((mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) &&
 	    (val & MC13892_SWITCHERS0_SWxHI)) {
 		val += 20; // later: make me a define since magic values are teh suck
-		dev_dbg(rdev_get_dev(rdev), "%s HI bit is set, so I'm going to use %d instead (which is %d uV)\n". __func__, val,  rdev->desc->volt_table[val]);
+		dev_dbg(rdev_get_dev(rdev), "%s HI bit is set, so I'm going to use %d instead (which is %d uV)\n", __func__, val,  rdev->desc->volt_table[val]);
 	}
 
 	val = (val & mc13892_regulators[id].vsel_mask)
