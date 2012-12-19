@@ -402,8 +402,6 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 	int ret, id = rdev_get_id(rdev);
 	unsigned int val;
 
-	dev_dbg(rdev_get_dev(rdev), "%s id: %d vsel_reg: %d\n", __func__, id, mc13892_regulators[id].vsel_reg);
-
 	mc13xxx_lock(priv->mc13xxx);
 	ret = mc13xxx_reg_read(priv->mc13xxx,
 		mc13892_regulators[id].vsel_reg, &val);
@@ -454,18 +452,16 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 #ifdef DEBUG
 	mc13xxx_lock(priv->mc13xxx);
 	ret = mc13xxx_reg_read(priv->mc13xxx,
-		mc13892_regulators[id].reg, &reg_old);
+		mc13892_regulators[id].vsel_reg, &reg_old);
 	mc13xxx_unlock(priv->mc13xxx);
 
 	dev_dbg(rdev_get_dev(rdev), "%s original register value: 0x%08x (masked 0x%08x)\n", __func__, reg_old, reg_old & mask);
 	dev_dbg(rdev_get_dev(rdev), "%s i am going to write this: 0x%08x\n", __func__, (reg_old & ~mask) | (reg_value & mask));
-	dev_dbg(rdev_get_dev(rdev), "%s vsel_reg: %d\n", __func__, mc13892_regulators[id].vsel_reg);
-	dev_dbg(rdev_get_dev(rdev), "%s reg: %d\n", __func__, mc13892_regulators[id].reg);
 	msleep(1000);
 #endif
 
 	mc13xxx_lock(priv->mc13xxx);
-	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].reg, mask,
+	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].vsel_reg, mask,
 			      reg_value);
 	mc13xxx_unlock(priv->mc13xxx);
 
