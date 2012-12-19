@@ -477,7 +477,7 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 
 	if (mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) {
 		if (volt > 1375000) {
-			selector += MC13892_SWxHI_SEL_OFFSET;
+			selector -= MC13892_SWxHI_SEL_OFFSET;
 			reg_value = (selector << mc13892_regulators[id].vsel_shift) | MC13892_SWITCHERS0_SWxHI;
 			mask |= MC13892_SWITCHERS0_SWxHI;
 		} else if (volt < 1100000) {
