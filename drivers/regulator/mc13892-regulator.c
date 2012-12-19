@@ -439,12 +439,22 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 
 	dev_dbg(rdev_get_dev(rdev), "%s pre-voltage-check volt: %d mask: 0x%08x value: 0x%08x\n", __func__, volt, mask, reg_value);
 
-	if (volt > 1375000) {
-		mask |= MC13892_SWITCHERS0_SWxHI;
-		reg_value |= MC13892_SWITCHERS0_SWxHI;
-	} else if (volt < 1100000) {
-		mask |= MC13892_SWITCHERS0_SWxHI;
-		reg_value &= ~MC13892_SWITCHERS0_SWxHI;
+	/*
+	 * According to the MC13892 documentation note 59 (Table 47) the SW1
+	 * buck switcher does not support output range programming therefore
+	 * the HI bit must always remain 0. The vsel_mask correctly reflects
+	 * this so just don't check the voltage or do any mask fiddling if
+	 * we're working on SW1.
+	 */
+
+	if (mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) {
+		if (volt > 1375000) {
+			mask |= MC13892_SWITCHERS0_SWxHI;
+			reg_value |= MC13892_SWITCHERS0_SWxHI;
+		} else if (volt < 1100000) {
+			mask |= MC13892_SWITCHERS0_SWxHI;
+			reg_value &= ~MC13892_SWITCHERS0_SWxHI;
+		}
 	}
 
 	dev_dbg(rdev_get_dev(rdev), "%s post-voltage-check mask: 0x%08x value: 0x%08x (setting 0x%08x)\n", __func__, mask, reg_value, reg_value & mask);
