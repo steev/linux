@@ -410,8 +410,6 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 	if (ret)
 		return ret;
 
-	dev_dbg(rdev_get_dev(rdev), "%s pre-lookup id: %d val: %d\n", __func__, id, val);
-
 	/*
 	 * Figure out if the HI bit is set inside the switcher mode register
 	 * since this means the selector value we return is offset into the
@@ -428,9 +426,6 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 		val &= mc13892_regulators[id].vsel_mask;
 	}
 
-	dev_dbg(rdev_get_dev(rdev), "%s post-lookup id: %d (used mask: 0x%08x) val: %d\n", __func__, id,
-			mc13892_regulators[id].vsel_mask, val);
-
 	return val;
 }
 
@@ -440,18 +435,11 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 	struct mc13xxx_regulator_priv *priv = rdev_get_drvdata(rdev);
 	int volt, mask, id = rdev_get_id(rdev);
 	u32 reg_value;
-#ifdef DEBUG
-	u32 reg_old;
-#endif
 	int ret;
-
-	dev_dbg(rdev_get_dev(rdev), "%s id: %d selector: %d\n", __func__, id, selector);
 
 	volt = rdev->desc->volt_table[selector];
 	mask = mc13892_regulators[id].vsel_mask;
-	reg_value = selector; // note we do this again later for certain voltages, OPTIMIZE
-
-	dev_dbg(rdev_get_dev(rdev), "%s pre-voltage-check volt: %d mask: 0x%08x value: 0x%08x\n", __func__, volt, mask, reg_value);
+	reg_value = selector;
 
 	/*
 	 * According to the MC13892 documentation note 59 (Table 47) the SW1
@@ -463,27 +451,13 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 
 	if (mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) {
 		if (volt > 1375000) {
-			selector -= MC13892_SWxHI_SEL_OFFSET;
-			reg_value = selector | MC13892_SWITCHERS0_SWxHI;
+			reg_value = (reg_value - MC13892_SWxHI_SEL_OFFSET) | MC13892_SWITCHERS0_SWxHI;
 			mask |= MC13892_SWITCHERS0_SWxHI;
 		} else if (volt < 1100000) {
-			reg_value = selector & ~MC13892_SWITCHERS0_SWxHI;
+			reg_value &= ~MC13892_SWITCHERS0_SWxHI;
 			mask |= MC13892_SWITCHERS0_SWxHI;
 		}
 	}
-
-	dev_dbg(rdev_get_dev(rdev), "%s post-voltage-check mask: 0x%08x value: 0x%08x (setting 0x%08x)\n", __func__, mask, reg_value, reg_value & mask);
-
-#ifdef DEBUG
-	mc13xxx_lock(priv->mc13xxx);
-	ret = mc13xxx_reg_read(priv->mc13xxx,
-		mc13892_regulators[id].vsel_reg, &reg_old);
-	mc13xxx_unlock(priv->mc13xxx);
-
-	dev_dbg(rdev_get_dev(rdev), "%s original register value: 0x%08x (masked 0x%08x)\n", __func__, reg_old, reg_old & mask);
-	dev_dbg(rdev_get_dev(rdev), "%s i am going to write this: 0x%08x\n", __func__, (reg_old & ~mask) | (reg_value & mask));
-	msleep(1000);
-#endif
 
 	mc13xxx_lock(priv->mc13xxx);
 	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].vsel_reg, mask,
