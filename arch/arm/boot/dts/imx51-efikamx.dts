@@ -244,11 +244,19 @@
 							54 0x85		/* MX51_PAD_NANDF_CS1__GPIO_3_17 + 100k pullup (PCBID1) */
 							402 0x85	/* MX51_PAD_CSPI1_SS0__GPIO4_24 */
 							405 0x85	/* MX51_PAD_CSPI1_SS1__GPIO4_25 */
+
 							694 0x85	/* MX51_PAD_GPIO1_0__SD1_CD */
 							697 0x85	/* MX51_PAD_GPIO1_1__SD1_WP */
+
 							740 0x85	/* MX51_PAD_GPIO1_6__GPIO1_6 (PMIC interrupt)*/
+
 							737 0x80000000	/* MX51_PAD_GPIO1_5__GPIO1_5 (USB hub reset, 0 = reset) */
 							63  0x80000000	/* MX51_PAD_EIM_D27__GPIO2_9 (USB phy reset, 0 = reset) */
+
+							753 0x00000000 /* MX51_PAD_GPIO1_9__GPIO1_9 (audio clock enable) */
+							104 0x00000020 /* MX51_PAD_EIM_A23__EIM_A23 (amp enable */
+							525 0x00000020 /* MX51_PAD_DISPB2_SER_RS_DISPB2_SER_RS (hp detect) */
+							437 0x00000000 /* MX51_PAD_OWIRE_LINE_SPDIF_OUT (SPDIF out) */
 						>;
 					};
 				};
@@ -307,19 +315,19 @@
 
 		red {
 			label = "red";
-			gpios = <&gpio3 13>;
+			gpios = <&gpio3 15 0>;
 			linux,default-trigger = "ide-disk";
 		};
 
 		green {
 			label = "green";
-			gpios = <&gpio3 14>;
+			gpios = <&gpio3 14 0>;
 			linux,default-trigger = "default-on";
 		};
 
 		blue {
 			label = "blue";
-			gpios = <&gpio3 15>;
+			gpios = <&gpio3 13 0>;
 			linux,default-trigger = "mmc0";
 		};
 	};
