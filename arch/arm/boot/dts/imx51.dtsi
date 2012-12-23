@@ -162,8 +162,8 @@
 				reg = <0x73f80000 0x0200>;
 				interrupts = <18>;
 				status = "disabled";
-				clocks = <&clks 108>, <&clks 108>, <&clks 43>;
-				clock-names = "ipg", "ahb", "per";
+				clocks = <&clks 108>, <&clks 108>, <&clks 43>, <&clks 75>;
+				clock-names = "ipg", "ahb", "per", "phy";
 			};
 
 			usbhost1: usb@73f80200 {
