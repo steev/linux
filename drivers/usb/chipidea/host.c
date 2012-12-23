@@ -74,18 +74,18 @@ static int host_start(struct ci13xxx *ci)
 		usb_put_hcd(hcd);
 	else
 		ci->hcd = hcd;
-
+#if 0
 	/*
-	 * efikamx and efikasb have some hardware bug which is
-	 * preventing usb to work unless CHRGVBUS is set.
-	 * It's in violation of USB specs
+	 * EfikaMX Smartbook has a hardware bug which
+	 * prevents usb from working unless CHRGVBUS is set.
 	 */
 	if (ci->otg && (ci->platdata->flags & CI13XXX_PORTSC_PTS_ULPI)) {
 		flags = usb_phy_io_read(ci->transceiver, ULPI_OTG_CTRL);
 		flags |= ULPI_OTG_CTRL_CHRGVBUS;
 		ret = usb_phy_io_write(ci->transceiver, flags, ULPI_OTG_CTRL);
 	}
-
+#endif
+	pr_err("%s\n", __func__);
 	return ret;
 }
 

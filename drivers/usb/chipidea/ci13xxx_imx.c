@@ -35,6 +35,7 @@ struct ci13xxx_imx_data {
 	struct clk *clk_ahb;
 	struct clk *clk_ipg;
 	struct clk *clk_per;
+	struct clk *clk_phy;
 	struct regulator *reg_vbus;
 };
 
@@ -134,7 +135,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	pdata->capoffset = DEF_CAPOFFSET;
 	pdata->flags = CI13XXX_REQUIRE_TRANSCEIVER |
 		       CI13XXX_DISABLE_STREAMING |
-		       CI13XXX_REGS_SHARED,
+		       CI13XXX_REGS_SHARED;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data) {
@@ -174,6 +175,13 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		return PTR_ERR(data->clk_per);
 	}
 
+	data->clk_phy = devm_clk_get(&pdev->dev, "phy");
+	if (IS_ERR(data->clk_phy)) {
+		dev_err(&pdev->dev,
+			"Failed to get phy clock, err=%ld\n", PTR_ERR(data->clk_phy));
+		data->clk_phy = NULL;
+	}
+
 	ret = clk_prepare_enable(data->clk_ahb);
 	if (ret) {
 		dev_err(&pdev->dev,
@@ -193,6 +201,12 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev,
 			"Failed to prepare or enable per clock, err=%d\n", ret);
 		goto err_per_failed;
+	}
+
+	ret = clk_prepare_enable(data->clk_phy);
+	if (ret) {
+		dev_err(&pdev->dev,
+			"Failed to prepare or enable phy clock, err=%d\n", ret);
 	}
 
 	phy_np = of_parse_phandle(pdev->dev.of_node, "fsl,usbphy", 0);
@@ -301,6 +315,9 @@ err_per_failed:
 err_ipg_failed:
 	clk_disable_unprepare(data->clk_ahb);
 
+	if (data->clk_phy)
+		clk_disable_unprepare(data->clk_phy);
+
 	return ret;
 }
 
@@ -321,6 +338,8 @@ static int ci13xxx_imx_remove(struct platform_device *pdev)
 
 	of_node_put(data->phy_np);
 
+	if (data->clk_phy)
+		clk_disable_unprepare(data->clk_phy);
 	clk_disable_unprepare(data->clk_per);
 	clk_disable_unprepare(data->clk_ipg);
 	clk_disable_unprepare(data->clk_ahb);

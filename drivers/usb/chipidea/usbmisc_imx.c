@@ -138,6 +138,7 @@ static const struct usbmisc_ops imx6q_usbmisc_ops = {
 
 static const struct of_device_id usbmisc_imx_dt_ids[] = {
 	{ .compatible = "fsl,imx25-usbmisc", .data = (void *)&imx25_usbmisc_ops },
+	{ .compatible = "fsl,imx51-usbmisc", .data = (void *)&imx53_usbmisc_ops },
 	{ .compatible = "fsl,imx53-usbmisc", .data = (void *)&imx53_usbmisc_ops },
 	{ .compatible = "fsl,imx6q-usbmisc", .data = (void *)&imx6q_usbmisc_ops },
 	{ /* sentinel */ }
