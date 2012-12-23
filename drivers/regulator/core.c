@@ -13,7 +13,6 @@
  *
  */
 
-#define DEBUG 1
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/debugfs.h>

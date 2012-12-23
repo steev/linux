@@ -10,7 +10,6 @@
  * published by the Free Software Foundation.
  */
 
-#define DEBUG 1
 #include <linux/mfd/mc13892.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/driver.h>
