@@ -310,14 +310,14 @@
 				};
 			};
 
-				usbmisc: usbmisc@73f80800 {
-					#index-cells = <1>;
-					compatible = "fsl,imx51-usbmisc";
-					clocks = <&clks 108>, <&clks 108>, <&clks 43>;
-					clock-names = "ipg", "ahb", "per";
-					reg = <0x73f80800 0x200>;
-					status = "okay";
-				};
+			usbmisc: usbmisc@73f80800 {
+				#index-cells = <1>;
+				compatible = "fsl,imx51-usbmisc";
+				clocks = <&clks 108>, <&clks 108>, <&clks 43>;
+				clock-names = "ipg", "ahb", "per";
+				reg = <0x73f80800 0x200>;
+				status = "okay";
+			};
 
 
 			uart1: serial@73fbc000 {
