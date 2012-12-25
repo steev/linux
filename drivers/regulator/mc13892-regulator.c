@@ -19,9 +19,6 @@
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/module.h>
-#ifdef DEBUG
-#include <linux/delay.h>
-#endif
 #include "mc13xxx.h"
 
 #define MC13892_REVISION			7
@@ -33,7 +30,6 @@
 #define MC13892_POWERCTL0_VCOINCELLEN		(1<<23)
 
 #define MC13892_SWITCHERS0_SWxHI		(1<<23)
-#define MC13892_SWxHI_SEL_OFFSET		20
 
 #define MC13892_SWITCHERS0			24
 #define MC13892_SWITCHERS0_SW1VSEL		0
@@ -168,6 +164,14 @@ static const unsigned int mc13892_sw1[] = {
 	1350000, 1375000
 };
 
+/*
+ * Note: this table is used to derive SWxVSEL by index into
+ * the array. Offset the values by the index of 1100000uV
+ * to get the actual register value for that voltage selector
+ * if the HI bit is to be set as well.
+ */
+#define MC13892_SWxHI_SEL_OFFSET		20
+
 static const unsigned int mc13892_sw[] = {
 	600000,   625000,  650000,  675000,  700000,  725000,
 	750000,   775000,  800000,  825000,  850000,  875000,
@@ -243,7 +247,6 @@ static const unsigned int mc13892_pwgtdrv[] = {
 };
 
 static struct regulator_ops mc13892_gpo_regulator_ops;
-/* sw regulators need special care due to the "hi bit" */
 static struct regulator_ops mc13892_sw_regulator_ops;
 
 
@@ -400,7 +403,9 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 {
 	struct mc13xxx_regulator_priv *priv = rdev_get_drvdata(rdev);
 	int ret, id = rdev_get_id(rdev);
-	unsigned int val;
+	unsigned int val, selector;
+
+	dev_dbg(rdev_get_dev(rdev), "%s id: %d\n", __func__, id);
 
 	mc13xxx_lock(priv->mc13xxx);
 	ret = mc13xxx_reg_read(priv->mc13xxx,
@@ -411,21 +416,26 @@ static int mc13892_sw_regulator_get_voltage_sel(struct regulator_dev *rdev)
 
 	/*
 	 * Figure out if the HI bit is set inside the switcher mode register
-	 * since this means the selector value we return is offset into the
-	 * selector table. SW1 does not apply as it does not support the HI
-	 * bit (even though it's in the SPI bitmap in the documentation). For
-	 * more information on the SW1 restriction, see set_voltage_sel below.
+	 * since this means the selector value we return is at a different
+	 * offset into the selector table.
+	 *
+	 * According to the MC13892 documentation note 59 (Table 47) the SW1
+	 * buck switcher does not support output range programming therefore
+	 * the HI bit must always remain 0. So do not do anything strange if
+	 * our register is MC13892_SWITCHERS0.
 	 */
+
+	selector = val & mc13892_regulators[id].vsel_mask;
 
 	if ((mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) &&
 	    (val & MC13892_SWITCHERS0_SWxHI)) {
-		val &= mc13892_regulators[id].vsel_mask;
-		val += MC13892_SWxHI_SEL_OFFSET;
-	} else {
-		val &= mc13892_regulators[id].vsel_mask;
+		selector += MC13892_SWxHI_SEL_OFFSET;
 	}
 
-	return val;
+	dev_dbg(rdev_get_dev(rdev), "%s id: %d val: 0x%08x selector: %d\n",
+			__func__, id, val, selector);
+
+	return selector;
 }
 
 static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
@@ -441,16 +451,23 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 	reg_value = selector;
 
 	/*
-	 * According to the MC13892 documentation note 59 (Table 47) the SW1
-	 * buck switcher does not support output range programming therefore
-	 * the HI bit must always remain 0. The vsel_mask correctly reflects
-	 * this so just don't check the voltage or do any mask fiddling if
-	 * we're working on SW1.
+	 * Don't mess with the HI bit or support HI voltage offsets for SW1.
+	 *
+	 * Since the get_voltage_sel callback has given a fudged value for
+	 * the selector offset, we need to back out that offset if HI is
+	 * set so we write the correct value to the register.
+	 *
+	 * The HI bit addition and selector offset handling COULD be more
+	 * complicated by shifting and masking off the voltage selector part
+	 * of the register then logical OR it back in, but since the selector
+	 * is at bits 4:0 there is very little point. This makes the whole
+	 * thing more readable and we do far less work.
 	 */
 
 	if (mc13892_regulators[id].vsel_reg != MC13892_SWITCHERS0) {
 		if (volt > 1375000) {
-			reg_value = (reg_value - MC13892_SWxHI_SEL_OFFSET) | MC13892_SWITCHERS0_SWxHI;
+			reg_value -= MC13892_SWxHI_SEL_OFFSET;
+			reg_value |= MC13892_SWITCHERS0_SWxHI;
 			mask |= MC13892_SWITCHERS0_SWxHI;
 		} else if (volt < 1100000) {
 			reg_value &= ~MC13892_SWITCHERS0_SWxHI;
@@ -459,8 +476,8 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 	}
 
 	mc13xxx_lock(priv->mc13xxx);
-	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].vsel_reg, mask,
-			      reg_value);
+	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].vsel_reg,
+				mask, reg_value);
 	mc13xxx_unlock(priv->mc13xxx);
 
 	return ret;
@@ -543,7 +560,7 @@ static int mc13892_regulator_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_unlock;
 
-	/* enable switch auto mode */
+	/* enable switch auto mode (on 2.0A silicon only) */
 	if ((val & 0x0000FFFF) == 0x45d0) {
 		ret = mc13xxx_reg_rmw(mc13892, MC13892_SWITCHERS4,
 			MC13892_SWITCHERS4_SW1MODE_M |
