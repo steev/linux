@@ -313,8 +313,8 @@
 			usbmisc: usbmisc@73f80800 {
 				#index-cells = <1>;
 				compatible = "fsl,imx51-usbmisc";
-				clocks = <&clks 108>, <&clks 108>, <&clks 43>;
-				clock-names = "ipg", "ahb", "per";
+				clocks = <&clks 108>, <&clks 108>, <&clks 43>, <&clks 75>;
+				clock-names = "ipg", "ahb", "per", "phy";
 				reg = <0x73f80800 0x200>;
 				status = "okay";
 			};
