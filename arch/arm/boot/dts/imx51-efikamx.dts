@@ -284,8 +284,6 @@
 							386 0x00000025	/* MX51_PAD_AUD3_BB_RXD__AUD3_RXD */
 							389 0x00000025	/* MX51_PAD_AUD3_BB_CK__AUD3_TXC */
 							391 0x00000025	/* MX51_PAD_AUD3_BB_FS__AUD3_TXFS */
-							753 0x85	/* MX51_PAD_GPIO1_9__GPIO1_9  */
-							437 0x00000000	/* MX51_PAD_OWIRE_LINE__SPDIF_OUT */
 						>;
 					};
 				};
@@ -348,6 +346,7 @@
 			i2c2: i2c@83fc4000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_i2c2_1>;
+				clock-frequency = <50000>;
 				status = "okay";
 
 				codec: sgtl5000@0a {
@@ -382,6 +381,7 @@
 
 	gpio-leds {
 		compatible = "gpio-leds";
+
 
 		red {
 			label = "red";
@@ -418,7 +418,7 @@
 	audio-amp-en {
 		compatible = "regulator-fixed";
 		regulator-name = "audio-amp-en";
-		gpio = <&gpio2 17 0>;
+		gpio = <&gpio2 17 1>;
 		enable-active-low;
 		regulator-boot-on;
 		regulator-always-on;
@@ -433,6 +433,8 @@
 		regulator-always-on;
 	};
 
+
+/* regulator test to turn on red led. make sure red gpio-leds is commented out if you do this! */ 
 /*
 	red-led {
 		compatible = "regulator-fixed";
