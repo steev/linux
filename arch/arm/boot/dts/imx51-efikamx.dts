@@ -346,7 +346,7 @@
 			i2c2: i2c@83fc4000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_i2c2_1>;
-				clock-frequency = <50000>;
+				clock-frequency = <100000>;
 				status = "okay";
 
 				codec: sgtl5000@0a {
