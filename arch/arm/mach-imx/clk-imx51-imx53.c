@@ -293,6 +293,9 @@ static void __init mx5_clocks_common_init(unsigned long rate_ckil,
 	clk_register_clkdev(clk[epit2_ipg_gate], "ipg", "imx-epit.1");
 	clk_register_clkdev(clk[epit2_hf_gate], "per", "imx-epit.1");
 
+	/* Set perclk_ipg_sel to derive clock from IPG rather than PLL */
+	clk_set_parent(clk[per_root], clk[ipg]);
+
 	/* Set SDHC parents to be PLL2 */
 	clk_set_parent(clk[esdhc_a_sel], clk[pll2_sw]);
 	clk_set_parent(clk[esdhc_b_sel], clk[pll2_sw]);
