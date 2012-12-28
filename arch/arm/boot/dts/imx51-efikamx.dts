@@ -273,6 +273,8 @@
 							102 0x85	/* MX51_PAD_EIM_A22__GPIO2_16 (WIFI Power) */
 							84 0x85		/* MX51_PAD_EIM_A16__GPIO2_10 (WIFI Reset) */
 							87 0x85		/* MX51_PAD_EIM_A17__GPIO2_11 (BT Power) */
+
+							375 0x85	/* MX51_PAD_CSI2_VSYNC__GPIO4_13 (PWRGOOD circuit interrupt) */
 						>;
 					};
 				};
@@ -400,6 +402,11 @@
 			gpios = <&gpio3 13 0>;
 			linux,default-trigger = "mmc0";
 		};
+	};
+
+	gpio-poweroff {
+		compatible = "gpio-poweroff";
+		gpios = <&gpio4 13 0>;
 	};
 
 	sound {
