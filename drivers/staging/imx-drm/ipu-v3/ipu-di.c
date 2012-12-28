@@ -146,16 +146,33 @@ static inline void ipu_di_write(struct ipu_di *di, u32 value, unsigned offset)
 
 static int ipu_di_clk_calc_div(unsigned long inrate, unsigned long outrate)
 {
+	u64 tmp = inrate;
 	int div;
 
-	if (inrate <= outrate) {
-		div = (1 << 4);
-		goto done;
+	tmp *= 16;
+
+	do_div(tmp, outrate);
+
+	div = tmp;
+
+	if (div < 0x10)
+		div = 0x10;
+
+#ifdef WTF_IS_THIS
+	/*
+	 * Freescale has this in their Kernel. It is neither clear what
+	 * it does nor why it does it
+	 */
+	if (div & 0x10)
+		div &= ~0x7;
+	else {
+		/* Round up divider if it gets us closer to desired pix clk */
+		if ((div & 0xC) == 0xC) {
+			div += 0x10;
+			div &= ~0xF;
+		}
 	}
-
-	div = DIV_ROUND_UP((inrate << 4), outrate);
-
-done:
+#endif
 	return div;
 }
 
@@ -166,10 +183,10 @@ static unsigned long clk_di_recalc_rate(struct clk_hw *hw,
 	unsigned long outrate;
 	u32 div = ipu_di_read(di, DI_BS_CLKGEN0);
 
-	if (div < (1 << 4))
-		div = (1 << 4);
+	if (div < 0x10)
+		div = 0x10;
 
-	outrate = (parent_rate / div) << 4;
+	outrate = (parent_rate / div) * 16;
 
 	return outrate;
 }
@@ -180,10 +197,16 @@ static long clk_di_round_rate(struct clk_hw *hw, unsigned long rate,
 	struct ipu_di *di = container_of(hw, struct ipu_di, clk_hw_out);
 	unsigned long outrate;
 	int div;
+	u32 val;
 
 	div = ipu_di_clk_calc_div(*prate, rate);
 
-	outrate = (*prate << 4) / div;
+	outrate = (*prate / div) * 16;
+
+	val = ipu_di_read(di, DI_GENERAL);
+
+	if (!(val & DI_GEN_DI_CLK_EXT) && outrate > *prate / 2)
+		outrate = *prate / 2;
 
 	dev_dbg(di->ipu->dev,
 		"%s: inrate: %ld div: 0x%08x outrate: %ld wanted: %ld\n",
@@ -197,14 +220,13 @@ static int clk_di_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct ipu_di *di = container_of(hw, struct ipu_di, clk_hw_out);
 	int div;
+	u32 clkgen0;
+
+	clkgen0 = ipu_di_read(di, DI_BS_CLKGEN0) & ~0xfff;
 
 	div = ipu_di_clk_calc_div(parent_rate, rate);
 
-	ipu_di_write(di, div, DI_BS_CLKGEN0);
-
-	/* Setup pixel clock timing */
-	/* Down time is half of period */
-	ipu_di_write(di, (div << 16), DI_BS_CLKGEN1);
+	ipu_di_write(di, clkgen0 | div, DI_BS_CLKGEN0);
 
 	dev_dbg(di->ipu->dev, "%s: inrate: %ld desired: %ld div: 0x%08x\n",
 			__func__, parent_rate, rate, div);
@@ -232,9 +254,6 @@ static int clk_di_set_parent(struct clk_hw *hw, u8 index)
 		val |= DI_GEN_DI_CLK_EXT;
 	else
 		val &= ~DI_GEN_DI_CLK_EXT;
-
-	dev_dbg(di->ipu->dev, "%s: val 0x%08x -> ext %d\n", __func__,
-			val, (val & DI_GEN_DI_CLK_EXT) ? 1 : 0);
 
 	ipu_di_write(di, val, DI_GENERAL);
 
@@ -456,14 +475,12 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 	if ((sig->v_sync_width == 0) || (sig->h_sync_width == 0))
 		return -EINVAL;
 
-	if (sig->clkflags & IPU_DI_CLKMODE_EXT) {
-		dev_dbg(di->ipu->dev, "ext mode - set di_pred clock as parent\n");
+	if (sig->clkflags & IPU_DI_CLKMODE_EXT)
 		parent = di->clk_di;
-	} else {
-		dev_dbg(di->ipu->dev, "int mode - set ipu_hsc clock as parent\n");
+	else
 		parent = di->clk_ipu;
-	}
 
+	dev_dbg(di->ipu->dev, "setting di pixel clock parent to %s\n", __clk_get_name(parent));
 	ret = clk_set_parent(di->clk_di_pixel, parent);
 	if (ret) {
 		dev_err(di->ipu->dev,
@@ -472,16 +489,10 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 		return ret;
 	}
 
-	if (sig->clkflags & IPU_DI_CLKMODE_SYNC) {
-		dev_dbg(di->ipu->dev, "sync mode - getting parent rate as my rate\n");
+	if (sig->clkflags & IPU_DI_CLKMODE_SYNC)
 		round = clk_get_rate(parent);
-	} else {
-		dev_dbg(di->ipu->dev, "not sync mode - rounding rate to pixelclock %ld\n", sig->pixelclock);
-		clk_set_rate(parent, sig->pixelclock*2);
+	else
 		round = clk_round_rate(di->clk_di_pixel, sig->pixelclock);
-	}
-
-	dev_dbg(di->ipu->dev, "attempting setting rate %ld\n", round);
 
 	ret = clk_set_rate(di->clk_di_pixel, round);
 
@@ -493,13 +504,17 @@ int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 	mutex_lock(&di_mutex);
 
 	div = ipu_di_read(di, DI_BS_CLKGEN0) & 0xfff;
-	div = div >> 4;	/* Now divider is integer portion */
+	div = div / 16;		/* Now divider is integer portion */
+
+	/* Setup pixel clock timing */
+	/* Down time is half of period */
+	ipu_di_write(di, (div << 16), DI_BS_CLKGEN1);
 
 	ipu_di_data_wave_config(di, SYNC_WAVE, div - 1, div - 1);
 	ipu_di_data_pin_config(di, SYNC_WAVE, DI_PIN15, 3, 0, div * 2);
 
 	di_gen = ipu_di_read(di, DI_GENERAL) & DI_GEN_DI_CLK_EXT;
-	di_gen |= DI_GEN_DI_VSYNC_EXT | DI_GEN_DI_CLK_EXT;
+	di_gen |= DI_GEN_DI_VSYNC_EXT;
 
 	if (sig->interlaced) {
 		ipu_di_sync_config_interlaced(di, sig);
