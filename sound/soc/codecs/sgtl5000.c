@@ -1226,13 +1226,13 @@ static int sgtl5000_enable_regulators(struct snd_soc_codec *codec)
 
 	ret = regulator_bulk_get(codec->dev, ARRAY_SIZE(sgtl5000->supplies),
 				sgtl5000->supplies);
-	if (!ret)
-		external_vddd = 1;
-	else {
+
+	if (ret) {
 		ret = sgtl5000_replace_vddd_with_ldo(codec);
 		if (ret)
 			return ret;
-	}
+	} else
+		external_vddd = 1;
 
 	ret = regulator_bulk_enable(ARRAY_SIZE(sgtl5000->supplies),
 					sgtl5000->supplies);
