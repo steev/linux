@@ -385,8 +385,7 @@
 					interface_pix_fmt = "rgb24";
 					gpios = <&gpio3 4 1	/* enable 1 (active low) */
 						 &gpio3 7 1	/* enable 2 (active low) */
-						 &gpio3 5 0	/* reset */
-						 &gpio3 6 0>;	/* interrupt */
+						 &gpio3 5 0>;	/* reset */
 					AVCC-supply = <&reg_1V2_DIG2>;
 					CAVCC-supply = <&reg_1V8_DIG2>; // not true but it is a dependency
 					IOVCC-supply = <&reg_3V_ANA>; // not true but works for now

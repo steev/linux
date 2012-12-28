@@ -426,9 +426,6 @@ static int siihdmi_probe(struct i2c_client *client, const struct i2c_device_id *
 		return -EINVAL;
 	}
 
-        tx->gpio_irq = of_get_named_gpio(np, "gpios", 3);
-        gpio_request_one(tx->gpio_irq, GPIOF_DIR_IN, "siihdmi_irq");
-
 	/* Set 902x in hardware TPI mode on and jump out of D3 state */
 	if (siihdmi_write(tx->client, SIIHDMI_TPI_REG_RQB, 0x00) < 0) {
 		dev_err(&tx->client->dev, "siihdmi: cound not find device\n");
