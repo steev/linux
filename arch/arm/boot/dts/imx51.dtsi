@@ -28,8 +28,19 @@
 	};
 
 	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		cpu@0 {
 			compatible = "arm,cortex-a8";
+			reg = <0>;
+			operating-points = <
+				/* KHz    uV */
+				800000 1100000
+				400000 950000
+				166250 850000
+			>;
+			clock-latency = <61036>; /* two CLK32 periods */
 		};
 	};
 
