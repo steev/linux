@@ -382,7 +382,7 @@
 					pinctrl-names = "default";
 					pinctrl-0 = <&pinctrl_display1_1>;
 					crtcs = <&ipu 0>;
-					interface_pix_fmt = "rgb24";
+					interface-pix-fmt = "rgb24";
 					gpios = <&gpio3 4 1	/* enable 1 (active low) */
 						 &gpio3 7 1	/* enable 2 (active low) */
 						 &gpio3 5 0>;	/* reset */
