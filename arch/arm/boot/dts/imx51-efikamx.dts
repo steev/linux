@@ -146,12 +146,10 @@
 							};
 
 							reg_2V775: vvideo {
-								/* 2V775 - supplement to 2V775_BOOT */
+								/* 2V775 - SGTL5000-VDDIO, SGTL5000-VDDA */
 								regulator-name = "2V775";
 								regulator-min-microvolt = <2775000>;
 								regulator-max-microvolt = <2775000>;
-								regulator-boot-on;
-								regulator-always-on;
 							};
 
 							reg_3V_ANA: vaudio {
@@ -172,7 +170,7 @@
 							};
 
 							reg_1V2_DIG2: vgen1 {
-								/* 1V2_DIG2 - (HDMI, VGA, SGTL5000-VDDD) */
+								/* 1V2_DIG2 - (SII9022-AVCC, SII9022-CAVCC, VGA, SGTL5000-VDDD) */
 								regulator-name = "1V2_DIG2";
 								regulator-min-microvolt = <1200000>;
 								regulator-max-microvolt = <1200000>;
@@ -188,12 +186,10 @@
 							};
 
 							reg_1V8_DIG2: vgen3 {
-								/* 1V8_DIG2 - (1.8V IO supply) */
+								/* 1V8_DIG2 - (1.8V IO supply) - 1V8_DISPLAY (VGA) et al.*/
 								regulator-name = "1V8_DIG2";
 								regulator-min-microvolt = <1800000>;
 								regulator-max-microvolt = <1800000>;
-								regulator-boot-on;
-								regulator-always-on;
 							};
 
 							reg_2V775_BOOT: vviohi {
@@ -265,16 +261,16 @@
 							737 0x85	/* MX51_PAD_GPIO1_5__GPIO1_5 (USB hub reset, 0 = reset) */
 							63  0x85	/* MX51_PAD_EIM_D27__GPIO2_9 (USB phy reset, 0 = reset) */
 
-							753 0x85	/* MX51_PAD_GPIO1_9__GPIO1_9 (audio clock enable) */
-							105 0x85	/* MX51_PAD_EIM_A23__GPIO2_17 (amp enable) */
-							527 0x85	/* MX51_PAD_DISPB2_SER_RS__GPIO3_8 (hp detect) */
-							437 0x00000000	/* MX51_PAD_OWIRE_LINE_SPDIF_OUT (SPDIF out) */
+							753 0x85	/* MX51_PAD_GPIO1_9__GPIO1_9 (audio clock enable - NEKO default pad bits) */
+							105 0x0		/* MX51_PAD_EIM_A23__GPIO2_17 (amp enable (100kohm pu external?) -- NEKO 100kpu in legacy is invalid all other bits 0) */
+							527 0x0		/* MX51_PAD_DISPB2_SER_RS__GPIO3_8 (hp detect (100kohm pu external?) NEKO see above) */
+							437 0xa5	/* MX51_PAD_OWIRE_LINE_SPDIF_OUT (SPDIF out - NEKO default pad bits ) */
 
 							102 0x85	/* MX51_PAD_EIM_A22__GPIO2_16 (WIFI Power) */
 							84 0x85		/* MX51_PAD_EIM_A16__GPIO2_10 (WIFI Reset) */
 							87 0x85		/* MX51_PAD_EIM_A17__GPIO2_11 (BT Power) */
 
-							375 0x85	/* MX51_PAD_CSI2_VSYNC__GPIO4_13 (PWRGOOD circuit interrupt) */
+							375 0x80	/* MX51_PAD_CSI2_VSYNC__GPIO4_13 (PWRGOOD circuit interrupt - NEKO default pad bits) */
 						>;
 					};
 				};
@@ -356,7 +352,7 @@
 					reg = <0x0a>;
 //					clocks = <&sgtl5000_mclk>;
 					clock-frequency = <12288000>;
-					VDDA-supply = <&reg_1V65>;
+					VDDA-supply = <&reg_1V65>; // 2V775 connected here too
 					VDDIO-supply = <&reg_2V775>;
 					VDDD-supply = <&reg_1V2_DIG2>;
 				};
@@ -422,24 +418,26 @@
 		mux-ext-port = <3>;
 	};
 
+
 	audio-amp-en {
 		compatible = "regulator-fixed";
 		regulator-name = "audio-amp-en";
-		gpio = <&gpio2 17 1>;
-		enable-active-low;
+		gpio = <&gpio2 17 0>;
+		enable-active-high;
 		regulator-boot-on;
 		regulator-always-on;
 	};
 
+/*
 	audio-clk-en {
 		compatible = "regulator-fixed";
 		regulator-name = "audio-clk-en";
-		gpio = <&gpio1 9 1>;
-		enable-active-low;
+		gpio = <&gpio1 9 0>;
+		enable-active-high;
 		regulator-boot-on;
 		regulator-always-on;
 	};
-
+*/
 
 /* regulator test to turn on red led. make sure red gpio-leds is commented out if you do this! */ 
 /*
