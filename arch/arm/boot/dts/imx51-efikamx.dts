@@ -277,11 +277,6 @@
 							87 0x85		/* MX51_PAD_EIM_A17__GPIO2_11 (BT Power) */
 
 							375 0x80	/* MX51_PAD_CSI2_VSYNC__GPIO4_13 (PWRGOOD circuit interrupt - NEKO default pad bits) */
-
-							511 0x85	/* MX51_PAD_DI1_D1_CS__GPIO3_4 (DISP1 enable) */
-							514 0x85	/* MX51_PAD_DISPB2_SER_DIN__GPIO3_5 (DISP1 reset) */
-							517 0x40000085	/* MX51_PAD_DISPB2_SER_DIO__GPIO3_6 (HDMI interrupt) - NEKO pad def unchecked!!!! */
-							521 0x85	/* MX51_PAD_DISPB2_SER_CLK__GPIO3_7 (DISP2 enable) */
 						>;
 					};
 				};
@@ -323,6 +318,17 @@
 							416 0x1c5 /* MX51_PAD_UART1_TXD__UART1_TXD */
 							418 0x1c4 /* MX51_PAD_UART1_RTS__UART1_RTS */
 							420 0x1c4 /* MX51_PAD_UART1_CTS__UART1_CTS */
+						>;
+					};
+				};
+
+				display {
+					pinctrl_display1_1: display1grp {
+						fsl,pins = <
+							511 0x85	/* MX51_PAD_DI1_D1_CS__GPIO3_4 (DISP1 enable) */
+							514 0x85	/* MX51_PAD_DISPB2_SER_DIN__GPIO3_5 (DISP1 reset) */
+							517 0x40000085	/* MX51_PAD_DISPB2_SER_DIO__GPIO3_6 (HDMI interrupt) - NEKO pad def unchecked!!!! */
+							521 0x85	/* MX51_PAD_DISPB2_SER_CLK__GPIO3_7 (DISP2 enable) */
 						>;
 					};
 				};
@@ -374,7 +380,7 @@
 					interrupt-parent = <&gpio3>;
 					interrupts = <6 0x8>;
 					pinctrl-names = "default";
-					pinctrl-0 = <&pinctrl_ipu_disp1_1>;
+					pinctrl-0 = <&pinctrl_display1_1>;
 					crtcs = <&ipu 0>;
 					interface_pix_fmt = "rgb24";
 					gpios = <&gpio3 4 1	/* enable 1 (active low) */
