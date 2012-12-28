@@ -146,33 +146,13 @@ static inline void ipu_di_write(struct ipu_di *di, u32 value, unsigned offset)
 
 static int ipu_di_clk_calc_div(unsigned long inrate, unsigned long outrate)
 {
-	u64 tmp = inrate;
 	int div;
 
-	tmp *= 16;
+	if (inrate < outrate)
+		return (1 << 4);
 
-	do_div(tmp, outrate);
+	div = DIV_ROUND_UP((inrate << 4), outrate);
 
-	div = tmp;
-
-	if (div < 0x10)
-		div = 0x10;
-
-#ifdef WTF_IS_THIS
-	/*
-	 * Freescale has this in their Kernel. It is neither clear what
-	 * it does nor why it does it
-	 */
-	if (div & 0x10)
-		div &= ~0x7;
-	else {
-		/* Round up divider if it gets us closer to desired pix clk */
-		if ((div & 0xC) == 0xC) {
-			div += 0x10;
-			div &= ~0xF;
-		}
-	}
-#endif
 	return div;
 }
 
@@ -183,34 +163,28 @@ static unsigned long clk_di_recalc_rate(struct clk_hw *hw,
 	unsigned long outrate;
 	u32 div = ipu_di_read(di, DI_BS_CLKGEN0);
 
-	if (div < 0x10)
-		div = 0x10;
+	if (div < (1 << 4))
+		div = (1 << 4);
 
-	outrate = (parent_rate / div) * 16;
+	outrate = (parent_rate << 4) / div;
 
 	return outrate;
 }
 
 static long clk_di_round_rate(struct clk_hw *hw, unsigned long rate,
-				unsigned long *prate)
+				unsigned long *inrate)
 {
 	struct ipu_di *di = container_of(hw, struct ipu_di, clk_hw_out);
 	unsigned long outrate;
 	int div;
-	u32 val;
 
-	div = ipu_di_clk_calc_div(*prate, rate);
+	div = ipu_di_clk_calc_div(*inrate, rate);
 
-	outrate = (*prate / div) * 16;
-
-	val = ipu_di_read(di, DI_GENERAL);
-
-	if (!(val & DI_GEN_DI_CLK_EXT) && outrate > *prate / 2)
-		outrate = *prate / 2;
+	outrate = (*inrate << 4) / div;
 
 	dev_dbg(di->ipu->dev,
 		"%s: inrate: %ld div: 0x%08x outrate: %ld wanted: %ld\n",
-			__func__, *prate, div, outrate, rate);
+			__func__, *inrate, div, outrate, rate);
 
 	return outrate;
 }
@@ -461,58 +435,83 @@ static void ipu_di_sync_config_noninterlaced(struct ipu_di *di,
 
 int ipu_di_init_sync_panel(struct ipu_di *di, struct ipu_di_signal_cfg *sig)
 {
+	int ret;
+
 	u32 reg;
 	u32 di_gen, vsync_cnt;
 	u32 div;
 	u32 h_total, v_total;
-	int ret;
-	unsigned long round;
-	struct clk *parent;
 
-	dev_dbg(di->ipu->dev, "disp %d: panel size = %d x %d\n",
-		di->id, sig->width, sig->height);
+	unsigned long rounded_rate;
+	unsigned long rounded_parent;
+	struct clk *di_parent;
+
+	dev_dbg(di->ipu->dev, "disp %d: panel size = %d x %d\n", di->id, sig->width, sig->height);
 
 	if ((sig->v_sync_width == 0) || (sig->h_sync_width == 0))
 		return -EINVAL;
 
-	if (sig->clkflags & IPU_DI_CLKMODE_EXT)
-		parent = di->clk_di;
-	else
-		parent = di->clk_ipu;
+	/* first things first - make our pixel clock parent off the IPU HSC clock */
+	dev_dbg(di->ipu->dev, "IPU clock is \"%s\", rate %ld. Setting as parent for now\n",
+					__clk_get_name(di->clk_ipu), clk_get_rate(di->clk_ipu));
 
-	dev_dbg(di->ipu->dev, "setting di pixel clock parent to %s\n", __clk_get_name(parent));
-	ret = clk_set_parent(di->clk_di_pixel, parent);
-	if (ret) {
-		dev_err(di->ipu->dev,
-			"setting pixel clock to parent %s failed with %d\n",
-				__clk_get_name(parent), ret);
-		return ret;
+	/* set di_parent variable to make things easier later */
+	di_parent = di->clk_ipu;
+
+	clk_set_parent(di->clk_di_pixel, di_parent);
+	rounded_rate = clk_round_rate(di->clk_di_pixel, sig->pixelclock);
+
+	dev_dbg(di->ipu->dev, "rounded %ld into %ld\n", sig->pixelclock, rounded_rate);
+
+	/* if we can generate an accurate enough pixel clock from IPU HSC, do so! */
+	if (0) /*(sig->clkflags & IPU_DI_CLKMODE_EXT) &&
+		((rounded_rate >= sig->pixelclock + sig->pixelclock/200) ||
+		(rounded_rate <= sig->pixelclock - sig->pixelclock/200 ))) */ {
+
+		/* set di_parent variable to make things easier later */
+		di_parent = di->clk_di;
+
+		dev_dbg(di->ipu->dev, "pixel clock will not be accurate enough, using more accurate parent\n");
+
+		rounded_parent = sig->pixelclock * 2;
+
+		dev_dbg(di->ipu->dev, "target parent is \"%s\" initial parent rate will be %lu (currently %lu)\n",
+				__clk_get_name(di_parent), rounded_rate, clk_get_rate(di_parent));
+
+		clk_set_rate(di_parent, rounded_parent);
+		clk_set_parent(di->clk_di_pixel, di_parent);
+	} else {
+		dev_dbg(di->ipu->dev, "cannot use an accurate pixel clock because common clk api is balls\n");
+		dev_dbg(di->ipu->dev, "please learn to live with the floaty box on your screen for now\n");
 	}
 
-	if (sig->clkflags & IPU_DI_CLKMODE_SYNC)
-		round = clk_get_rate(parent);
-	else
-		round = clk_round_rate(di->clk_di_pixel, sig->pixelclock);
+	/* fetch the "new" rounded_rate from the "new" parent */
+	rounded_rate = clk_round_rate(di->clk_di_pixel, sig->pixelclock);
+	dev_dbg(di->ipu->dev, "rounded to %lu\n", rounded_rate);
+	clk_set_rate(di->clk_di_pixel, rounded_rate);
 
-	ret = clk_set_rate(di->clk_di_pixel, round);
+	msleep(5);
+
+	mutex_lock(&di_mutex);
 
 	h_total = sig->width + sig->h_sync_width + sig->h_start_width +
 		sig->h_end_width;
 	v_total = sig->height + sig->v_sync_width + sig->v_start_width +
 		sig->v_end_width;
 
-	mutex_lock(&di_mutex);
-
-	div = ipu_di_read(di, DI_BS_CLKGEN0) & 0xfff;
-	div = div / 16;		/* Now divider is integer portion */
+	div = clk_get_rate(di_parent) / rounded_rate;
 
 	/* Setup pixel clock timing */
 	/* Down time is half of period */
+	/* NEKO: shouldn't this be in set_rate? */
 	ipu_di_write(di, (div << 16), DI_BS_CLKGEN1);
 
 	ipu_di_data_wave_config(di, SYNC_WAVE, div - 1, div - 1);
 	ipu_di_data_pin_config(di, SYNC_WAVE, DI_PIN15, 3, 0, div * 2);
 
+	/* read out the DI_GENERAL register preserving only
+	 * the external clock bit since it is the only way (above)
+	 * we know that we're using an external clock */
 	di_gen = ipu_di_read(di, DI_GENERAL) & DI_GEN_DI_CLK_EXT;
 	di_gen |= DI_GEN_DI_VSYNC_EXT;
 
@@ -663,7 +662,7 @@ int ipu_di_init(struct ipu_soc *ipu, struct device *dev, int id,
 	di_parent[0] = __clk_get_name(di->clk_ipu);
 	di_parent[1] = __clk_get_name(di->clk_di);
 
-	ipu_di_write(di, 0x10, DI_BS_CLKGEN0);
+	ipu_di_write(di, (1 << 4), DI_BS_CLKGEN0);
 
 	init.parent_names = (const char **)&di_parent;
 	di->clk_name = kasprintf(GFP_KERNEL, "%s_di%d_pixel",
