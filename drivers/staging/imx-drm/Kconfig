@@ -21,7 +21,11 @@ config DRM_IMX_PARALLEL_DISPLAY
 	depends on DRM_IMX
 
 config DRM_IMX_MTL017
-	tristate "Support for mtl017 lvds converter"
+	tristate "Support for Myson Century MTL017 LVDS transmitter"
+	depends on DRM_IMX
+
+config DRM_IMX_SIIHDMI
+	tristate "Support for Silicon Image SiI902x HDMI transmitter"
 	depends on DRM_IMX
 
 config DRM_IMX_IPUV3_CORE

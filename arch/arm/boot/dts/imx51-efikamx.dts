@@ -277,6 +277,11 @@
 							87 0x85		/* MX51_PAD_EIM_A17__GPIO2_11 (BT Power) */
 
 							375 0x80	/* MX51_PAD_CSI2_VSYNC__GPIO4_13 (PWRGOOD circuit interrupt - NEKO default pad bits) */
+
+							511 0x85	/* MX51_PAD_DI1_D1_CS__GPIO3_4 (DISP1 enable) */
+							514 0x85	/* MX51_PAD_DISPB2_SER_DIN__GPIO3_5 (DISP1 reset) */
+							517 0x40000085	/* MX51_PAD_DISPB2_SER_DIO__GPIO3_6 (HDMI interrupt) - NEKO pad def unchecked!!!! */
+							521 0x85	/* MX51_PAD_DISPB2_SER_CLK__GPIO3_7 (DISP2 enable) */
 						>;
 					};
 				};
@@ -361,6 +366,24 @@
 					VDDA-supply = <&reg_1V65>; // 2V775 connected here too
 					VDDIO-supply = <&reg_2V775>;
 					VDDD-supply = <&reg_1V2_DIG2>;
+				};
+
+				hdmi: sii9022@39 {
+					compatible = "sii,sii9022";
+					reg = <0x39>;
+					interrupt-parent = <&gpio3>;
+					interrupts = <6 0x8>;
+					pinctrl-names = "default";
+					pinctrl-0 = <&pinctrl_ipu_disp1_1>;
+					crtcs = <&ipu 0>;
+					interface_pix_fmt = "rgb24";
+					gpios = <&gpio3 4 1	/* enable 1 (active low) */
+						 &gpio3 7 1	/* enable 2 (active low) */
+						 &gpio3 5 0	/* reset */
+						 &gpio3 6 0>;	/* interrupt */
+					AVCC-supply = <&reg_1V2_DIG2>;
+					CAVCC-supply = <&reg_1V8_DIG2>; // not true but it is a dependency
+					IOVCC-supply = <&reg_3V_ANA>; // not true but works for now
 				};
 			};
 

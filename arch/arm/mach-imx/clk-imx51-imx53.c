@@ -381,6 +381,10 @@ int __init mx51_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx51.3");
 	clk_register_clkdev(clk[esdhc4_per_gate], "per", "sdhci-esdhc-imx51.3");
 
+	/* ipu di clock to pll3_sw */
+	clk_set_parent(clk[ipu_di0_sel], clk[di_pred]);
+	clk_set_rate(clk[di_pred], 171000000); // HACK
+
 	/* set the usboh3 parent to pll2_sw */
 	clk_set_parent(clk[usboh3_sel], clk[pll2_sw]);
 
