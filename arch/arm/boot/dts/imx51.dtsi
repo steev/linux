@@ -27,6 +27,17 @@
 		usb3 = &usbhost3;
 	};
 
+	cpus {
+		cpu@0 {
+			compatible = "arm,cortex-a8";
+		};
+	};
+
+	pmu {
+		compatible = "arm,cortex-a8-pmu";
+		interrupts = <77>;
+	};
+
 	tzic: tz-interrupt-controller@e0000000 {
 		compatible = "fsl,imx51-tzic", "fsl,tzic";
 		interrupt-controller;
@@ -334,6 +345,8 @@
 				i2c2 {
 					pinctrl_i2c2_1: i2c2grp-1 {
 						fsl,pins = <
+							721 0x80000000	/* MX51_PAD_GPIO1_2__GPIO1_2 */
+							725 0x80000000	/* MX51_PAD_GPIO1_3__GPIO1_3 */
 							449 0x400001ed	/* MX51_PAD_KEY_COL4__I2C2_SCL */
 							454 0x400001ed	/* MX51_PAD_KEY_COL5__I2C2_SDA */
 						>;
