@@ -221,8 +221,17 @@ static void siihdmi_encoder_mode_set(struct drm_encoder *encoder,
 	const u8 aviif[SIIHDMI_TPI_REG_AVI_INFO_FRAME_LENGTH] = {0};
 	u16 vmode[4];
 
+	/* BUG_ON(tx->interface_pix_fmt != V4L2_FMT_RGB24 for now? */
+
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_PWR_STATE, 0x00);
 
+	/*
+	 * possible bug here; if we use CVT/GTF modes mode->vrefresh can
+	 * come out 0. vmode[1] doesn't really do anything but optimize
+	 * power, but it would be better to generate the real refresh
+	 * rate from htotal, vtotal and pixclock manually like the old
+	 * driver did..
+	 */
 	dev_dbg(&tx->client->dev, "%s: %dx%d@%d, pixclk %d\n", __func__,
 			mode->hdisplay, mode->vdisplay, mode->vrefresh,
 			mode->clock * 1000);
@@ -235,14 +244,25 @@ static void siihdmi_encoder_mode_set(struct drm_encoder *encoder,
 
 	siihdmi_writeblock(tx->client, SIIHDMI_TPI_REG_VIDEO_MODE_DATA_BASE, (uint8_t *) vmode, 8);
 
-	/* input bus/pixel: full pixel wide (24bit), rising edge */
-	siihdmi_write(tx->client, SIIHDMI_TPI_REG_INPUT_BUS_PIXEL_REPETITION, 0x70);
+	siihdmi_write(tx->client, SIIHDMI_TPI_REG_INPUT_BUS_PIXEL_REPETITION,
+				SIIHDMI_PIXEL_REPETITION_NONE |
+				SIIHDMI_INPUT_BUS_EDGE_SELECT_RISING |
+				SIIHDMI_INPUT_BUS_SELECT_FULL_PIXEL_WIDTH |
+				SIIHDMI_INPUT_BUS_TMDS_CLOCK_RATIO_1X);
 
-	/* Set input format to RGB */
-	siihdmi_write(tx->client, SIIHDMI_TPI_REG_AVI_INPUT_FORMAT, 0x00);
+	siihdmi_write(tx->client, SIIHDMI_TPI_REG_AVI_INPUT_FORMAT,
+				SIIHDMI_INPUT_COLOR_SPACE_RGB |
+				SIIHDMI_INPUT_COLOR_DEPTH_8BIT |
+				SIIHDMI_INPUT_VIDEO_RANGE_EXPANSION_AUTO);
 
-	/* set output format to RGB */
-	siihdmi_write(tx->client, SIIHDMI_TPI_REG_AVI_OUTPUT_FORMAT, 0x00);
+	siihdmi_write(tx->client, SIIHDMI_TPI_REG_AVI_OUTPUT_FORMAT,
+					SIIHDMI_OUTPUT_FORMAT_DVI_RGB |
+					SIIHDMI_OUTPUT_VIDEO_RANGE_COMPRESSION_AUTO |
+					SIIHDMI_OUTPUT_COLOR_STANDARD_BT601 |
+					SIIHDMI_OUTPUT_COLOR_DEPTH_8BIT /* |
+					SIIHDMI_OUTPUT_DITHERING */);
+
+
 
 	/* audio setup */
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_I2S_ORIGINAL_FREQ_SAMPLE_LENGTH, 0x00);
@@ -400,6 +420,8 @@ static int siihdmi_probe(struct i2c_client *client, const struct i2c_device_id *
 			tx->interface_pix_fmt = V4L2_PIX_FMT_RGB24;
 		else if (!strcmp(fmt, "rgb565"))
 			tx->interface_pix_fmt = V4L2_PIX_FMT_RGB565;
+
+		dev_dbg(&client->dev, "interface-pix-fmt: %s v4l: 0x%08x\n", fmt, tx->interface_pix_fmt);
 	}
 
 	tx->gpio_enable1 = of_get_named_gpio(np, "gpios", 0);
