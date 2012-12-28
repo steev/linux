@@ -48,8 +48,6 @@ static struct regulator_bulk_data siihdmi_supplies[SIIHDMI_SUPPLY_NUM] = {
 	{ .supply = "IOVCC", },
 };
 
-
-
 static inline int siihdmi_write(struct i2c_client *client, uint8_t addr, uint8_t val)
 {
 	int ret;
@@ -220,33 +218,40 @@ static void siihdmi_encoder_mode_set(struct drm_encoder *encoder,
 			 struct drm_display_mode *adjusted_mode)
 {
 	struct siihdmi_tx *tx = enc_to_siihdmi(encoder);
-	u16 data[4];
+	const u8 aviif[SIIHDMI_TPI_REG_AVI_INFO_FRAME_LENGTH] = {0};
+	u16 vmode[4];
 
-	/* Power up */
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_PWR_STATE, 0x00);
 
-	dev_dbg(&tx->client->dev, "%s: %dx%d, pixclk %d\n", __func__,
-			mode->hdisplay, mode->vdisplay,
+	dev_dbg(&tx->client->dev, "%s: %dx%d@%d, pixclk %d\n", __func__,
+			mode->hdisplay, mode->vdisplay, mode->vrefresh,
 			mode->clock * 1000);
 
 	/* set TPI video mode */
-	data[0] = mode->clock / 10;
-	data[1] = mode->vrefresh * 100;
-	data[2] = mode->htotal;
-	data[3] = mode->vtotal;
+	vmode[0] = mode->clock / 10;
+	vmode[1] = mode->vrefresh * 100;
+	vmode[2] = mode->htotal;
+	vmode[3] = mode->vtotal;
 
-	siihdmi_writeblock(tx->client, SIIHDMI_TPI_REG_VIDEO_MODE_DATA_BASE, (uint8_t *) data, 8);
+	siihdmi_writeblock(tx->client, SIIHDMI_TPI_REG_VIDEO_MODE_DATA_BASE, (uint8_t *) vmode, 8);
 
 	/* input bus/pixel: full pixel wide (24bit), rising edge */
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_INPUT_BUS_PIXEL_REPETITION, 0x70);
+
 	/* Set input format to RGB */
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_AVI_INPUT_FORMAT, 0x00);
+
 	/* set output format to RGB */
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_AVI_OUTPUT_FORMAT, 0x00);
+
 	/* audio setup */
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_I2S_ORIGINAL_FREQ_SAMPLE_LENGTH, 0x00);
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_I2S_AUDIO_PACKET_LAYOUT_CTRL, 0x40);
 	siihdmi_write(tx->client, SIIHDMI_TPI_REG_I2S_AUDIO_SAMPLING_HBR, 0x00);
+
+	/* clear avi infoframe */
+	siihdmi_writeblock(tx->client, SIIHDMI_TPI_REG_AVI_INFO_FRAME_BASE, (uint8_t *)aviif,
+						SIIHDMI_TPI_REG_AVI_INFO_FRAME_LENGTH);
 }
 
 static void siihdmi_encoder_dpms(struct drm_encoder *encoder, int mode)
@@ -269,6 +274,9 @@ static void siihdmi_encoder_prepare(struct drm_encoder *encoder)
 
 	imx_drm_crtc_panel_format(encoder->crtc, DRM_MODE_ENCODER_TMDS,
 	                        tx->interface_pix_fmt);
+
+	/* resolution stabilize time (50-500ms) */
+	msleep(100);
 }
 
 static void siihdmi_encoder_commit(struct drm_encoder *encoder)
