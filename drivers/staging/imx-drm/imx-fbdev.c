@@ -26,11 +26,11 @@
 #include "imx-drm.h"
 
 #define MAX_CONNECTOR		4
-#define PREFERRED_BPP		16
+#define PREFERRED_BPP		32
 
 static struct drm_fbdev_cma *fbdev_cma;
 
-static int legacyfb_depth = 16;
+static int legacyfb_depth = 32;
 
 module_param(legacyfb_depth, int, 0444);
 
@@ -42,8 +42,8 @@ static int __init imx_fb_helper_init(void)
 		return -EINVAL;
 
 	if (legacyfb_depth != 16 && legacyfb_depth != 32) {
-		pr_warn("i.MX legacyfb: invalid legacyfb_depth setting. defaulting to 16bpp\n");
-		legacyfb_depth = 16;
+		pr_warn("i.MX legacyfb: invalid legacyfb_depth setting. defaulting to %d bpp\n", PREFERRED_BPP);
+		legacyfb_depth = PREFERRED_BPP;
 	}
 
 	fbdev_cma = drm_fbdev_cma_init(drm, legacyfb_depth,
