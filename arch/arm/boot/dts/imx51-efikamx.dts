@@ -39,366 +39,6 @@
 		};
 	};
 */
-	soc {
-		aips@70000000 {
-			spba@70000000 {
-				esdhc1: esdhc@70004000 {
-					pinctrl-names = "default";
-					pinctrl-0 = <&pinctrl_esdhc1_1>;
-					cd-gpios = <&gpio1 0 0>;
-					wp-gpios = <&gpio1 1 0>;
-					status = "okay";
-				};
-
-				ssi2: ssi@70014000 {
-					fsl,mode = "i2s-slave";
-					status = "okay";
-				};
-
-				ecspi1: ecspi@70010000 {
-					pinctrl-names = "default";
-					pinctrl-0 = <&pinctrl_ecspi1_1>;
-					fsl,spi-num-chipselects = <2>;
-					reg = <0x70010000 0x4000>;
-					cs-gpios = <&gpio4 24 0>, /* GPIO4_24 */
-						   <&gpio4 25 0>; /* GPIO4_25 */
-					status = "okay";
-
-					pmic: mc13892@0 {
-						#address-cells = <1>;
-						#size-cells = <0>;
-						compatible = "fsl,mc13892";
-						spi-max-frequency = <6000000>;
-						reg = <0>;
-						interrupt-parent = <&gpio1>;
-						interrupts = <6 0x4>;
-						fsl,mc13xxx-uses-rtc;
-
-						regulators {
-							reg_VDDGP: sw1 {
-								/* VDDGP - PUS_4 (i.MX51) */
-								regulator-name = "VDDGP";
-								regulator-min-microvolt = <850000>;
-								regulator-max-microvolt = <1100000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_VCC: sw2 {
-								/* VCC - PUS_0 (peripherals) */
-								regulator-name = "VCC";
-								regulator-min-microvolt = <1225000>;
-								regulator-max-microvolt = <1225000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_1V2_DIG1: sw3 {
-								/* 1V2_DIG1 - PUS_5 (1.2V IO supply) */
-								regulator-name = "1V2_DIG1";
-								regulator-min-microvolt = <1200000>;
-								regulator-max-microvolt = <1200000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_1V8_DIG1: sw4 {
-								/* 1V8_DIG1 - PUS_1 (1.8V IO supply) */
-								regulator-name = "1V8_DIG1";
-								regulator-min-microvolt = <1800000>;
-								regulator-max-microvolt = <1800000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_1V8_ANA_PLL: vpll {
-								/* 1V8_ANA_PLL - PUS_6 (PLL supply) */
-								regulator-name = "1V8_ANA_PLL";
-								regulator-min-microvolt = <1800000>;
-								regulator-max-microvolt = <1800000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_1V65: vdig {
-								/* 1V65 - PUS_7 (SGTL5000-VDDA) */
-								regulator-name = "1V65";
-								regulator-min-microvolt = <1650000>;
-								regulator-max-microvolt = <1650000>;
-							};
-
-							reg_3V15: vsd {
-								/* 3V15 - possible supplement to 3V15_BOOT */
-								regulator-name = "3V15";
-								regulator-min-microvolt = <3150000>;
-								regulator-max-microvolt = <3150000>;
-								regulator-always-on;
-							};
-
-							reg_3V3_USB: vusb {
-								/* 3V3_USB_MX51 - PUS_9 (UTMI PHY) */
-								regulator-name = "3V3_USB";
-								regulator-min-microvolt = <3300000>;
-								regulator-max-microvolt = <3300000>;
-								regulator-always-on;
-							};
-
-							reg_2V6: vusb2 {
-								/* 2V6 - PUS_9 - (VCCUSBPHY) */
-								regulator-name = "2V6";
-								regulator-min-microvolt = <2600000>;
-								regulator-max-microvolt = <2600000>;
-								regulator-always-on;
-							};
-
-							reg_2V775: vvideo {
-								/* 2V775 - SGTL5000-VDDIO, SGTL5000-VDDA */
-								regulator-name = "2V775";
-								regulator-min-microvolt = <2775000>;
-								regulator-max-microvolt = <2775000>;
-							};
-
-							reg_3V_ANA: vaudio {
-								/* 3V_ANA - ??? */
-								regulator-name = "3V_ANA";
-								regulator-min-microvolt = <3000000>;
-								regulator-max-microvolt = <3000000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_2V5: vcam {
-								/* 2V5 - ??? */
-								regulator-name = "2V5";
-								regulator-min-microvolt = <2500000>;
-								regulator-max-microvolt = <2500000>;
-								regulator-always-on;
-							};
-
-							reg_1V2_DIG2: vgen1 {
-								/* 1V2_DIG2 - (SII9022-AVCC, SII9022-CAVCC, VGA, SGTL5000-VDDD) */
-								regulator-name = "1V2_DIG2";
-								regulator-min-microvolt = <1200000>;
-								regulator-max-microvolt = <1200000>;
-							};
-
-							reg_3V15_BOOT: vgen2 {
-								/* 3V15_BOOT - PUS_3 - (3.15V IO supply, SD card, VDD_FUSE) */
-								regulator-name = "3V15_BOOT";
-								regulator-min-microvolt = <3150000>;
-								regulator-max-microvolt = <3150000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_1V8_DIG2: vgen3 {
-								/* 1V8_DIG2 - (1.8V IO supply) - 1V8_DISPLAY (VGA) et al.*/
-								regulator-name = "1V8_DIG2";
-								regulator-min-microvolt = <1800000>;
-								regulator-max-microvolt = <1800000>;
-							};
-
-							reg_2V775_BOOT: viohi {
-								/* 2V775_BOOT - PUS_2 */
-								regulator-name = "2V775_BOOT";
-								regulator-min-microvolt = <2775000>;
-								regulator-max-microvolt = <2775000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-							reg_VDD_RTC: vcoincell {
-								regulator-name = "VDD_RTC";
-								regulator-min-microvolt = <3000000>;
-								regulator-max-microvolt = <3000000>;
-								regulator-boot-on;
-								regulator-always-on;
-							};
-
-						};
-					};
-
-					flash: sst25vf032b@1 {
-						#address-cells = <1>;
-						#size-cells = <1>;
-						compatible = "sst,sst25vf032b";
-						spi-max-frequency = <25000000>;
-						reg = <1>;
-
-						partition@0 {
-							label = "firmware";
-							reg = <0x0 0x200000>;
-						};
-
-						partition@200000 {
-							label = "user";
-							reg = <0x200000 0x200000>;
-						};
-					};
-				};
-			};
-
-			wdog1: wdog@73f98000 {
-				status = "okay";
-			};
-
-			iomuxc: iomuxc@73fa8000 {
-				compatible = "fsl,imx51-iomuxc";
-				reg = <0x73fa8000 0x4000>;
-
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_hog>;
-
-				hog {
-					pinctrl_hog: hoggrp {
-						fsl,pins = <
-							169 0x800000c0	/* MX51_PAD_EIM_DTACK__GPIO2_31 (Power button) */
-							51 0x85		/* MX51_PAD_NANDF_RB3__GPIO_3_11 + 100k pullup (PCBID2) */
-							53 0x85		/* MX51_PAD_NANDF_CS0__GPIO_3_16 + 100k pullup (PCBID0) */
-							54 0x85		/* MX51_PAD_NANDF_CS1__GPIO_3_17 + 100k pullup (PCBID1) */
-							402 0x85	/* MX51_PAD_CSPI1_SS0__GPIO4_24 */
-							405 0x85	/* MX51_PAD_CSPI1_SS1__GPIO4_25 */
-
-							694 0x85	/* MX51_PAD_GPIO1_0__SD1_CD */
-							697 0x85	/* MX51_PAD_GPIO1_1__SD1_WP */
-
-							740 0x85	/* MX51_PAD_GPIO1_6__GPIO1_6 (PMIC interrupt) */
-
-							737 0x85	/* MX51_PAD_GPIO1_5__GPIO1_5 (USB hub reset, 0 = reset) */
-							63  0x85	/* MX51_PAD_EIM_D27__GPIO2_9 (USB phy reset, 0 = reset) */
-
-							753 0x85	/* MX51_PAD_GPIO1_9__GPIO1_9 (audio clock enable - NEKO default pad bits) */
-							105 0x0		/* MX51_PAD_EIM_A23__GPIO2_17 (amp enable (100kohm pu external?) -- NEKO 100kpu in legacy is invalid all other bits 0) */
-							527 0x0		/* MX51_PAD_DISPB2_SER_RS__GPIO3_8 (hp detect (100kohm pu external?) NEKO see above) */
-							437 0xa5	/* MX51_PAD_OWIRE_LINE_SPDIF_OUT (SPDIF out - NEKO default pad bits ) */
-
-							102 0x85	/* MX51_PAD_EIM_A22__GPIO2_16 (WIFI Power) */
-							84 0x85		/* MX51_PAD_EIM_A16__GPIO2_10 (WIFI Reset) */
-							87 0x85		/* MX51_PAD_EIM_A17__GPIO2_11 (BT Power) */
-
-							375 0x80	/* MX51_PAD_CSI2_VSYNC__GPIO4_13 (PWRGOOD circuit interrupt - NEKO default pad bits) */
-						>;
-					};
-				};
-
-				audio {
-					pinctrl_audio_1: audio1grp {
-						fsl,pins = <
-							384 0x00000025	/* MX51_PAD_AUD3_BB_TXD__AUD3_TXD */
-							386 0x00000025	/* MX51_PAD_AUD3_BB_RXD__AUD3_RXD */
-							389 0x00000025	/* MX51_PAD_AUD3_BB_CK__AUD3_TXC */
-							391 0x00000025	/* MX51_PAD_AUD3_BB_FS__AUD3_TXFS */
-						>;
-					};
-				};
-
-				usbh1 {
-					pinctrl_usbh1_1: usbh1grp {
-						fsl,pins = <
-							469 0x185 /* MX51_PAD_USBH1_STP__USBH1_STP */
-							461 0x185 /* MX51_PAD_USBH1_CLK__USBH1_CLK */
-							465 0x185 /* MX51_PAD_USBH1_DIR__USBH1_DIR */
-							473 0x185 /* MX51_PAD_USBH1_NXT__USBH1_NXT */
-							476 0x1e5 /* MX51_PAD_USBH1_DATA0__USBH1_DATA0 */
-							479 0x1e5 /* MX51_PAD_USBH1_DATA1__USBH1_DATA1 */
-							482 0x1e5 /* MX51_PAD_USBH1_DATA2__USBH1_DATA2 */
-							485 0x1e5 /* MX51_PAD_USBH1_DATA3__USBH1_DATA3 */
-							488 0x1e5 /* MX51_PAD_USBH1_DATA4__USBH1_DATA4 */
-							491 0x1e5 /* MX51_PAD_USBH1_DATA5__USBH1_DATA5 */
-							494 0x1e5 /* MX51_PAD_USBH1_DATA6__USBH1_DATA6 */
-							498 0x1e5 /* MX51_PAD_USBH1_DATA7__USBH1_DATA7 */
-						>;
-					};
-				};
-
-				uart1 {
-					pinctrl_uart1_2: uart1grp {
-						fsl,pins = <
-							413 0x1c5 /* MX51_PAD_UART1_RXD__UART1_RXD */
-							416 0x1c5 /* MX51_PAD_UART1_TXD__UART1_TXD */
-							418 0x1c4 /* MX51_PAD_UART1_RTS__UART1_RTS */
-							420 0x1c4 /* MX51_PAD_UART1_CTS__UART1_CTS */
-						>;
-					};
-				};
-
-				display {
-					pinctrl_display1_1: display1grp {
-						fsl,pins = <
-							511 0x85	/* MX51_PAD_DI1_D1_CS__GPIO3_4 (DISP1 enable) */
-							514 0x85	/* MX51_PAD_DISPB2_SER_DIN__GPIO3_5 (DISP1 reset) */
-							517 0x40000085	/* MX51_PAD_DISPB2_SER_DIO__GPIO3_6 (HDMI interrupt) - NEKO pad def unchecked!!!! */
-							521 0x85	/* MX51_PAD_DISPB2_SER_CLK__GPIO3_7 (DISP2 enable) */
-						>;
-					};
-				};
-			};
-
-			usbmisc: usbmisc@73f80800 {
-				#index-cells = <1>;
-				compatible = "fsl,imx51-usbmisc";
-				clocks = <&clks 108>, <&clks 108>, <&clks 43>, <&clks 75>;
-				clock-names = "ipg", "ahb", "per", "phy";
-				reg = <0x73f80800 0x200>;
-				status = "okay";
-			};
-
-
-			uart1: serial@73fbc000 {
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_uart1_2>;
-				fsl,uart-has-rtscts;
-				status = "okay";
-			};
-
-		};
-
-		aips@80000000 {
-			sdma: sdma@83fb0000 {
-				fsl,sdma-ram-script-name = "imx/sdma/sdma-imx51.bin";
-			};
-
-			i2c2: i2c@83fc4000 {
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_i2c2_1>;
-				clock-frequency = <100000>;
-				status = "okay";
-
-				codec: sgtl5000@0a {
-					compatible = "fsl,sgtl5000";
-					reg = <0x0a>;
-//					clocks = <&sgtl5000_mclk>;
-					clock-frequency = <12288000>;
-					VDDA-supply = <&reg_1V65>; // 2V775 connected here too
-					VDDIO-supply = <&reg_2V775>;
-					VDDD-supply = <&reg_1V2_DIG2>;
-				};
-
-				hdmi: sii9022@39 {
-					compatible = "sii,sii9022";
-					reg = <0x39>;
-					interrupt-parent = <&gpio3>;
-					interrupts = <6 0x8>;
-					pinctrl-names = "default";
-					pinctrl-0 = <&pinctrl_display1_1>;
-					crtcs = <&ipu 0>;
-					interface-pix-fmt = "rgb24";
-					gpios = <&gpio3 4 1	/* enable 1 (active low) */
-						 &gpio3 7 1	/* enable 2 (active low) */
-						 &gpio3 5 0>;	/* reset */
-					AVCC-supply = <&reg_1V2_DIG2>;
-					CAVCC-supply = <&reg_1V8_DIG2>; // not true but it is a dependency
-					IOVCC-supply = <&reg_3V_ANA>; // not true but works for now
-				};
-			};
-
-			audmux: audmux@83fd0000 {
-				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_audmux_1>;
-				status = "okay";
-			};
-		};
-	};
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -486,9 +126,355 @@
 */
 };
 
+&esdhc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_esdhc1_1>;
+	cd-gpios = <&gpio1 0 0>;
+	wp-gpios = <&gpio1 1 0>;
+	status = "okay";
+};
+
+&ssi2 {
+	fsl,mode = "i2s-slave";
+	status = "okay";
+};
+
+&ecspi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_ecspi1_1>;
+	fsl,spi-num-chipselects = <2>;
+	reg = <0x70010000 0x4000>;
+	cs-gpios = <&gpio4 24 0>, /* GPIO4_24 */
+		   <&gpio4 25 0>; /* GPIO4_25 */
+	status = "okay";
+
+	pmic: mc13892@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "fsl,mc13892";
+		spi-max-frequency = <6000000>;
+		reg = <0>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <6 0x4>;
+		fsl,mc13xxx-uses-rtc;
+
+		regulators {
+			reg_VDDGP: sw1 {
+				/* VDDGP - PUS_4 (i.MX51) */
+				regulator-name = "VDDGP";
+				regulator-min-microvolt = <850000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_VCC: sw2 {
+				/* VCC - PUS_0 (peripherals) */
+				regulator-name = "VCC";
+				regulator-min-microvolt = <1225000>;
+				regulator-max-microvolt = <1225000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_1V2_DIG1: sw3 {
+				/* 1V2_DIG1 - PUS_5 (1.2V IO supply) */
+				regulator-name = "1V2_DIG1";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_1V8_DIG1: sw4 {
+				/* 1V8_DIG1 - PUS_1 (1.8V IO supply) */
+				regulator-name = "1V8_DIG1";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_1V8_ANA_PLL: vpll {
+				/* 1V8_ANA_PLL - PUS_6 (PLL supply) */
+				regulator-name = "1V8_ANA_PLL";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_1V65: vdig {
+				/* 1V65 - PUS_7 (SGTL5000-VDDA) */
+				regulator-name = "1V65";
+				regulator-min-microvolt = <1650000>;
+				regulator-max-microvolt = <1650000>;
+			};
+
+			reg_3V15: vsd {
+				/* 3V15 - possible supplement to 3V15_BOOT */
+				regulator-name = "3V15";
+				regulator-min-microvolt = <3150000>;
+				regulator-max-microvolt = <3150000>;
+				regulator-always-on;
+			};
+
+			reg_3V3_USB: vusb {
+				/* 3V3_USB_MX51 - PUS_9 (UTMI PHY) */
+				regulator-name = "3V3_USB";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+			};
+
+			reg_2V6: vusb2 {
+				/* 2V6 - PUS_9 - (VCCUSBPHY) */
+				regulator-name = "2V6";
+				regulator-min-microvolt = <2600000>;
+				regulator-max-microvolt = <2600000>;
+				regulator-always-on;
+			};
+
+			reg_2V775: vvideo {
+				/* 2V775 - SGTL5000-VDDIO, SGTL5000-VDDA */
+				regulator-name = "2V775";
+				regulator-min-microvolt = <2775000>;
+				regulator-max-microvolt = <2775000>;
+			};
+
+			reg_3V_ANA: vaudio {
+				/* 3V_ANA - ??? */
+				regulator-name = "3V_ANA";
+				regulator-min-microvolt = <3000000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_2V5: vcam {
+				/* 2V5 - ??? */
+				regulator-name = "2V5";
+				regulator-min-microvolt = <2500000>;
+				regulator-max-microvolt = <2500000>;
+				regulator-always-on;
+			};
+
+			reg_1V2_DIG2: vgen1 {
+				/* 1V2_DIG2 - (SII9022-AVCC, SII9022-CAVCC, VGA, SGTL5000-VDDD) */
+				regulator-name = "1V2_DIG2";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+			};
+
+			reg_3V15_BOOT: vgen2 {
+				/* 3V15_BOOT - PUS_3 - (3.15V IO supply, SD card, VDD_FUSE) */
+				regulator-name = "3V15_BOOT";
+				regulator-min-microvolt = <3150000>;
+				regulator-max-microvolt = <3150000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_1V8_DIG2: vgen3 {
+				/* 1V8_DIG2 - (1.8V IO supply) - 1V8_DISPLAY (VGA) et al.*/
+				regulator-name = "1V8_DIG2";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+			};
+
+			reg_2V775_BOOT: viohi {
+				/* 2V775_BOOT - PUS_2 */
+				regulator-name = "2V775_BOOT";
+				regulator-min-microvolt = <2775000>;
+				regulator-max-microvolt = <2775000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			reg_VDD_RTC: vcoincell {
+				regulator-name = "VDD_RTC";
+				regulator-min-microvolt = <3000000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
+
+	flash: sst25vf032b@1 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "sst,sst25vf032b";
+		spi-max-frequency = <25000000>;
+		reg = <1>;
+
+		partition@0 {
+			label = "firmware";
+			reg = <0x0 0x200000>;
+		};
+
+		partition@200000 {
+			label = "user";
+			reg = <0x200000 0x200000>;
+		};
+	};
+};
+
+&iomuxc {
+	compatible = "fsl,imx51-iomuxc";
+	reg = <0x73fa8000 0x4000>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>;
+
+	hog {
+		pinctrl_hog: hoggrp {
+			fsl,pins = <
+				169 0x800000c0	/* MX51_PAD_EIM_DTACK__GPIO2_31 (Power button) */
+				51 0x85		/* MX51_PAD_NANDF_RB3__GPIO_3_11 + 100k pullup (PCBID2) */
+				53 0x85		/* MX51_PAD_NANDF_CS0__GPIO_3_16 + 100k pullup (PCBID0) */
+				54 0x85		/* MX51_PAD_NANDF_CS1__GPIO_3_17 + 100k pullup (PCBID1) */
+				402 0x85	/* MX51_PAD_CSPI1_SS0__GPIO4_24 */
+				405 0x85	/* MX51_PAD_CSPI1_SS1__GPIO4_25 */
+
+				694 0x85	/* MX51_PAD_GPIO1_0__SD1_CD */
+				697 0x85	/* MX51_PAD_GPIO1_1__SD1_WP */
+
+				740 0x85	/* MX51_PAD_GPIO1_6__GPIO1_6 (PMIC interrupt) */
+
+				737 0x85	/* MX51_PAD_GPIO1_5__GPIO1_5 (USB hub reset, 0 = reset) */
+				63  0x85	/* MX51_PAD_EIM_D27__GPIO2_9 (USB phy reset, 0 = reset) */
+
+				753 0x85	/* MX51_PAD_GPIO1_9__GPIO1_9 (audio clock enable - NEKO default pad bits) */
+				105 0x0		/* MX51_PAD_EIM_A23__GPIO2_17 (amp enable (100kohm pu external?) -- NEKO 100kpu in legacy is invalid all other bits 0) */
+				527 0x0		/* MX51_PAD_DISPB2_SER_RS__GPIO3_8 (hp detect (100kohm pu external?) NEKO see above) */
+				437 0xa5	/* MX51_PAD_OWIRE_LINE_SPDIF_OUT (SPDIF out - NEKO default pad bits ) */
+
+				102 0x85	/* MX51_PAD_EIM_A22__GPIO2_16 (WIFI Power) */
+				84 0x85		/* MX51_PAD_EIM_A16__GPIO2_10 (WIFI Reset) */
+				87 0x85		/* MX51_PAD_EIM_A17__GPIO2_11 (BT Power) */
+
+				375 0x80	/* MX51_PAD_CSI2_VSYNC__GPIO4_13 (PWRGOOD circuit interrupt - NEKO default pad bits) */
+			>;
+		};
+	};
+
+	audio {
+		pinctrl_audio_1: audio1grp {
+			fsl,pins = <
+				384 0x00000025	/* MX51_PAD_AUD3_BB_TXD__AUD3_TXD */
+				386 0x00000025	/* MX51_PAD_AUD3_BB_RXD__AUD3_RXD */
+				389 0x00000025	/* MX51_PAD_AUD3_BB_CK__AUD3_TXC */
+				391 0x00000025	/* MX51_PAD_AUD3_BB_FS__AUD3_TXFS */
+			>;
+		};
+	};
+
+	usbh1 {
+		pinctrl_usbh1_1: usbh1grp {
+			fsl,pins = <
+				469 0x185 /* MX51_PAD_USBH1_STP__USBH1_STP */
+				461 0x185 /* MX51_PAD_USBH1_CLK__USBH1_CLK */
+				465 0x185 /* MX51_PAD_USBH1_DIR__USBH1_DIR */
+				473 0x185 /* MX51_PAD_USBH1_NXT__USBH1_NXT */
+				476 0x1e5 /* MX51_PAD_USBH1_DATA0__USBH1_DATA0 */
+				479 0x1e5 /* MX51_PAD_USBH1_DATA1__USBH1_DATA1 */
+				482 0x1e5 /* MX51_PAD_USBH1_DATA2__USBH1_DATA2 */
+				485 0x1e5 /* MX51_PAD_USBH1_DATA3__USBH1_DATA3 */
+				488 0x1e5 /* MX51_PAD_USBH1_DATA4__USBH1_DATA4 */
+				491 0x1e5 /* MX51_PAD_USBH1_DATA5__USBH1_DATA5 */
+				494 0x1e5 /* MX51_PAD_USBH1_DATA6__USBH1_DATA6 */
+				498 0x1e5 /* MX51_PAD_USBH1_DATA7__USBH1_DATA7 */
+			>;
+		};
+	};
+
+	uart1 {
+		pinctrl_uart1_2: uart1grp {
+			fsl,pins = <
+				413 0x1c5 /* MX51_PAD_UART1_RXD__UART1_RXD */
+				416 0x1c5 /* MX51_PAD_UART1_TXD__UART1_TXD */
+				418 0x1c4 /* MX51_PAD_UART1_RTS__UART1_RTS */
+				420 0x1c4 /* MX51_PAD_UART1_CTS__UART1_CTS */
+			>;
+		};
+	};
+
+	display {
+		pinctrl_display1_1: display1grp {
+			fsl,pins = <
+				511 0x85	/* MX51_PAD_DI1_D1_CS__GPIO3_4 (DISP1 enable) */
+				514 0x85	/* MX51_PAD_DISPB2_SER_DIN__GPIO3_5 (DISP1 reset) */
+				517 0x40000085	/* MX51_PAD_DISPB2_SER_DIO__GPIO3_6 (HDMI interrupt) - NEKO pad def unchecked!!!! */
+				521 0x85	/* MX51_PAD_DISPB2_SER_CLK__GPIO3_7 (DISP2 enable) */
+			>;
+		};
+	};
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1_2>;
+	fsl,uart-has-rtscts;
+	status = "okay";
+};
+
+&wdog1 {
+	status = "okay";
+};
+
+&i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c2_1>;
+	clock-frequency = <100000>;
+	status = "okay";
+
+	codec: sgtl5000@0a {
+		compatible = "fsl,sgtl5000";
+		reg = <0x0a>;
+//		clocks = <&sgtl5000_mclk>;
+		clock-frequency = <12288000>;
+		VDDA-supply = <&reg_1V65>; // 2V775 connected here too
+		VDDIO-supply = <&reg_2V775>;
+		VDDD-supply = <&reg_1V2_DIG2>;
+	};
+
+	hdmi: sii9022@39 {
+		compatible = "sii,sii9022";
+		reg = <0x39>;
+		interrupt-parent = <&gpio3>;
+		interrupts = <6 0x8>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_display1_1>;
+		crtcs = <&ipu 0>;
+		interface-pix-fmt = "rgb24";
+		gpios = <&gpio3 4 1	/* enable 1 (active low) */
+			 &gpio3 7 1	/* enable 2 (active low) */
+			 &gpio3 5 0>;	/* reset */
+		AVCC-supply = <&reg_1V2_DIG2>;
+		CAVCC-supply = <&reg_1V8_DIG2>; // not true but it is a dependency
+		IOVCC-supply = <&reg_3V_ANA>; // not true but works for now
+	};
+};
+
+&audmux {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_audmux_1>;
+	status = "okay";
+};
+
 &pata {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pata_1>;
+	status = "okay";
+};
+/*
+&usbmisc {
+	#index-cells = <1>;
+	compatible = "fsl,imx51-usbmisc";
+	clocks = <&clks 108>, <&clks 108>, <&clks 43>, <&clks 75>;
+	clock-names = "ipg", "ahb", "per", "phy";
+	reg = <0x73f80800 0x200>;
 	status = "okay";
 };
 
@@ -506,4 +492,4 @@
 	fsl,usbmisc = <&usbmisc 1>;
 	phy-mode = "ulpi";
 	status = "okay";
-};
+}; */
