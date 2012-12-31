@@ -37,7 +37,7 @@ static struct gpio efika_gpio_lvds[] __initdata = {
 
 static int efikasb_lvds_init(void)
 {
-	if (!of_machine_is_compatible("genesi,imx51-sb"))
+	if (!of_machine_is_compatible("genesi,imx51-efikasb"))
 		return 0;
 
 	gpio_request_array(efika_gpio_lvds, ARRAY_SIZE(efika_gpio_lvds));
