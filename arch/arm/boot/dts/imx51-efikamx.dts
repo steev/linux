@@ -470,9 +470,9 @@
 };
 
 &usbmisc {
-	status = "okay";
 	pinctrl-names = "default";
 	pinctrl-0 = <>;
+	status = "okay";
 };
 
 &usbotg {
