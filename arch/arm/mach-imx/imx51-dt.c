@@ -35,7 +35,7 @@ static struct gpio efika_gpio_lvds[] __initdata = {
 	{ GPIO_LCD_ENABLE, GPIOF_OUT_INIT_LOW, "lcd enable" },
 };
 
-static int efikasb_lvds_init(void)
+static int __init efikasb_lvds_init(void)
 {
 	if (!of_machine_is_compatible("genesi,imx51-efikasb"))
 		return 0;
