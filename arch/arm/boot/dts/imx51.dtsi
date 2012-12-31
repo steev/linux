@@ -60,24 +60,32 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		ckil {
+		ckil: ckil {
+			#clock-cells = <0>;
 			compatible = "fsl,imx-ckil", "fixed-clock";
 			clock-frequency = <32768>;
+			clock-output-names = "ckil";
 		};
 
-		ckih1 {
+		ckih1: ckih1 {
+			#clock-cells = <0>;
 			compatible = "fsl,imx-ckih1", "fixed-clock";
 			clock-frequency = <22579200>;
+			clock-output-names = "ckih1";
 		};
 
-		ckih2 {
+		ckih2: ckih2 {
+			#clock-cells = <0>;
 			compatible = "fsl,imx-ckih2", "fixed-clock";
 			clock-frequency = <0>;
+			clock-output-names = "ckih2";
 		};
 
-		osc {
+		osc: osc {
+			#clock-cells = <0>;
 			compatible = "fsl,imx-osc", "fixed-clock";
 			clock-frequency = <24000000>;
+			clock-output-names = "osc";
 		};
 	};
 
@@ -542,6 +550,27 @@
 			#size-cells = <1>;
 			reg = <0x80000000 0x10000000>;
 			ranges;
+
+			pll1_sw: pll1@83f80000 {
+				compatible = "fsl,imx-pllv2";
+				reg = <0x83f80000 0x4000>;
+				clocks = <&osc>;
+				clock-output-names = "pll1_sw";
+			};
+
+			pll2_sw: pll2@83f84000 {
+				compatible = "fsl,imx-pllv2";
+				reg = <0x83f84000 0x4000>;
+				clocks = <&osc>;
+				clock-output-names = "pll2_sw";
+			};
+
+			pll3_sw: pll3@83f88000 {
+				compatible = "fsl,imx-pllv2";
+				reg = <0x83f88000 0x4000>;
+				clocks = <&osc>;
+				clock-output-names = "pll3_sw";
+			};
 
 			ecspi2: ecspi@83fac000 {
 				#address-cells = <1>;
