@@ -14,10 +14,10 @@
 
 / {
 	model = "Genesi Efika MX Smartbook";
-	compatible = "genesi,imx51-sb", "fsl,imx51";
+	compatible = "genesi,imx51-efikasb", "fsl,imx51";
 
 	memory {
-		reg = <0x90000000 0x40000000>;
+		reg = <0x90000000 0x20000000>;
 	};
 
 	leds {
@@ -30,7 +30,7 @@
 		};
 
 		white {
-			label = "white";
+			label = "capslock";
 			gpios = <&gpio2 25 0>;
 			linux,default-trigger = "none";
 		};
