@@ -89,17 +89,11 @@ enum imx5_clks {
 static struct clk *clk[clk_max];
 static struct clk_onecell_data clk_data;
 
-static void __init mx5_clocks_common_init(unsigned long rate_ckil,
-		unsigned long rate_osc, unsigned long rate_ckih1,
-		unsigned long rate_ckih2)
+static void __init mx5_clocks_common_init(void)
 {
 	int i;
 
 	clk[dummy] = imx_clk_fixed("dummy", 0);
-	clk[ckil] = imx_clk_fixed("ckil", rate_ckil);
-	clk[osc] = imx_clk_fixed("osc", rate_osc);
-	clk[ckih1] = imx_clk_fixed("ckih1", rate_ckih1);
-	clk[ckih2] = imx_clk_fixed("ckih2", rate_ckih2);
 
 	clk[lp_apm] = imx_clk_mux("lp_apm", MXC_CCM_CCSR, 9, 1,
 				lp_apm_sel, ARRAY_SIZE(lp_apm_sel));
@@ -239,7 +233,7 @@ static void __init mx5_clocks_common_init(unsigned long rate_ckil,
 		if (IS_ERR(clk[i]))
 			pr_err("i.MX5 clk %d: register failed with %ld\n",
 				i, PTR_ERR(clk[i]));
-	
+
 	clk_register_clkdev(clk[gpt_hf_gate], "per", "imx-gpt.0");
 	clk_register_clkdev(clk[gpt_ipg_gate], "ipg", "imx-gpt.0");
 	clk_register_clkdev(clk[uart1_per_gate], "per", "imx21-uart.0");
@@ -297,11 +291,11 @@ static void __init mx5_clocks_common_init(unsigned long rate_ckil,
 	clk_set_parent(clk[per_root], clk[ipg]);
 
 	/* Set SDHC parents to be PLL2 */
-	clk_set_parent(clk[esdhc_a_sel], clk[pll2_sw]);
-	clk_set_parent(clk[esdhc_b_sel], clk[pll2_sw]);
+	clk_set_parent(clk[esdhc_a_sel], __clk_lookup("pll2_sw"));
+	clk_set_parent(clk[esdhc_b_sel], __clk_lookup("pll2_sw"));
 
 	/* move usb phy clk to 24MHz */
-	clk_set_parent(clk[usb_phy_sel], clk[osc]);
+	clk_set_parent(clk[usb_phy_sel], __clk_lookup("osc"));
 
 	clk_prepare_enable(clk[gpc_dvfs]);
 	clk_prepare_enable(clk[ahb_max]); /* esdhc3 */
@@ -319,16 +313,12 @@ static void __init mx5_clocks_common_init(unsigned long rate_ckil,
 	clk_prepare_enable(clk[tmax3]); /* esdhc1, esdhc4 */
 }
 
-int __init mx51_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
-			unsigned long rate_ckih1, unsigned long rate_ckih2)
+int __init mx51_clocks_init(void)
 {
 	int i;
 	unsigned long r;
 	struct device_node *np;
 
-	clk[pll1_sw] = imx_clk_pllv2("pll1_sw", "osc", MX51_DPLL1_BASE);
-	clk[pll2_sw] = imx_clk_pllv2("pll2_sw", "osc", MX51_DPLL2_BASE);
-	clk[pll3_sw] = imx_clk_pllv2("pll3_sw", "osc", MX51_DPLL3_BASE);
 	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", MXC_CCM_CSCMR2, 26, 3,
 				mx51_ipu_di0_sel, ARRAY_SIZE(mx51_ipu_di0_sel));
 	clk[ipu_di1_sel] = imx_clk_mux("ipu_di1_sel", MXC_CCM_CSCMR2, 29, 3,
@@ -359,7 +349,7 @@ int __init mx51_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 	clk_data.clk_num = ARRAY_SIZE(clk);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
-	mx5_clocks_common_init(rate_ckil, rate_osc, rate_ckih1, rate_ckih2);
+	mx5_clocks_common_init();
 
 	clk_register_clkdev(clk[hsi2c_gate], NULL, "imx21-i2c.2");
 	clk_register_clkdev(clk[mx51_mipi], "mipi_hsp", NULL);
@@ -386,7 +376,7 @@ int __init mx51_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 	clk_set_parent(clk[ipu_di0_sel], clk[di_pred]);
 
 	/* set the usboh3 parent to pll2_sw */
-	clk_set_parent(clk[usboh3_sel], clk[pll2_sw]);
+	clk_set_parent(clk[usboh3_sel], __clk_lookup("pll2_sw"));
 
 	/* set SDHC root clock to 166.25MHZ*/
 	clk_set_rate(clk[esdhc_a_podf], 166250000);
@@ -405,17 +395,11 @@ int __init mx51_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 	return 0;
 }
 
-int __init mx53_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
-			unsigned long rate_ckih1, unsigned long rate_ckih2)
+int __init mx53_clocks_init()
 {
 	int i;
 	unsigned long r;
 	struct device_node *np;
-
-	clk[pll1_sw] = imx_clk_pllv2("pll1_sw", "osc", MX53_DPLL1_BASE);
-	clk[pll2_sw] = imx_clk_pllv2("pll2_sw", "osc", MX53_DPLL2_BASE);
-	clk[pll3_sw] = imx_clk_pllv2("pll3_sw", "osc", MX53_DPLL3_BASE);
-	clk[pll4_sw] = imx_clk_pllv2("pll4_sw", "osc", MX53_DPLL4_BASE);
 
 	clk[ldb_di1_sel] = imx_clk_mux("ldb_di1_sel", MXC_CCM_CSCMR2, 9, 1,
 				mx53_ldb_di1_sel, ARRAY_SIZE(mx53_ldb_di1_sel));
@@ -460,7 +444,7 @@ int __init mx53_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 	clk_data.clk_num = ARRAY_SIZE(clk);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
-	mx5_clocks_common_init(rate_ckil, rate_osc, rate_ckih1, rate_ckih2);
+	mx5_clocks_common_init();
 
 	clk_register_clkdev(clk[vpu_gate], NULL, "imx53-vpu.0");
 	clk_register_clkdev(clk[i2c3_gate], NULL, "imx21-i2c.2");
@@ -501,41 +485,19 @@ int __init mx53_clocks_init(unsigned long rate_ckil, unsigned long rate_osc,
 }
 
 #ifdef CONFIG_OF
-static void __init clk_get_freq_dt(unsigned long *ckil, unsigned long *osc,
-				   unsigned long *ckih1, unsigned long *ckih2)
-{
-	struct device_node *np;
-
-	/* retrieve the freqency of fixed clocks from device tree */
-	for_each_compatible_node(np, NULL, "fixed-clock") {
-		u32 rate;
-		if (of_property_read_u32(np, "clock-frequency", &rate))
-			continue;
-
-		if (of_device_is_compatible(np, "fsl,imx-ckil"))
-			*ckil = rate;
-		else if (of_device_is_compatible(np, "fsl,imx-osc"))
-			*osc = rate;
-		else if (of_device_is_compatible(np, "fsl,imx-ckih1"))
-			*ckih1 = rate;
-		else if (of_device_is_compatible(np, "fsl,imx-ckih2"))
-			*ckih2 = rate;
-	}
-}
+extern void imx5_clocks_init(void); // in clk-pllv2.c for now
 
 int __init mx51_clocks_init_dt(void)
 {
-	unsigned long ckil, osc, ckih1, ckih2;
+	imx5_clocks_init();
 
-	clk_get_freq_dt(&ckil, &osc, &ckih1, &ckih2);
-	return mx51_clocks_init(ckil, osc, ckih1, ckih2);
+	return mx51_clocks_init();
 }
 
 int __init mx53_clocks_init_dt(void)
 {
-	unsigned long ckil, osc, ckih1, ckih2;
+	imx5_clocks_init();
 
-	clk_get_freq_dt(&ckil, &osc, &ckih1, &ckih2);
-	return mx53_clocks_init(ckil, osc, ckih1, ckih2);
+	return mx53_clocks_init();
 }
 #endif

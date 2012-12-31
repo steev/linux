@@ -5,6 +5,8 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/err.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
 
 #include <asm/div64.h>
 
@@ -237,30 +239,51 @@ struct clk_ops clk_pllv2_ops = {
 	.set_rate = clk_pllv2_set_rate,
 };
 
-struct clk *imx_clk_pllv2(const char *name, const char *parent,
-		void __iomem *base)
+static __init struct clk *imx_clk_pllv2(struct device_node *node)
 {
-	struct clk_pllv2 *pll;
 	struct clk *clk;
+	struct clk_pllv2 *pll;
+	const char *clk_name = node->name;
+	const char *parent_name;
 	struct clk_init_data init;
+	int rc;
 
 	pll = kzalloc(sizeof(*pll), GFP_KERNEL);
-	if (!pll)
-		return ERR_PTR(-ENOMEM);
+	if (WARN_ON(!pll))
+		return NULL;
 
-	pll->base = base;
+	pll->base = of_iomap(node, 0);
+	WARN_ON(!pll->base);
 
-	init.name = name;
+	of_property_read_string(node, "clock-output-names", &clk_name);
+
+	init.name = clk_name;
 	init.ops = &clk_pllv2_ops;
 	init.flags = 0;
-	init.parent_names = &parent;
+	parent_name = of_clk_get_parent_name(node, 0);
+	init.parent_names = &parent_name;
 	init.num_parents = 1;
 
 	pll->hw.init = &init;
 
 	clk = clk_register(NULL, &pll->hw);
-	if (IS_ERR(clk))
+	if (WARN_ON(IS_ERR(pll))) {
 		kfree(pll);
+		return NULL;
+	}
+
+	rc = of_clk_add_provider(node, of_clk_src_simple_get, clk);
 
 	return clk;
+}
+
+static const __initconst struct of_device_id clk_match[] = {
+	{ .compatible = "fixed-clock", .data = of_fixed_clk_setup, }, // HACK doesn't belong here
+        { .compatible = "fsl,imx-pllv2", .data = imx_clk_pllv2, },
+        {}
+};
+
+void __init imx5_clocks_init(void)
+{
+        of_clk_init(clk_match);
 }

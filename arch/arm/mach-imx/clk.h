@@ -9,9 +9,6 @@ extern spinlock_t imx_ccm_lock;
 struct clk *imx_clk_pllv1(const char *name, const char *parent,
 		void __iomem *base);
 
-struct clk *imx_clk_pllv2(const char *name, const char *parent,
-		void __iomem *base);
-
 enum imx_pllv3_type {
 	IMX_PLLV3_GENERIC,
 	IMX_PLLV3_SYS,
