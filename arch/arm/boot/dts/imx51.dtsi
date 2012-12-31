@@ -225,6 +225,15 @@
 				status = "disabled";
 			};
 
+			usbmisc: usbmisc@73f80800 {
+				#index-cells = <1>;
+				compatible = "fsl,imx51-usbmisc";
+				reg = <0x73f80800 0x0200>;
+				clocks = <&clks 108>, <&clks 108>, <&clks 43>, <&clks 75>;
+				clock-names = "ipg", "ahb", "per", "phy";
+				status = "disabled";
+			};
+
 			gpio1: gpio@73f84000 {
 				compatible = "fsl,imx51-gpio", "fsl,imx35-gpio";
 				reg = <0x73f84000 0x4000>;

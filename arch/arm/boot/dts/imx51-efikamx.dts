@@ -468,14 +468,11 @@
 	pinctrl-0 = <&pinctrl_pata_1>;
 	status = "okay";
 };
-/*
+
 &usbmisc {
-	#index-cells = <1>;
-	compatible = "fsl,imx51-usbmisc";
-	clocks = <&clks 108>, <&clks 108>, <&clks 43>, <&clks 75>;
-	clock-names = "ipg", "ahb", "per", "phy";
-	reg = <0x73f80800 0x200>;
 	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <>;
 };
 
 &usbotg {
@@ -491,5 +488,6 @@
 	pinctrl-0 = <&pinctrl_usbh1_1>;
 	fsl,usbmisc = <&usbmisc 1>;
 	phy-mode = "ulpi";
+	ext-clk;
 	status = "okay";
-}; */
+};

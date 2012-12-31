@@ -303,10 +303,12 @@
 
 &usbhost1 {
 	phy-mode = "ulpi";
+	ext-clk;
 	status = "okay";
 };
 
 &usbhost2 {
 	phy-mode = "ulpi";
+	ext-clk;
 	status = "okay";
 };
