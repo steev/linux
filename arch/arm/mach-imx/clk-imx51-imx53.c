@@ -12,6 +12,8 @@
 #include <linux/io.h>
 #include <linux/clkdev.h>
 #include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
 #include <linux/err.h>
 
 #include "crm-regs-imx5.h"
@@ -315,8 +317,9 @@ static void __init mx5_clocks_common_init(void)
 
 int __init mx51_clocks_init(void)
 {
-	int i;
+	void __iomem *base;
 	unsigned long r;
+	int i, irq;
 	struct device_node *np;
 
 	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", MXC_CCM_CSCMR2, 26, 3,
@@ -383,7 +386,11 @@ int __init mx51_clocks_init(void)
 	clk_set_rate(clk[esdhc_b_podf], 166250000);
 
 	/* System timer */
-	mxc_timer_init(MX51_IO_ADDRESS(MX51_GPT1_BASE_ADDR), MX51_INT_GPT);
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx51-gpt");
+	base = of_iomap(np, 0);
+	WARN_ON(!base);
+	irq = irq_of_parse_and_map(np, 0);
+	mxc_timer_init(base, irq);
 
 	clk_prepare_enable(clk[iim_gate]);
 	imx_print_silicon_rev("i.MX51", mx51_revision());
