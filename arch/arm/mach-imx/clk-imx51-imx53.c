@@ -404,8 +404,9 @@ int __init mx51_clocks_init(void)
 
 int __init mx53_clocks_init()
 {
-	int i;
+	void __iomem *base;
 	unsigned long r;
+	int i, irq;
 	struct device_node *np;
 
 	clk[ldb_di1_sel] = imx_clk_mux("ldb_di1_sel", MXC_CCM_CSCMR2, 9, 1,
@@ -479,7 +480,11 @@ int __init mx53_clocks_init()
 	clk_set_rate(clk[esdhc_b_podf], 200000000);
 
 	/* System timer */
-	mxc_timer_init(MX53_IO_ADDRESS(MX53_GPT1_BASE_ADDR), MX53_INT_GPT);
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx53-gpt");
+	base = of_iomap(np, 0);
+	WARN_ON(!base);
+	irq = irq_of_parse_and_map(np, 0);
+	mxc_timer_init(base, irq);
 
 	clk_prepare_enable(clk[iim_gate]);
 	imx_print_silicon_rev("i.MX53", mx53_revision());
