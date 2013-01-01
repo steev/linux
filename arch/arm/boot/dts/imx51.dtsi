@@ -289,6 +289,15 @@
 				status = "disabled";
 			};
 
+			gpt: gpt@73fa0000 {
+				compatible = "fsl,imx51-gpt";
+				reg = <0x73fa0000 0x4000>;
+				interrupts = <39>;
+				/* sigh, mach-imx/time.c will ignore these.. */
+				clocks = <&clks 36>, <&clks 41>;
+				clock-names = "ipg", "per";
+			};
+
 			srtc: rtc@73fa4000 {
 				compatible = "fsl,imx51-rtc", "fsl,imx25-rtc";
 				reg = <0x73fa4000 0x4000>;
