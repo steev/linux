@@ -176,7 +176,7 @@ int __init mx6q_clocks_init(void)
 {
 	struct device_node *np;
 	void __iomem *base;
-	int i, irq;
+	int i;
 
 	clk[dummy] = imx_clk_fixed("dummy", 0);
 
@@ -436,11 +436,8 @@ int __init mx6q_clocks_init(void)
 	for (i = 0; i < ARRAY_SIZE(clks_init_on); i++)
 		clk_prepare_enable(clk[clks_init_on[i]]);
 
-	np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-gpt");
-	base = of_iomap(np, 0);
-	WARN_ON(!base);
-	irq = irq_of_parse_and_map(np, 0);
-	mxc_timer_init(base, irq);
+	imx_gpt_register();
+	imx_gpt_sched_clock_init();
 
 	return 0;
 }

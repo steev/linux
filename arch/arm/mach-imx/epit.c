@@ -1,5 +1,5 @@
 /*
- *  linux/arch/arm/plat-mxc/epit.c
+ *  linux/arch/arm/mach-imx/epit.c
  *
  *  Copyright (C) 2010 Sascha Hauer <s.hauer@pengutronix.de>
  *
