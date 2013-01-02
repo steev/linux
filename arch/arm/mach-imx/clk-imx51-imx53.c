@@ -95,8 +95,6 @@ static void __init mx5_clocks_common_init(void)
 {
 	int i;
 
-	clk[dummy] = imx_clk_fixed("dummy", 0);
-
 	clk[lp_apm] = imx_clk_mux("lp_apm", MXC_CCM_CCSR, 9, 1,
 				lp_apm_sel, ARRAY_SIZE(lp_apm_sel));
 	clk[periph_apm] = imx_clk_mux("periph_apm", MXC_CCM_CBCMR, 12, 2,
@@ -278,9 +276,9 @@ static void __init mx5_clocks_common_init(void)
 	clk_register_clkdev(clk[sdma_gate], NULL, "imx35-sdma");
 	clk_register_clkdev(clk[cpu_podf], NULL, "cpu0");
 	clk_register_clkdev(clk[iim_gate], "iim", NULL);
-	clk_register_clkdev(clk[dummy], NULL, "imx2-wdt.0");
-	clk_register_clkdev(clk[dummy], NULL, "imx2-wdt.1");
-	clk_register_clkdev(clk[dummy], NULL, "imx-keypad");
+	clk_register_clkdev(__clk_lookup("dummy"), NULL, "imx2-wdt.0");
+	clk_register_clkdev(__clk_lookup("dummy"), NULL, "imx2-wdt.1");
+	clk_register_clkdev(__clk_lookup("dummy"), NULL, "imx-keypad");
 	clk_register_clkdev(clk[tve_gate], NULL, "imx-tve.0");
 	clk_register_clkdev(clk[ipu_di1_gate], "di1", "imx-tve.0");
 	clk_register_clkdev(clk[gpc_dvfs], "gpc_dvfs", NULL);
@@ -363,16 +361,16 @@ int __init mx51_clocks_init(void)
 	clk_register_clkdev(clk[ipu_di1_gate], "di1", "40000000.ipu");
 	clk_register_clkdev(clk[usb_phy_gate], "phy", "mxc-ehci.0");
 	clk_register_clkdev(clk[esdhc1_ipg_gate], "ipg", "sdhci-esdhc-imx51.0");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx51.0");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx51.0");
 	clk_register_clkdev(clk[esdhc1_per_gate], "per", "sdhci-esdhc-imx51.0");
 	clk_register_clkdev(clk[esdhc2_ipg_gate], "ipg", "sdhci-esdhc-imx51.1");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx51.1");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx51.1");
 	clk_register_clkdev(clk[esdhc2_per_gate], "per", "sdhci-esdhc-imx51.1");
 	clk_register_clkdev(clk[esdhc3_ipg_gate], "ipg", "sdhci-esdhc-imx51.2");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx51.2");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx51.2");
 	clk_register_clkdev(clk[esdhc3_per_gate], "per", "sdhci-esdhc-imx51.2");
 	clk_register_clkdev(clk[esdhc4_ipg_gate], "ipg", "sdhci-esdhc-imx51.3");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx51.3");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx51.3");
 	clk_register_clkdev(clk[esdhc4_per_gate], "per", "sdhci-esdhc-imx51.3");
 
 	/* ipu di external clock to pll3_sw */
@@ -463,16 +461,16 @@ int __init mx53_clocks_init()
 	clk_register_clkdev(clk[ipu_gate], "hsp", "18000000.ipu");
 	clk_register_clkdev(clk[usb_phy1_gate], "usb_phy1", "mxc-ehci.0");
 	clk_register_clkdev(clk[esdhc1_ipg_gate], "ipg", "sdhci-esdhc-imx53.0");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx53.0");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx53.0");
 	clk_register_clkdev(clk[esdhc1_per_gate], "per", "sdhci-esdhc-imx53.0");
 	clk_register_clkdev(clk[esdhc2_ipg_gate], "ipg", "sdhci-esdhc-imx53.1");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx53.1");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx53.1");
 	clk_register_clkdev(clk[esdhc2_per_gate], "per", "sdhci-esdhc-imx53.1");
 	clk_register_clkdev(clk[esdhc3_ipg_gate], "ipg", "sdhci-esdhc-imx53.2");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx53.2");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx53.2");
 	clk_register_clkdev(clk[esdhc3_per_gate], "per", "sdhci-esdhc-imx53.2");
 	clk_register_clkdev(clk[esdhc4_ipg_gate], "ipg", "sdhci-esdhc-imx53.3");
-	clk_register_clkdev(clk[dummy], "ahb", "sdhci-esdhc-imx53.3");
+	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx53.3");
 	clk_register_clkdev(clk[esdhc4_per_gate], "per", "sdhci-esdhc-imx53.3");
 
 	/* set SDHC root clock to 200MHZ*/
