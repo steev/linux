@@ -302,6 +302,7 @@
 				interrupts = <39>;
 				clocks = <&clks 36>, <&clks 41>;
 				clock-names = "ipg", "per";
+				linux,scheduler-clock;
 			};
 
 			srtc: rtc@73fa4000 {
