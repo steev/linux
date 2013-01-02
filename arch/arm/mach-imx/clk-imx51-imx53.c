@@ -382,8 +382,8 @@ int __init mx51_clocks_init(void)
 	clk_set_rate(clk[esdhc_a_podf], 166250000);
 	clk_set_rate(clk[esdhc_b_podf], 166250000);
 
+	/* System timers - will use sched_clock based on dt property */
 	imx_gpt_register();
-	imx_gpt_sched_clock_init();
 
 	clk_prepare_enable(clk[iim_gate]);
 	imx_print_silicon_rev("i.MX51", mx51_revision());
@@ -471,8 +471,8 @@ int __init mx53_clocks_init()
 	clk_set_rate(clk[esdhc_a_podf], 200000000);
 	clk_set_rate(clk[esdhc_b_podf], 200000000);
 
+	/* System timers - will use sched_clock based on dt property */
 	imx_gpt_register();
-	imx_gpt_sched_clock_init();
 
 	clk_prepare_enable(clk[iim_gate]);
 	imx_print_silicon_rev("i.MX53", mx53_revision());

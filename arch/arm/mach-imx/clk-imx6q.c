@@ -436,8 +436,8 @@ int __init mx6q_clocks_init(void)
 	for (i = 0; i < ARRAY_SIZE(clks_init_on); i++)
 		clk_prepare_enable(clk[clks_init_on[i]]);
 
+	/* System timers - will use sched_clock based on dt property */
 	imx_gpt_register();
-	imx_gpt_sched_clock_init();
 
 	return 0;
 }

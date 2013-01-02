@@ -55,15 +55,8 @@ extern void imx51_soc_init(void);
 extern void imx51_init_late(void);
 extern void imx53_init_late(void);
 
-//extern void epit_timer_init(void __iomem *base, int irq);
-//extern void mxc_timer_init(void __iomem *, int);
-
 void imx_gpt_register(void);
-int imx_gpt_sched_clock_init(void);
-
-//void imx_epit_register(void);
-/* there are two EPITs on i.MX53 and i.MX6, how do we register both but select one for sched_clock? */
-//int imx_epit_sched_clock_init(void);
+void imx_epit_register(void);
 
 extern int mx1_clocks_init(unsigned long fref);
 extern int mx21_clocks_init(unsigned long lref, unsigned long fref);

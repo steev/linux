@@ -72,11 +72,16 @@ static u32 notrace imx_gpt_read_sched_clock(void)
 }
 
 
-static int __init imx_gpt_clocksource_init(struct clk *timer_clk)
+static int __init imx_gpt_clocksource_init(struct clk *timer_clk, bool use_sched_clock)
 {
-	unsigned int c = clk_get_rate(timer_clk);
+	unsigned int rate = clk_get_rate(timer_clk);
 
-	return clocksource_mmio_init(imx_gpt_base + REG_GPTCNT, "imx_gpt", c, 200, 32,
+	if (use_sched_clock) {
+		sched_clock_reg = REG_GPTCNT;
+		setup_sched_clock(imx_gpt_read_sched_clock, 32, rate);
+	}
+
+	return clocksource_mmio_init(imx_gpt_base + REG_GPTCNT, "gpt", rate, 200, 32,
 			clocksource_mmio_readl_up);
 }
 
@@ -218,6 +223,7 @@ void __init imx_gpt_register(void)
 	void __iomem *base;
 	int irq;
 	struct clk *clk_ipg, *clk_per;
+	bool use_sched_clock = false;
 
 	np = of_find_matching_node(NULL, imx_gpt_of_match);
 
@@ -255,33 +261,13 @@ void __init imx_gpt_register(void)
 
 	imx_gpt_write(GPTCR_FLAGS, REG_GPTCR);
 
+	if (of_find_property(np, "linux,scheduler-clock", NULL))
+		use_sched_clock = true;
+
 	/* init and register the timer to the framework */
-	imx_gpt_clocksource_init(clk_per);
+	imx_gpt_clocksource_init(clk_per, use_sched_clock);
 	imx_gpt_clockevent_init(clk_per);
 
 	/* Make irqs happen */
 	setup_irq(irq, &imx_gpt_irq);
-}
-
-static int __init imx_gpt_available(void)
-{
-	if (imx_gpt_base)
-		return 0;
-
-	return -ENODEV;
-}
-
-int __init imx_gpt_sched_clock_init(void)
-{
-	unsigned long rate;
-	int err = imx_gpt_available();
-	if (err)
-		return err;
-
-	rate = clk_get_rate(imx_gpt_clk);
-
-	sched_clock_reg = REG_GPTCNT;
-	setup_sched_clock(imx_gpt_read_sched_clock, 32, rate);
-
-	return err;
 }
