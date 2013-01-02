@@ -1649,7 +1649,6 @@ config HZ
 	default OMAP_32K_TIMER_HZ if ARCH_OMAP && OMAP_32K_TIMER
 	default AT91_TIMER_HZ if ARCH_AT91
 	default SHMOBILE_TIMER_HZ if ARCH_SHMOBILE
-	default 100
 
 config THUMB2_KERNEL
 	bool "Compile the kernel in Thumb-2 mode"
@@ -1849,6 +1848,8 @@ config CC_STACKPROTECTOR
 	  overwrite the canary, which gets detected and the attack is then
 	  neutralized via a kernel panic.
 	  This feature requires gcc version 4.2 or above.
+
+source "kernel/Kconfig.hz"
 
 config XEN_DOM0
 	def_bool y
