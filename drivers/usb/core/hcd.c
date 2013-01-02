@@ -22,6 +22,8 @@
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#define DEBUG 1
+
 #include <linux/bcd.h>
 #include <linux/module.h>
 #include <linux/version.h>

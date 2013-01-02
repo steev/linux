@@ -298,17 +298,22 @@
 
 &usbotg {
 	phy-mode = "utmiw";
+	disable-over-current;
 	status = "okay";
 };
 
 &usbhost1 {
 	phy-mode = "ulpi";
 	ext-clk;
+	disable-over-current;
+	chrgvbus-is-vbus-det;
 	status = "okay";
 };
 
 &usbhost2 {
 	phy-mode = "ulpi";
 	ext-clk;
+	disable-over-current;
+	chrgvbus-is-vbus-det;
 	status = "okay";
 };

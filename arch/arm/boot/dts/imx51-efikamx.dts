@@ -113,6 +113,21 @@
 	};
 */
 
+	usb_hub_reset: usb-hub-reset {
+		compatible = "regulator-fixed";
+		regulator-name = "usb-hub-reset";
+		gpio = <&gpio1 5 1>;
+		enable-active-low;
+	};
+
+	usb_phy_reset: usb-phy-reset {
+		compatible = "regulator-fixed";
+		regulator-name = "usb-phy-reset";
+		gpio = <&gpio2 9 1>;
+		enable-active-low;
+	};
+
+
 /* regulator test to turn on red led. make sure red gpio-leds is commented out if you do this! */ 
 /*
 	red-led {
@@ -276,10 +291,12 @@
 			};
 
 			reg_1V8_DIG2: vgen3 {
-				/* 1V8_DIG2 - (1.8V IO supply) - 1V8_DISPLAY (VGA) et al.*/
+				/* 1V8_DIG2 - (1.8V IO supply) - 1V8_DISPLAY (VGA), USB HUB et al.*/
 				regulator-name = "1V8_DIG2";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
 			};
 
 			reg_2V775_BOOT: viohi {
@@ -387,6 +404,19 @@
 				498 0x1e5 /* MX51_PAD_USBH1_DATA7__USBH1_DATA7 */
 			>;
 		};
+
+		pinctrl_usbh1_stp_usb_1: usbh1stpusbgrp {
+			fsl,pins = <
+				469 0x185 /* MX51_PAD_USBH1_STP__USBH1_STP */
+			>;
+		};
+
+		pinctrl_usbh1_stp_gpio_1: usbh1stpgpiogrp {
+			fsl,pins = <
+				467 0x85 /* MX51_PAD_USBH1_STP__GPIO1_27 */
+			>;
+		};
+
 	};
 
 	uart1 {
@@ -479,15 +509,24 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <>;
 	fsl,usbmisc = <&usbmisc 0>;
+	dr_mode = "host";
 	phy-mode = "utmiw";
+	disable-over-current;
 	status = "okay";
 };
 
 &usbhost1 {
-	pinctrl-names = "default";
+	pinctrl-names = "default"; //, "stp-gpio", "stp-usb";
 	pinctrl-0 = <&pinctrl_usbh1_1>;
+//	pinctrl-1 = <&pinctrl_usbh1_stp_gpio_1>;
+//	pinctrl-2 = <&pinctrl_usbh1_stp_usb_1>;
+//	stp-gpio = <&gpio1 27 0>;
 	fsl,usbmisc = <&usbmisc 1>;
 	phy-mode = "ulpi";
 	ext-clk;
+//	disable-over-current;
+	hub-supply = <&reg_1V8_DIG2>;
+	hub-reset-supply = <&usb_hub_reset>;
+	phy-reset-supply = <&usb_phy_reset>;
 	status = "okay";
 };

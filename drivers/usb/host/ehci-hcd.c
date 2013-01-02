@@ -19,7 +19,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-#define	DEBUG 1
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/dmapool.h>

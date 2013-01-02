@@ -12,6 +12,8 @@
  *
  */
 
+#define DEBUG 1
+
 #include <linux/kernel.h>
 #include <linux/usb.h>
 #include <linux/io.h>

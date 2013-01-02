@@ -12,6 +12,8 @@
  * (at your option) any later version.
  */
 
+#define DEBUG 1
+
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/io.h>

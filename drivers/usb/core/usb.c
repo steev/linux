@@ -21,6 +21,8 @@
  * are evil.
  */
 
+#define DEBUG 1
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/string.h>
