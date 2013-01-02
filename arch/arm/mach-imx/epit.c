@@ -18,6 +18,19 @@
  * MA 02110-1301, USA.
  */
 
+#include <linux/interrupt.h>
+#include <linux/irq.h>
+#include <linux/clockchips.h>
+#include <linux/clk.h>
+#include <linux/err.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
+
+#include <asm/sched_clock.h>
+
+#include "common.h"
+#include "hardware.h"
+
 #define EPITCR		0x00
 #define EPITSR		0x04
 #define EPITLR		0x08
@@ -46,62 +59,42 @@
 
 #define EPITSR_OCIF			(1 << 0)
 
-#include <linux/interrupt.h>
-#include <linux/irq.h>
-#include <linux/clockchips.h>
-#include <linux/clk.h>
-#include <linux/err.h>
-#include <asm/mach/time.h>
-
-#include "common.h"
-#include "hardware.h"
-
 static struct clock_event_device clockevent_epit;
 static enum clock_event_mode clockevent_mode = CLOCK_EVT_MODE_UNUSED;
 
-static void __iomem *timer_base;
+static void __iomem *epit_base;
+static u32 sched_clock_reg;
 
-static inline void epit_irq_disable(void)
+#define epit_read(reg)		__raw_readl(epit_base + (reg))
+#define epit_write(val,reg)	__raw_writel(val, epit_base + (reg))
+
+static u32 notrace epit_read_sched_clock(void)
 {
-	u32 val;
-
-	val = __raw_readl(timer_base + EPITCR);
-	val &= ~EPITCR_OCIEN;
-	__raw_writel(val, timer_base + EPITCR);
+	return sched_clock_reg ? (0xffffffff - epit_read(sched_clock_reg)) : 0;
 }
 
-static inline void epit_irq_enable(void)
+
+static int __init epit_clocksource_init(struct clk *timer_clk, bool use_sched_clock)
 {
-	u32 val;
+	unsigned int rate = clk_get_rate(timer_clk);
 
-	val = __raw_readl(timer_base + EPITCR);
-	val |= EPITCR_OCIEN;
-	__raw_writel(val, timer_base + EPITCR);
-}
-
-static void epit_irq_acknowledge(void)
-{
-	__raw_writel(EPITSR_OCIF, timer_base + EPITSR);
-}
-
-static int __init epit_clocksource_init(struct clk *timer_clk)
-{
-	unsigned int c = clk_get_rate(timer_clk);
-
-	return clocksource_mmio_init(timer_base + EPITCNR, "epit", c, 200, 32,
+	if (use_sched_clock) {
+		sched_clock_reg = EPITCNR;
+		setup_sched_clock(epit_read_sched_clock, 32, rate);
+	}
+	
+	return clocksource_mmio_init(epit_base + EPITCNR, "epit", rate, 200, 32,
 			clocksource_mmio_readl_down);
 }
 
 /* clock event */
-
-static int epit_set_next_event(unsigned long evt,
-			      struct clock_event_device *unused)
+static int epit_set_next_event(unsigned long evt, struct clock_event_device *unused)
 {
 	unsigned long tcmp;
 
-	tcmp = __raw_readl(timer_base + EPITCNR);
+	tcmp = epit_read(EPITCNR);
 
-	__raw_writel(tcmp - evt, timer_base + EPITCMPR);
+	epit_write(tcmp - evt, EPITCMPR);
 
 	return 0;
 }
@@ -110,21 +103,24 @@ static void epit_set_mode(enum clock_event_mode mode,
 				struct clock_event_device *evt)
 {
 	unsigned long flags;
-
+	u32 val;
+	
 	/*
 	 * The timer interrupt generation is disabled at least
 	 * for enough time to call epit_set_next_event()
 	 */
 	local_irq_save(flags);
 
-	/* Disable interrupt in GPT module */
-	epit_irq_disable();
+	/* Disable interrupt in EPIT module */
+	val = epit_read(EPITCR);
+	val &= ~EPITCR_OCIEN;
+	epit_write(val, EPITCR);
 
 	if (mode != clockevent_mode) {
 		/* Set event time into far-far future */
 
 		/* Clear pending interrupt */
-		epit_irq_acknowledge();
+		epit_write(EPITSR_OCIF, EPITSR);
 	}
 
 	/* Remember timer mode */
@@ -133,18 +129,19 @@ static void epit_set_mode(enum clock_event_mode mode,
 
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
-		printk(KERN_ERR "epit_set_mode: Periodic mode is not "
-				"supported for i.MX EPIT\n");
+		pr_err("%s: CLK_EVT_MODE_PERIODIC is not supported for i.MX EPIT\n", __func__);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
-	/*
-	 * Do not put overhead of interrupt enable/disable into
-	 * epit_set_next_event(), the core has about 4 minutes
-	 * to call epit_set_next_event() or shutdown clock after
-	 * mode switching
-	 */
+		/*
+		* Do not put overhead of interrupt enable/disable into
+		* epit_set_next_event(), the core has about 4 minutes
+		* to call epit_set_next_event() or shutdown clock after
+		* mode switching
+		*/
 		local_irq_save(flags);
-		epit_irq_enable();
+		val = epit_read(EPITCR);
+		val |= EPITCR_OCIEN;
+		epit_write(val, EPITCR);		
 		local_irq_restore(flags);
 		break;
 	case CLOCK_EVT_MODE_SHUTDOWN:
@@ -162,7 +159,7 @@ static irqreturn_t epit_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = &clockevent_epit;
 
-	epit_irq_acknowledge();
+	epit_write(EPITSR_OCIF, EPITSR);
 
 	evt->event_handler(evt);
 
@@ -178,7 +175,6 @@ static struct irqaction epit_timer_irq = {
 static struct clock_event_device clockevent_epit = {
 	.name		= "epit",
 	.features	= CLOCK_EVT_FEAT_ONESHOT,
-	.shift		= 32,
 	.set_mode	= epit_set_mode,
 	.set_next_event	= epit_set_next_event,
 	.rating		= 200,
@@ -186,48 +182,69 @@ static struct clock_event_device clockevent_epit = {
 
 static int __init epit_clockevent_init(struct clk *timer_clk)
 {
-	unsigned int c = clk_get_rate(timer_clk);
-
-	clockevent_epit.mult = div_sc(c, NSEC_PER_SEC,
-					clockevent_epit.shift);
-	clockevent_epit.max_delta_ns =
-			clockevent_delta2ns(0xfffffffe, &clockevent_epit);
-	clockevent_epit.min_delta_ns =
-			clockevent_delta2ns(0x800, &clockevent_epit);
+	unsigned int rate = clk_get_rate(timer_clk);
 
 	clockevent_epit.cpumask = cpumask_of(0);
 
-	clockevents_register_device(&clockevent_epit);
+	clockevents_config_and_register(&clockevent_epit, rate, 0x800, 0xfffffffe);
 
 	return 0;
 }
 
-void __init epit_timer_init(void __iomem *base, int irq)
-{
-	struct clk *timer_clk;
+static const struct of_device_id epit_of_match[] __initconst = {
+	{ .compatible = "fsl,imx6q-epit", },
+	{ .compatible = "fsl,imx51-epit", },
+	{ .compatible = "fsl,imx35-epit", },
+	{},
+};
 
-	timer_clk = clk_get_sys("imx-epit.0", NULL);
-	if (IS_ERR(timer_clk)) {
-		pr_err("i.MX epit: unable to get clk\n");
+void __init imx_epit_register(void)
+{
+	struct device_node *np;
+	void __iomem *base;
+	int irq;
+	struct clk *clk_ipg, *clk_per;
+	bool use_sched_clock = false;
+	
+	np = of_find_matching_node(NULL, epit_of_match);
+
+	base = of_iomap(np, 0);
+	WARN_ON(!base);
+
+	irq = irq_of_parse_and_map(np, 0);
+
+	clk_ipg = of_clk_get_by_name(np, "ipg");
+	if (IS_ERR(clk_ipg)) {
+		pr_err("%s: unable to get ipg clock\n", __func__);
 		return;
 	}
 
-	clk_prepare_enable(timer_clk);
+	clk_per = of_clk_get_by_name(np, "per");
+	if (IS_ERR(clk_per)) {
+		pr_err("%s: unable to get per clock\n", __func__);
+		return;
+	}
 
-	timer_base = base;
+	clk_prepare_enable(clk_ipg);
+	clk_prepare_enable(clk_per);
+
+	pr_info("%s: base 0x%08x, ipg rate %ld, per rate %ld\n", __func__,
+			base, clk_get_rate(clk_ipg), clk_get_rate(clk_per));
+	
+	epit_base = base;
 
 	/*
 	 * Initialise to a known state (all timers off, and timing reset)
 	 */
-	__raw_writel(0x0, timer_base + EPITCR);
+	epit_write(0x0, EPITCR);
 
-	__raw_writel(0xffffffff, timer_base + EPITLR);
-	__raw_writel(EPITCR_EN | EPITCR_CLKSRC_REF_HIGH | EPITCR_WAITEN,
-			timer_base + EPITCR);
+#define EPITCR_FLAGS 	EPITCR_EN | EPITCR_CLKSRC_REF_HIGH | EPITCR_WAITEN
+	epit_write(0xffffffff, EPITLR);
+	epit_write(EPITCR_FLAGS, EPITCR);
 
 	/* init and register the timer to the framework */
-	epit_clocksource_init(timer_clk);
-	epit_clockevent_init(timer_clk);
+	epit_clocksource_init(clk_ipg, use_sched_clock);
+	epit_clockevent_init(clk_ipg);
 
 	/* Make irqs happen */
 	setup_irq(irq, &epit_timer_irq);

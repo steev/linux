@@ -31,7 +31,6 @@
 #include <linux/of_irq.h>
 
 #include <asm/sched_clock.h>
-#include <asm/mach/time.h>
 
 #include "common.h"
 #include "hardware.h"
@@ -57,7 +56,6 @@
 
 
 static void __iomem *imx_gpt_base;
-static struct clk *imx_gpt_clk;
 static u32 sched_clock_reg;
 
 #define imx_gpt_read(reg)	__raw_readl(imx_gpt_base + (reg))
@@ -190,7 +188,6 @@ static struct irqaction imx_gpt_irq = {
 static struct clock_event_device imx_gpt_clockevent = {
 	.name		= "imx_gpt",
 	.features	= CLOCK_EVT_FEAT_ONESHOT,
-	.shift		= 32,
 	.set_mode	= imx_gpt_set_mode,
 	.set_next_event	= imx_gpt_set_next_event,
 	.rating		= 200,
@@ -198,14 +195,11 @@ static struct clock_event_device imx_gpt_clockevent = {
 
 static int __init imx_gpt_clockevent_init(struct clk *timer_clk)
 {
-	unsigned int c = clk_get_rate(timer_clk);
+	unsigned int rate = clk_get_rate(timer_clk);
 
-	imx_gpt_clockevent.mult = div_sc(c, NSEC_PER_SEC, imx_gpt_clockevent.shift);
-	imx_gpt_clockevent.max_delta_ns = clockevent_delta2ns(0xfffffffe, &imx_gpt_clockevent);
-	imx_gpt_clockevent.min_delta_ns = clockevent_delta2ns(0xff, &imx_gpt_clockevent);
 	imx_gpt_clockevent.cpumask = cpumask_of(0);
 
-	clockevents_register_device(&imx_gpt_clockevent);
+	clockevents_config_and_register(&imx_gpt_clockevent, rate, 0xff, 0xfffffffe);
 
 	return 0;
 }
@@ -247,8 +241,10 @@ void __init imx_gpt_register(void)
 	clk_prepare_enable(clk_ipg);
 	clk_prepare_enable(clk_per);
 
+	pr_info("%s: base 0x%08x, ipg rate %ld, per rate %ld\n", __func__,
+		base, clk_get_rate(clk_ipg), clk_get_rate(clk_per));
+			
 	imx_gpt_base = base;
-	imx_gpt_clk = clk_per;
 
 	/*
 	 * Initialise to a known state (all timers off, and timing reset)
@@ -258,7 +254,6 @@ void __init imx_gpt_register(void)
 	imx_gpt_write(0, REG_GPTPR); /* see datasheet note */
 
 #define GPTCR_FLAGS	GPTCR_CLKSRC_IPG_HIGH | GPTCR_FRR | GPTCR_WAITEN | GPTCR_EN
-
 	imx_gpt_write(GPTCR_FLAGS, REG_GPTCR);
 
 	if (of_find_property(np, "linux,scheduler-clock", NULL))

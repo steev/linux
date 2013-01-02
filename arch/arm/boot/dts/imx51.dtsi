@@ -296,13 +296,31 @@
 				status = "disabled";
 			};
 
-			gpt: gpt@73fa0000 {
+			gpt: timer@73fa0000 {
 				compatible = "fsl,imx51-gpt";
 				reg = <0x73fa0000 0x4000>;
 				interrupts = <39>;
 				clocks = <&clks 36>, <&clks 41>;
 				clock-names = "ipg", "per";
 				linux,scheduler-clock;
+			};
+
+			epit1: timer@73fac000 {
+				compatible = "fsl,imx51-epit";
+				reg = <0x73fac000 0x4000>;
+				interrupts = <40>;
+				clocks = <&clks 152>, <&clks 153>;
+				clock-names = "ipg", "per";
+			};
+
+			epit2: timer@73fb0000 {
+				/* for now we can only use one epit so don't announce the second..
+				 * compatible = "fsl,imx51-epit";
+				 */
+				reg = <0x73fb0000 0x4000>;
+				interrupts = <40>;
+				clocks = <&clks 154>, <&clks 155>;
+				clock-names = "ipg", "per";
 			};
 
 			srtc: rtc@73fa4000 {

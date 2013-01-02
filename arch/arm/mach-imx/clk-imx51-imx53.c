@@ -284,6 +284,7 @@ static void __init mx5_clocks_common_init(void)
 	clk_register_clkdev(clk[gpc_dvfs], "gpc_dvfs", NULL);
 	clk_register_clkdev(clk[epit1_ipg_gate], "ipg", "imx-epit.0");
 	clk_register_clkdev(clk[epit1_hf_gate], "per", "imx-epit.0");
+	/* I think this is wrong on i.MX51 - there's only one EPIT! */
 	clk_register_clkdev(clk[epit2_ipg_gate], "ipg", "imx-epit.1");
 	clk_register_clkdev(clk[epit2_hf_gate], "per", "imx-epit.1");
 
@@ -384,6 +385,7 @@ int __init mx51_clocks_init(void)
 
 	/* System timers - will use sched_clock based on dt property */
 	imx_gpt_register();
+	imx_epit_register();
 
 	clk_prepare_enable(clk[iim_gate]);
 	imx_print_silicon_rev("i.MX51", mx51_revision());
