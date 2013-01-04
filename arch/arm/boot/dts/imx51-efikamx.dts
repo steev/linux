@@ -267,7 +267,7 @@
 			};
 
 			reg_2V5: vcam {
-				/* 2V5 - ??? */
+				/* 2V5 - voltage divider for PMIC ADC input */
 				regulator-name = "2V5";
 				regulator-min-microvolt = <2500000>;
 				regulator-max-microvolt = <2500000>;
