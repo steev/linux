@@ -302,6 +302,7 @@
 				interrupts = <39>;
 				clocks = <&clks 36>, <&clks 41>;
 				clock-names = "ipg", "per";
+				linux,delay-timer;
 			};
 
 			epit1: timer@73fac000 {

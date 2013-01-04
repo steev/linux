@@ -31,6 +31,7 @@
 #include <linux/of_irq.h>
 
 #include <asm/sched_clock.h>
+#include <asm/delay.h>
 
 #include "common.h"
 #include "hardware.h"
@@ -69,6 +70,10 @@ static u32 notrace imx_gpt_read_sched_clock(void)
 	return sched_clock_reg ? imx_gpt_read(sched_clock_reg) : 0;
 }
 
+static unsigned long imx_gpt_read_current_timer(void)
+{
+	return imx_gpt_read(REG_GPTCNT);
+}
 
 static int __init imx_gpt_clocksource_init(struct clk *timer_clk, bool use_sched_clock)
 {
@@ -193,6 +198,10 @@ static struct clock_event_device imx_gpt_clockevent = {
 	.rating		= 200,
 };
 
+static struct delay_timer imx_gpt_delay_timer = {
+	.read_current_timer = imx_gpt_read_current_timer,
+};
+
 static int __init imx_gpt_clockevent_init(struct clk *timer_clk)
 {
 	unsigned int rate = clk_get_rate(timer_clk);
@@ -265,4 +274,9 @@ void __init imx_gpt_register(void)
 
 	/* Make irqs happen */
 	setup_irq(irq, &imx_gpt_irq);
+
+	if (of_find_property(np, "linux,delay-timer", NULL)) {
+		imx_gpt_delay_timer.freq = clk_get_rate(clk_per);
+		register_current_timer_delay(&imx_gpt_delay_timer);
+	}
 }

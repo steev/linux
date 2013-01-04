@@ -73,7 +73,6 @@ static u32 notrace epit_read_sched_clock(void)
 	return sched_clock_reg ? ~epit_read(sched_clock_reg) : 0;
 }
 
-
 static int __init epit_clocksource_init(struct clk *timer_clk, bool use_sched_clock)
 {
 	unsigned int rate = clk_get_rate(timer_clk);
