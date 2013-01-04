@@ -243,7 +243,7 @@ void __init imx_gpt_register(void)
 
 	pr_info("%s: base 0x%08x, ipg rate %ld, per rate %ld\n", __func__,
 		base, clk_get_rate(clk_ipg), clk_get_rate(clk_per));
-			
+
 	imx_gpt_base = base;
 
 	/*

@@ -70,7 +70,7 @@ static u32 sched_clock_reg;
 
 static u32 notrace epit_read_sched_clock(void)
 {
-	return sched_clock_reg ? (0xffffffff - epit_read(sched_clock_reg)) : 0;
+	return sched_clock_reg ? ~epit_read(sched_clock_reg) : 0;
 }
 
 
@@ -82,7 +82,7 @@ static int __init epit_clocksource_init(struct clk *timer_clk, bool use_sched_cl
 		sched_clock_reg = EPITCNR;
 		setup_sched_clock(epit_read_sched_clock, 32, rate);
 	}
-	
+
 	return clocksource_mmio_init(epit_base + EPITCNR, "epit", rate, 200, 32,
 			clocksource_mmio_readl_down);
 }
@@ -104,7 +104,7 @@ static void epit_set_mode(enum clock_event_mode mode,
 {
 	unsigned long flags;
 	u32 val;
-	
+
 	/*
 	 * The timer interrupt generation is disabled at least
 	 * for enough time to call epit_set_next_event()
@@ -141,7 +141,7 @@ static void epit_set_mode(enum clock_event_mode mode,
 		local_irq_save(flags);
 		val = epit_read(EPITCR);
 		val |= EPITCR_OCIEN;
-		epit_write(val, EPITCR);		
+		epit_write(val, EPITCR);
 		local_irq_restore(flags);
 		break;
 	case CLOCK_EVT_MODE_SHUTDOWN:
@@ -205,7 +205,7 @@ void __init imx_epit_register(void)
 	int irq;
 	struct clk *clk_ipg, *clk_per;
 	bool use_sched_clock = false;
-	
+
 	np = of_find_matching_node(NULL, epit_of_match);
 
 	base = of_iomap(np, 0);
@@ -230,7 +230,7 @@ void __init imx_epit_register(void)
 
 	pr_info("%s: base 0x%08x, ipg rate %ld, per rate %ld\n", __func__,
 			base, clk_get_rate(clk_ipg), clk_get_rate(clk_per));
-	
+
 	epit_base = base;
 
 	/*
@@ -241,6 +241,9 @@ void __init imx_epit_register(void)
 #define EPITCR_FLAGS 	EPITCR_EN | EPITCR_CLKSRC_REF_HIGH | EPITCR_WAITEN
 	epit_write(0xffffffff, EPITLR);
 	epit_write(EPITCR_FLAGS, EPITCR);
+
+	if (of_find_property(np, "linux,scheduler-clock", NULL))
+		use_sched_clock = true;
 
 	/* init and register the timer to the framework */
 	epit_clocksource_init(clk_ipg, use_sched_clock);
