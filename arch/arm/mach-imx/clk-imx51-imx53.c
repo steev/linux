@@ -196,10 +196,6 @@ static void __init mx5_clocks_common_init(void)
 	clk[vpu_s] = imx_clk_mux("vpu_sel", MXC_CCM_CBCMR, 14, 2, vpu_sel, ARRAY_SIZE(vpu_sel));
 	clk[vpu_gate] = imx_clk_gate2("vpu_gate", "vpu_sel", MXC_CCM_CCGR5, 6);
 	clk[vpu_reference_gate] = imx_clk_gate2("vpu_reference_gate", "osc", MXC_CCM_CCGR5, 8);
-	clk[uart4_ipg_gate] = imx_clk_gate2("uart4_ipg_gate", "ipg", MXC_CCM_CCGR7, 8);
-	clk[uart4_per_gate] = imx_clk_gate2("uart4_per_gate", "uart_root", MXC_CCM_CCGR7, 10);
-	clk[uart5_ipg_gate] = imx_clk_gate2("uart5_ipg_gate", "ipg", MXC_CCM_CCGR7, 12);
-	clk[uart5_per_gate] = imx_clk_gate2("uart5_per_gate", "uart_root", MXC_CCM_CCGR7, 14);
 	clk[gpc_dvfs] = imx_clk_gate2("gpc_dvfs", "dummy", MXC_CCM_CCGR5, 24);
 
 	clk[ssi_apm] = imx_clk_mux("ssi_apm", MXC_CCM_CSCMR1, 8, 2, ssi_apm_sels, ARRAY_SIZE(ssi_apm_sels));
@@ -242,10 +238,6 @@ static void __init mx5_clocks_common_init(void)
 	clk_register_clkdev(clk[uart2_ipg_gate], "ipg", "imx21-uart.1");
 	clk_register_clkdev(clk[uart3_per_gate], "per", "imx21-uart.2");
 	clk_register_clkdev(clk[uart3_ipg_gate], "ipg", "imx21-uart.2");
-	clk_register_clkdev(clk[uart4_per_gate], "per", "imx21-uart.3");
-	clk_register_clkdev(clk[uart4_ipg_gate], "ipg", "imx21-uart.3");
-	clk_register_clkdev(clk[uart5_per_gate], "per", "imx21-uart.4");
-	clk_register_clkdev(clk[uart5_ipg_gate], "ipg", "imx21-uart.4");
 	clk_register_clkdev(clk[ecspi1_per_gate], "per", "imx51-ecspi.0");
 	clk_register_clkdev(clk[ecspi1_ipg_gate], "ipg", "imx51-ecspi.0");
 	clk_register_clkdev(clk[ecspi2_per_gate], "per", "imx51-ecspi.1");
@@ -435,6 +427,10 @@ int __init mx53_clocks_init()
 	clk[can2_serial_gate] = imx_clk_gate2("can2_serial_gate", "can_sel", MXC_CCM_CCGR4, 8);
 	clk[can2_ipg_gate] = imx_clk_gate2("can2_ipg_gate", "ipg", MXC_CCM_CCGR4, 6);
 	clk[i2c3_gate] = imx_clk_gate2("i2c3_gate", "per_root", MXC_CCM_CCGR1, 22);
+	clk[uart4_ipg_gate] = imx_clk_gate2("uart4_ipg_gate", "ipg", MXC_CCM_CCGR7, 8);
+	clk[uart4_per_gate] = imx_clk_gate2("uart4_per_gate", "uart_root", MXC_CCM_CCGR7, 10);
+	clk[uart5_ipg_gate] = imx_clk_gate2("uart5_ipg_gate", "ipg", MXC_CCM_CCGR7, 12);
+	clk[uart5_per_gate] = imx_clk_gate2("uart5_per_gate", "uart_root", MXC_CCM_CCGR7, 14);
 
 	for (i = 0; i < ARRAY_SIZE(clk); i++)
 		if (IS_ERR(clk[i]))
@@ -468,6 +464,10 @@ int __init mx53_clocks_init()
 	clk_register_clkdev(clk[esdhc4_ipg_gate], "ipg", "sdhci-esdhc-imx53.3");
 	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx53.3");
 	clk_register_clkdev(clk[esdhc4_per_gate], "per", "sdhci-esdhc-imx53.3");
+	clk_register_clkdev(clk[uart4_per_gate], "per", "imx21-uart.3");
+	clk_register_clkdev(clk[uart4_ipg_gate], "ipg", "imx21-uart.3");
+	clk_register_clkdev(clk[uart5_per_gate], "per", "imx21-uart.4");
+	clk_register_clkdev(clk[uart5_ipg_gate], "ipg", "imx21-uart.4");
 
 	/* set SDHC root clock to 200MHZ*/
 	clk_set_rate(clk[esdhc_a_podf], 200000000);
