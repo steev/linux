@@ -32,6 +32,8 @@
 #include "bits.h"
 #include "host.h"
 
+void hw_portsc_configure(struct ci13xxx *ci);
+
 static struct hc_driver __read_mostly ci_ehci_hc_driver;
 
 static irqreturn_t host_irq(struct ci13xxx *ci)
@@ -48,6 +50,11 @@ static int host_start(struct ci13xxx *ci)
 
 	if (usb_disabled())
 		return -ENODEV;
+
+	hw_portsc_configure(ci);
+
+	mdelay(10);
+
 
 	hcd = usb_create_hcd(&ci_ehci_hc_driver, ci->dev, dev_name(ci->dev));
 	if (!hcd)
@@ -66,32 +73,46 @@ static int host_start(struct ci13xxx *ci)
 	ehci->caps = ci->hw_bank.cap;
 	ehci->has_hostpc = ci->hw_bank.lpm;
 
-	if (ci->otg)
+	if (ci->otg) {
+		pr_err("%s: otg_set_vbus true\n", __func__);
 		otg_set_vbus(ci->otg, true);
+	}
 
 	ret = usb_add_hcd(hcd, 0, 0);
-	if (ret)
+	if (ret) {
+		pr_err("%s: add_hcd failed, putting hcd\n", __func__);
 		usb_put_hcd(hcd);
-	else
+	} else
 		ci->hcd = hcd;
-#if 0
+
 	/*
-	 * EfikaMX Smartbook has a hardware bug which
-	 * prevents usb from working unless CHRGVBUS is set.
+	 * EfikaMX Smartbook has a hardware quirk where host VBUS is
+	 * actually routed to hub VBUS_DET and VBUS is supplied
+	 * elsewhere. Without VBUS_DET the hub will not turn on the
+	 * internal USB logic and therefore not work. Since the PHY
+	 * is not connected to the VBUS drive logic, the only way
+	 * to generate the PHY VBUS signal input to VBUS_DET on the
+	 * hub is to connect the 100ohm resistor between the PHY 3.3V
+	 * supply and it's VBUS output giving us an active high GPIO
+	 * in all essence.
 	 */
-	if (ci->otg && (ci->platdata->flags & CI13XXX_PORTSC_PTS_ULPI)) {
+	if (ci->otg && (ci->platdata->flags & CI13XXX_PORTSC_PTS_ULPI) &&
+			(ci->platdata->flags & CI13XXX_CHRGVBUS_IS_VBUS_DET)) {
+		pr_err("%s: hacking CHRGVBUS\n", __func__);
 		flags = usb_phy_io_read(ci->transceiver, ULPI_OTG_CTRL);
 		flags |= ULPI_OTG_CTRL_CHRGVBUS;
 		ret = usb_phy_io_write(ci->transceiver, flags, ULPI_OTG_CTRL);
 	}
-#endif
-	pr_err("%s\n", __func__);
+
+	pr_err("%s returning (ci hcd 0x%08x)\n", __func__, ci->hcd);
 	return ret;
 }
 
 static void host_stop(struct ci13xxx *ci)
 {
 	struct usb_hcd *hcd = ci->hcd;
+
+	pr_err("%s\n", __func__);
 
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
@@ -115,6 +136,8 @@ int ci_hdrc_host_init(struct ci13xxx *ci)
 	ci->roles[CI_ROLE_HOST] = rdrv;
 
 	ehci_init_driver(&ci_ehci_hc_driver, NULL);
+
+	pr_err("%s\n", __func__);
 
 	return 0;
 }

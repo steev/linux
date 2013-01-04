@@ -18,6 +18,8 @@
  * systems with no controllable regulators.
  */
 
+#define DEBUG 1
+
 #include <linux/err.h>
 #include <linux/mutex.h>
 #include <linux/module.h>

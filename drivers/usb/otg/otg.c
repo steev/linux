@@ -9,6 +9,8 @@
  * (at your option) any later version.
  */
 
+#define DEBUG 1
+
 #include <linux/kernel.h>
 #include <linux/export.h>
 #include <linux/err.h>

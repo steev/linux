@@ -232,6 +232,9 @@ void hw_portsc_configure(struct ci13xxx *ci)
 		hw_write(ci, OP_PORTSC, PORTSC_STS, 0x1 << ffs_nr(PORTSC_STS));
 	}
 
+	if (ci->platdata->flags & CI13XXX_PORTSC_PFSC)
+		hw_write(ci, OP_PORTSC, PORTSC_PFSC, 0x1 << ffs_nr(PORTSC_PFSC));
+
 	if (ci->transceiver)
 		usb_phy_init(ci->transceiver);
 }
@@ -393,11 +396,11 @@ static void ci_otg_work(struct work_struct *work)
 {
 	struct ci13xxx *ci = container_of(work, struct ci13xxx, work);
 
-	if (test_bit(ID, &ci->events)) {
-		clear_bit(ID, &ci->events);
+	if (test_bit(CI_ID, &ci->events)) {
+		clear_bit(CI_ID, &ci->events);
 		ci_handle_id_switch(ci);
-	} else if (test_bit(B_SESS_VALID, &ci->events)) {
-		clear_bit(B_SESS_VALID, &ci->events);
+	} else if (test_bit(CI_B_SESS_VALID, &ci->events)) {
+		clear_bit(CI_B_SESS_VALID, &ci->events);
 		ci_handle_vbus_change(ci);
 	} else
 		dev_err(ci->dev, "unexpected event occurs at %s\n", __func__);
@@ -459,7 +462,7 @@ static irqreturn_t ci_irq(int irq, void *data)
 	 * switch.
 	 */
 	if (ci->is_otg && (otgsc & OTGSC_IDIE) && (otgsc & OTGSC_IDIS)) {
-		set_bit(ID, &ci->events);
+		set_bit(CI_ID, &ci->events);
 		hw_write(ci, OP_OTGSC, OTGSC_IDIS, OTGSC_IDIS);
 		disable_irq_nosync(ci->irq);
 		queue_work(ci->wq, &ci->work);
@@ -471,7 +474,7 @@ static irqreturn_t ci_irq(int irq, void *data)
 	 * and disconnection events.
 	 */
 	if ((otgsc & OTGSC_BSVIE) && (otgsc & OTGSC_BSVIS)) {
-		set_bit(B_SESS_VALID, &ci->events);
+		set_bit(CI_B_SESS_VALID, &ci->events);
 		hw_write(ci, OP_OTGSC, OTGSC_BSVIS, OTGSC_BSVIS);
 		disable_irq_nosync(ci->irq);
 		queue_work(ci->wq, &ci->work);
@@ -561,6 +564,9 @@ void ci13xxx_get_dr_flags(struct device_node *of_node, struct ci13xxx_platform_d
 	default:
 		pr_err("no phy interface defined\n");
 	}
+
+	if (of_find_property(of_node, "force-full-speed", NULL))
+		pdata->flags |= CI13XXX_PORTSC_PFSC;
 }
 EXPORT_SYMBOL_GPL(ci13xxx_get_dr_flags);
 
@@ -619,8 +625,15 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 	if (ci->platdata->phy) {
 		ci->transceiver = ci->platdata->phy;
 	} else if (ci->platdata->flags & CI13XXX_PORTSC_PTS_ULPI) {
-		ci->transceiver = otg_ulpi_create(&ulpi_viewport_access_ops, ULPI_OTG_DRVVBUS |
-				ULPI_OTG_DRVVBUS_EXT | ULPI_OTG_EXTVBUSIND);
+		u32 ulpi_flags = ULPI_OTG_DRVVBUS |
+				 ULPI_OTG_DRVVBUS_EXT |
+				 ULPI_OTG_EXTVBUSIND;
+
+		if (ci->platdata->flags & CI13XXX_CHRGVBUS_IS_VBUS_DET)
+			ulpi_flags |= ULPI_OTG_CHRGVBUS;
+
+		ci->transceiver = otg_ulpi_create(&ulpi_viewport_access_ops,
+							ulpi_flags);
 		ci->transceiver->io_priv = base + 0x170;
 	} else {
 		ci->global_phy = true;

@@ -9,6 +9,8 @@
  *
  */
 
+#define DEBUG 1
+
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
 #include <linux/slab.h>

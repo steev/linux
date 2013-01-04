@@ -166,8 +166,8 @@ struct ci13xxx {
 	struct usb_phy			*transceiver;
 	struct usb_hcd			*hcd;
 	/* events handled at ci_role_work */
-#define ID		0
-#define B_SESS_VALID	1
+#define CI_ID		0
+#define CI_B_SESS_VALID	1
 	unsigned long events;
 	struct usb_otg			*otg;
 	/* used to control internal vbus regulator */

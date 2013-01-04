@@ -23,6 +23,8 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#define DEBUG 1
+
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/export.h>

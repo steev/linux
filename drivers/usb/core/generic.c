@@ -17,6 +17,8 @@
  *
  */
 
+#define DEBUG 1
+
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
 #include "usb.h"
