@@ -458,11 +458,24 @@ int __init mx53_clocks_init(struct device_node *np, void __iomem *base)
 #ifdef CONFIG_OF
 extern void imx5_clocks_init(void); // in clk-pllv2.c for now
 
+#ifdef DEBUG
+void imx5_sanity_check_clocks(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(clk); i++)
+		if (IS_ERR(clk[i]))
+			pr_err("clk %d: register failed with %ld\n",
+				i, PTR_ERR(clk[i]));
+}
+#else
+void imx5_sanity_check_clocks(void) { }
+#endif
+
 int __init mx51_clocks_init_dt(void)
 {
 	struct device_node *np;
 	void __iomem *base;
-	int i;
 
 	np = of_find_compatible_node(NULL, NULL, "fsl,imx51-ccm");
 	/*
@@ -483,10 +496,7 @@ int __init mx51_clocks_init_dt(void)
 
 	//clk[pll3_sw] = ERR_PTR(-EFAULT);
 
-	for (i = 0; i < ARRAY_SIZE(clk); i++)
-		if (IS_ERR(clk[i]))
-			pr_err("%s: clk %d: register failed with %ld\n", __func__,
-				i, PTR_ERR(clk[i]));
+	imx5_sanity_check_clocks();
 
 	return 0;
 }
@@ -495,7 +505,6 @@ int __init mx53_clocks_init_dt(void)
 {
 	struct device_node *np;
 	void __iomem *base;
-	int i;
 
 	np = of_find_compatible_node(NULL, NULL, "fsl,imx53-ccm");
 	/*
@@ -516,10 +525,7 @@ int __init mx53_clocks_init_dt(void)
 	imx5_clocks_init();
 	mx53_clocks_init(np, base);
 
-	for (i = 0; i < ARRAY_SIZE(clk); i++)
-		if (IS_ERR(clk[i]))
-			pr_err("%s: clk %d: register failed with %ld\n", __func__,
-				i, PTR_ERR(clk[i]));
+	imx5_sanity_check_clocks();
 
 	return 0;
 }
