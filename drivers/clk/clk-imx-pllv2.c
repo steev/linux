@@ -1,5 +1,6 @@
 #include <linux/kernel.h>
 #include <linux/clk.h>
+#include <linux/clk-provider.h>
 #include <linux/io.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
@@ -9,8 +10,6 @@
 #include <linux/of_address.h>
 
 #include <asm/div64.h>
-
-#include "clk.h"
 
 #define to_clk_pllv2(clk) (container_of(clk, struct clk_pllv2, clk))
 
@@ -239,7 +238,7 @@ struct clk_ops clk_pllv2_ops = {
 	.set_rate = clk_pllv2_set_rate,
 };
 
-static __init struct clk *imx_clk_pllv2(struct device_node *node)
+__init struct clk *imx_clk_pllv2(struct device_node *node)
 {
 	struct clk *clk;
 	struct clk_pllv2 *pll;
@@ -275,15 +274,4 @@ static __init struct clk *imx_clk_pllv2(struct device_node *node)
 	rc = of_clk_add_provider(node, of_clk_src_simple_get, clk);
 
 	return clk;
-}
-
-static const __initconst struct of_device_id clk_match[] = {
-	{ .compatible = "fixed-clock", .data = of_fixed_clk_setup, }, // HACK doesn't belong here
-        { .compatible = "fsl,imx-pllv2", .data = imx_clk_pllv2, },
-        {}
-};
-
-void __init imx5_clocks_init(void)
-{
-        of_clk_init(clk_match);
 }
