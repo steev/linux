@@ -23,7 +23,7 @@ obj-$(CONFIG_ARCH_VT8500)	+= clk-vt8500.o
 obj-$(CONFIG_ARCH_SUNXI)	+= clk-sunxi.o
 obj-$(CONFIG_ARCH_ZYNQ)		+= clk-zynq.o
 obj-$(CONFIG_ARCH_MXC)		+= clk-imx.o
-obj-$(CONFIG_SOC_IMX5)		+= clk-imx-pllv2.o
+obj-$(CONFIG_SOC_IMX5)		+= clk-imx-pllv2.o clk-imx5-ccm.o
 obj-$(CONFIG_SOC_IMX6Q)		+= clk-imx-pllv3.o
 
 # Chip specific
