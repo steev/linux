@@ -16,7 +16,8 @@
 #include <linux/slab.h>
 #include <linux/jiffies.h>
 #include <linux/err.h>
-#include "clk.h"
+
+#include "clk-imx.h"
 
 #define PLL_NUM_OFFSET		0x10
 #define PLL_DENOM_OFFSET	0x20
@@ -303,7 +304,7 @@ static const struct clk_ops clk_pllv3_mlb_ops = {
 	.disable	= clk_pllv3_disable,
 };
 
-struct clk *imx_clk_pllv3(enum imx_pllv3_type type, const char *name,
+__init struct clk *imx_clk_pllv3(enum imx_pllv3_type type, const char *name,
 			  const char *parent_name, void __iomem *base,
 			  u32 div_mask)
 {
