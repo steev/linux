@@ -5,6 +5,8 @@ extern spinlock_t imx_ccm_lock;
 
 struct clk *imx_clk_pllv2(struct device_node *node);
 
+extern void __init imx51_ccm_setup(struct device_node *node);
+extern void __init imx53_ccm_setup(struct device_node *node);
 
 
 /* remove these later */

@@ -137,7 +137,7 @@ static struct clk_onecell_data clk_data;
 #define CCM_CCGR7		0x84
 
 
-static void __init mx5_clocks_common_init(struct device_node *np, void __iomem *base)
+static void __init imx5_clocks_common_init(void __iomem *base)
 {
 	/*                                  name                     reg      shift width parent_names       num_parents */
 	clk[lp_apm]           = imx_clk_mux("lp_apm",           base + CCM_CCSR,    9, 1, lp_apm_sel,        ARRAY_SIZE(lp_apm_sel));
@@ -335,7 +335,7 @@ static void __init mx5_clocks_common_init(struct device_node *np, void __iomem *
 	clk_prepare_enable(clk[tmax3]); /* esdhc1, esdhc4 */
 }
 
-int __init mx51_clocks_init(struct device_node *np, void __iomem *base)
+int __init imx51_clocks_init(void __iomem *base)
 {
 	unsigned long r;
 
@@ -359,7 +359,7 @@ int __init mx51_clocks_init(struct device_node *np, void __iomem *base)
 	clk[mipi_hsp_gate] = imx_clk_gate2("mipi_hsp_gate", "ipg", base + CCM_CCGR4, 12);
 	clk[pata_gate] = imx_clk_gate2("pata_gate", "ipg", base + CCM_CCGR4, 0);
 
-	mx5_clocks_common_init(np, base);
+	imx5_clocks_common_init(base);
 
 	clk_register_clkdev(clk[hsi2c_gate], NULL, "imx21-i2c.2");
 	clk_register_clkdev(clk[mx51_mipi], "mipi_hsp", NULL);
@@ -406,7 +406,7 @@ int __init mx51_clocks_init(struct device_node *np, void __iomem *base)
 	return 0;
 }
 
-int __init mx53_clocks_init(struct device_node *np, void __iomem *base)
+int __init imx53_clocks_init(void __iomem *base)
 {
 	unsigned long r;
 
@@ -447,7 +447,7 @@ int __init mx53_clocks_init(struct device_node *np, void __iomem *base)
 	clk[uart5_ipg_gate] = imx_clk_gate2("uart5_ipg_gate", "ipg", base + CCM_CCGR7, 12);
 	clk[uart5_per_gate] = imx_clk_gate2("uart5_per_gate", "uart_root", base + CCM_CCGR7, 14);
 
-	mx5_clocks_common_init(np, base);
+	imx5_clocks_common_init(base);
 
 	clk_register_clkdev(clk[vpu_gate], NULL, "imx53-vpu.0");
 	clk_register_clkdev(clk[i2c3_gate], NULL, "imx21-i2c.2");
@@ -508,18 +508,10 @@ void imx5_sanity_check_clocks(void)
 void imx5_sanity_check_clocks(void) { }
 #endif
 
-int __init mx51_clocks_init_dt(void)
+void __init imx51_ccm_setup(struct device_node *np)
 {
-	struct device_node *np;
 	void __iomem *base;
 
-	np = of_find_compatible_node(NULL, NULL, "fsl,imx51-ccm");
-	/*
-	 * note: all the above registers (MXC_CCM_*) are defined against the
-	 * MX51_IO_ADDRESS mapping which *coincidentally* matches what of_iomap
-	 * returns as a base, so it'll still work. All we do here is break the
-	 * crap out of non-DT i.MX5 platforms :)
-	 */
 	base = of_iomap(np, 0);
 	WARN_ON(!base);
 
@@ -527,30 +519,17 @@ int __init mx51_clocks_init_dt(void)
 	clk_data.clk_num = ARRAY_SIZE(clk);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
-	imx5_clocks_init();
-	mx51_clocks_init(np, base);
+	imx51_clocks_init(base);
 
 	//clk[pll3_sw] = ERR_PTR(-EFAULT);
 
 	imx5_sanity_check_clocks();
-
-	return 0;
 }
 
-int __init mx53_clocks_init_dt(void)
+void __init imx53_ccm_setup(struct device_node *np)
 {
-	struct device_node *np;
 	void __iomem *base;
 
-	np = of_find_compatible_node(NULL, NULL, "fsl,imx53-ccm");
-	/*
-	 * note: all the above registers (MXC_CCM_*) are defined against the
-	 * MX51_IO_ADDRESS mapping which *coincidentally* matches what of_iomap
-	 * returns as a base, and ALSO coincidentally (or by design) has the
-	 * exact same IO address map as i.MX51 (see arch/arm/mach-imx/hardware.h>
-	 * so it'll still work. All we do here is break the crap out of non-DT
-	 * i.MX5 platforms :)
-	 */
 	base = of_iomap(np, 0);
 	WARN_ON(!base);
 
@@ -558,11 +537,7 @@ int __init mx53_clocks_init_dt(void)
 	clk_data.clk_num = ARRAY_SIZE(clk);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
-	imx5_clocks_init();
-	mx53_clocks_init(np, base);
-
+	imx53_clocks_init(base);
 	imx5_sanity_check_clocks();
-
-	return 0;
 }
 #endif

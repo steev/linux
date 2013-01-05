@@ -62,7 +62,8 @@ static void __init imx51_dt_init(void)
 
 static void __init imx51_timer_init(void)
 {
-	mx51_clocks_init_dt();
+	/* this is finally calling drivers/clk/clk-imx.c */
+	imx5_clocks_init();
 }
 
 static struct sys_timer imx51_timer = {
