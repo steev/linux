@@ -93,8 +93,6 @@ static struct clk_onecell_data clk_data;
 
 static void __init mx5_clocks_common_init(struct device_node *np, void __iomem *base)
 {
-	int i;
-
 	clk[lp_apm] = imx_clk_mux("lp_apm", MXC_CCM_CCSR, 9, 1,
 				lp_apm_sel, ARRAY_SIZE(lp_apm_sel));
 	clk[periph_apm] = imx_clk_mux("periph_apm", MXC_CCM_CBCMR, 12, 2,
@@ -225,11 +223,6 @@ static void __init mx5_clocks_common_init(struct device_node *np, void __iomem *
 	clk[epit2_hf_gate] = imx_clk_gate2("epit2_hf_gate", "per_root", MXC_CCM_CCGR2, 8);
 	clk[srtc_gate] = imx_clk_gate2("srtc_gate", "per_root", MXC_CCM_CCGR4, 28);
 
-	for (i = 0; i < ARRAY_SIZE(clk); i++)
-		if (IS_ERR(clk[i]))
-			pr_err("i.MX5 clk %d: register failed with %ld\n",
-				i, PTR_ERR(clk[i]));
-
 	clk_register_clkdev(clk[gpt_hf_gate], "per", "imx-gpt.0");
 	clk_register_clkdev(clk[gpt_ipg_gate], "ipg", "imx-gpt.0");
 	clk_register_clkdev(clk[uart1_per_gate], "per", "imx21-uart.0");
@@ -309,7 +302,6 @@ static void __init mx5_clocks_common_init(struct device_node *np, void __iomem *
 int __init mx51_clocks_init(struct device_node *np, void __iomem *base)
 {
 	unsigned long r;
-	int i;
 
 	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", MXC_CCM_CSCMR2, 26, 3,
 				mx51_ipu_di0_sel, ARRAY_SIZE(mx51_ipu_di0_sel));
@@ -330,11 +322,6 @@ int __init mx51_clocks_init(struct device_node *np, void __iomem *base)
 	clk[mipi_esc_gate] = imx_clk_gate2("mipi_esc_gate", "ipg", MXC_CCM_CCGR4, 10);
 	clk[mipi_hsp_gate] = imx_clk_gate2("mipi_hsp_gate", "ipg", MXC_CCM_CCGR4, 12);
 	clk[pata_gate] = imx_clk_gate2("pata_gate", "ipg", MXC_CCM_CCGR4, 0);
-
-	for (i = 0; i < ARRAY_SIZE(clk); i++)
-		if (IS_ERR(clk[i]))
-			pr_err("i.MX51 clk %d: register failed with %ld\n",
-				i, PTR_ERR(clk[i]));
 
 	mx5_clocks_common_init(np, base);
 
@@ -386,7 +373,6 @@ int __init mx51_clocks_init(struct device_node *np, void __iomem *base)
 int __init mx53_clocks_init(struct device_node *np, void __iomem *base)
 {
 	unsigned long r;
-	int i;
 
 	clk[ldb_di1_sel] = imx_clk_mux("ldb_di1_sel", MXC_CCM_CSCMR2, 9, 1,
 				mx53_ldb_di1_sel, ARRAY_SIZE(mx53_ldb_di1_sel));
@@ -424,11 +410,6 @@ int __init mx53_clocks_init(struct device_node *np, void __iomem *base)
 	clk[uart4_per_gate] = imx_clk_gate2("uart4_per_gate", "uart_root", MXC_CCM_CCGR7, 10);
 	clk[uart5_ipg_gate] = imx_clk_gate2("uart5_ipg_gate", "ipg", MXC_CCM_CCGR7, 12);
 	clk[uart5_per_gate] = imx_clk_gate2("uart5_per_gate", "uart_root", MXC_CCM_CCGR7, 14);
-
-	for (i = 0; i < ARRAY_SIZE(clk); i++)
-		if (IS_ERR(clk[i]))
-			pr_err("i.MX53 clk %d: register failed with %ld\n",
-				i, PTR_ERR(clk[i]));
 
 	mx5_clocks_common_init(np, base);
 
@@ -481,6 +462,7 @@ int __init mx51_clocks_init_dt(void)
 {
 	struct device_node *np;
 	void __iomem *base;
+	int i;
 
 	np = of_find_compatible_node(NULL, NULL, "fsl,imx51-ccm");
 	/*
@@ -497,14 +479,23 @@ int __init mx51_clocks_init_dt(void)
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
 	imx5_clocks_init();
+	mx51_clocks_init(np, base);
 
-	return mx51_clocks_init(np, base);
+	//clk[pll3_sw] = ERR_PTR(-EFAULT);
+
+	for (i = 0; i < ARRAY_SIZE(clk); i++)
+		if (IS_ERR(clk[i]))
+			pr_err("%s: clk %d: register failed with %ld\n", __func__,
+				i, PTR_ERR(clk[i]));
+
+	return 0;
 }
 
 int __init mx53_clocks_init_dt(void)
 {
 	struct device_node *np;
 	void __iomem *base;
+	int i;
 
 	np = of_find_compatible_node(NULL, NULL, "fsl,imx53-ccm");
 	/*
@@ -523,7 +514,13 @@ int __init mx53_clocks_init_dt(void)
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
 	imx5_clocks_init();
+	mx53_clocks_init(np, base);
 
-	return mx53_clocks_init(np, base);
+	for (i = 0; i < ARRAY_SIZE(clk); i++)
+		if (IS_ERR(clk[i]))
+			pr_err("%s: clk %d: register failed with %ld\n", __func__,
+				i, PTR_ERR(clk[i]));
+
+	return 0;
 }
 #endif
