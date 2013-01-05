@@ -91,7 +91,7 @@ enum imx5_clks {
 static struct clk *clk[clk_max];
 static struct clk_onecell_data clk_data;
 
-static void __init mx5_clocks_common_init(void)
+static void __init mx5_clocks_common_init(struct device_node *np, void __iomem *base)
 {
 	int i;
 
@@ -306,11 +306,10 @@ static void __init mx5_clocks_common_init(void)
 	clk_prepare_enable(clk[tmax3]); /* esdhc1, esdhc4 */
 }
 
-int __init mx51_clocks_init(void)
+int __init mx51_clocks_init(struct device_node *np, void __iomem *base)
 {
 	unsigned long r;
 	int i;
-	struct device_node *np;
 
 	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", MXC_CCM_CSCMR2, 26, 3,
 				mx51_ipu_di0_sel, ARRAY_SIZE(mx51_ipu_di0_sel));
@@ -337,12 +336,7 @@ int __init mx51_clocks_init(void)
 			pr_err("i.MX51 clk %d: register failed with %ld\n",
 				i, PTR_ERR(clk[i]));
 
-	np = of_find_compatible_node(NULL, NULL, "fsl,imx51-ccm");
-	clk_data.clks = clk;
-	clk_data.clk_num = ARRAY_SIZE(clk);
-	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
-
-	mx5_clocks_common_init();
+	mx5_clocks_common_init(np, base);
 
 	clk_register_clkdev(clk[hsi2c_gate], NULL, "imx21-i2c.2");
 	clk_register_clkdev(clk[mx51_mipi], "mipi_hsp", NULL);
@@ -389,11 +383,10 @@ int __init mx51_clocks_init(void)
 	return 0;
 }
 
-int __init mx53_clocks_init()
+int __init mx53_clocks_init(struct device_node *np, void __iomem *base)
 {
 	unsigned long r;
 	int i;
-	struct device_node *np;
 
 	clk[ldb_di1_sel] = imx_clk_mux("ldb_di1_sel", MXC_CCM_CSCMR2, 9, 1,
 				mx53_ldb_di1_sel, ARRAY_SIZE(mx53_ldb_di1_sel));
@@ -437,12 +430,7 @@ int __init mx53_clocks_init()
 			pr_err("i.MX53 clk %d: register failed with %ld\n",
 				i, PTR_ERR(clk[i]));
 
-	np = of_find_compatible_node(NULL, NULL, "fsl,imx53-ccm");
-	clk_data.clks = clk;
-	clk_data.clk_num = ARRAY_SIZE(clk);
-	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
-
-	mx5_clocks_common_init();
+	mx5_clocks_common_init(np, base);
 
 	clk_register_clkdev(clk[vpu_gate], NULL, "imx53-vpu.0");
 	clk_register_clkdev(clk[i2c3_gate], NULL, "imx21-i2c.2");
@@ -491,15 +479,51 @@ extern void imx5_clocks_init(void); // in clk-pllv2.c for now
 
 int __init mx51_clocks_init_dt(void)
 {
+	struct device_node *np;
+	void __iomem *base;
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx51-ccm");
+	/*
+	 * note: all the above registers (MXC_CCM_*) are defined against the
+	 * MX51_IO_ADDRESS mapping which *coincidentally* matches what of_iomap
+	 * returns as a base, so it'll still work. All we do here is break the
+	 * crap out of non-DT i.MX5 platforms :)
+	 */
+	base = of_iomap(np, 0);
+	WARN_ON(!base);
+
+	clk_data.clks = clk;
+	clk_data.clk_num = ARRAY_SIZE(clk);
+	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
+
 	imx5_clocks_init();
 
-	return mx51_clocks_init();
+	return mx51_clocks_init(np, base);
 }
 
 int __init mx53_clocks_init_dt(void)
 {
+	struct device_node *np;
+	void __iomem *base;
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx53-ccm");
+	/*
+	 * note: all the above registers (MXC_CCM_*) are defined against the
+	 * MX51_IO_ADDRESS mapping which *coincidentally* matches what of_iomap
+	 * returns as a base, and ALSO coincidentally (or by design) has the
+	 * exact same IO address map as i.MX51 (see arch/arm/mach-imx/hardware.h>
+	 * so it'll still work. All we do here is break the crap out of non-DT
+	 * i.MX5 platforms :)
+	 */
+	base = of_iomap(np, 0);
+	WARN_ON(!base);
+
+	clk_data.clks = clk;
+	clk_data.clk_num = ARRAY_SIZE(clk);
+	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
+
 	imx5_clocks_init();
 
-	return mx53_clocks_init();
+	return mx53_clocks_init(np, base);
 }
 #endif

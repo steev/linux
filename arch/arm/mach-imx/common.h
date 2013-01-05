@@ -11,6 +11,7 @@
 #ifndef __ASM_ARCH_MXC_COMMON_H__
 #define __ASM_ARCH_MXC_COMMON_H__
 
+struct device_node;
 struct platform_device;
 struct clk;
 enum mxc_cpu_pwr_mode;
@@ -64,8 +65,8 @@ extern int mx25_clocks_init(void);
 extern int mx27_clocks_init(unsigned long fref);
 extern int mx31_clocks_init(unsigned long fref);
 extern int mx35_clocks_init(void);
-extern int mx51_clocks_init(void);
-extern int mx53_clocks_init(void);
+extern int mx51_clocks_init(struct device_node *ccm_node, void __iomem *base);
+extern int mx53_clocks_init(struct device_node *ccm_node, void __iomem *base);
 extern int mx25_clocks_init_dt(void);
 extern int mx27_clocks_init_dt(void);
 extern int mx31_clocks_init_dt(void);
