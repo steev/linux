@@ -79,19 +79,32 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		ckil {
+		clk_ckil: ckil {
+			#clock-cells = <0>;
 			compatible = "fsl,imx-ckil", "fixed-clock";
 			clock-frequency = <32768>;
+			clock-output-names = "ckil";
 		};
 
-		ckih1 {
+		clk_ckih1: ckih1 {
+			#clock-cells = <0>;
 			compatible = "fsl,imx-ckih1", "fixed-clock";
 			clock-frequency = <0>;
+			clock-output-names = "ckih1";
 		};
 
-		osc {
+		clk_osc: osc {
+			#clock-cells = <0>;
 			compatible = "fsl,imx-osc", "fixed-clock";
 			clock-frequency = <24000000>;
+			clock-output-names = "osc";
+		};
+
+		clk_dummy: dummy {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <0>;
+			clock-output-names = "dummy";
 		};
 	};
 
