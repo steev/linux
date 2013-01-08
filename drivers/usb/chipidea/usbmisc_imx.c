@@ -127,6 +127,7 @@ static int usbmisc_imx51_init(struct device *dev)
 	void __iomem *reg = NULL;
 	unsigned long flags;
 	unsigned long rate;
+	int div = -1;
 	u32 val = 0;
 
 	dev_err(dev, "%s\n", __func__);
@@ -142,20 +143,33 @@ static int usbmisc_imx51_init(struct device *dev)
 		WARN_ON(!usbmisc->clk_phy);
 
 		rate = clk_get_rate(usbmisc->clk_phy);
+		if (rate) {
+			int i;
 
-		dev_err(dev, "%s: UTMI PHY clock %ld\n", __func__, rate);
+			for (i = 0; i < ARRAY_SIZE(phy_pll_div_rates); i++) {
+				if (rate == phy_pll_div_rates[i].rate)
+					div = phy_pll_div_rates[i].div;
+			}
+		}
 
-		val = readl(usbmisc->base + MX51_USB_PHY_CTRL_1_OFFSET);
-		dev_err(dev, "%s: PHY_CTRL_1 0x%08x\n", __func__, val);
+		if (div == -1) {
+			dev_err(dev, "%s: PHY clock rate %ld doesn't match any valid rate!\n",
+					__func__, rate);
+		} else {
+			dev_err(dev, "%s: UTMI PHY clock %ld\n", __func__, rate);
 
-		val &= ~MX51_USB_PHY_CTRL_1_PLLDIVMASK;
-		dev_err(dev, "%s: PHY_CTRL_1 mask PLLDIV 0x%08x\n", __func__, val);
+			val = readl(usbmisc->base + MX51_USB_PHY_CTRL_1_OFFSET);
+			dev_err(dev, "%s: PHY_CTRL_1 0x%08x\n", __func__, val);
 
-		dev_err(dev, "%s: PHY_CTRL_1 PLLDIV 24MHz 0x%08x\n", __func__, val | 0x01);
+			val &= ~MX51_USB_PHY_CTRL_1_PLLDIVMASK;
+			dev_err(dev, "%s: PHY_CTRL_1 mask PLLDIV 0x%08x\n", __func__, val);
 
-		/* fetch phy rate and search table here.. */
-		writel(val | 0x01, usbmisc->base + MX51_USB_PHY_CTRL_1_OFFSET);
-		mdelay(10);
+			val |= div;
+			dev_err(dev, "%s: PHY_CTRL_1 PLLDIV %ldHz 0x%08x\n", __func__, rate, val);
+
+			writel(val, usbmisc->base + MX51_USB_PHY_CTRL_1_OFFSET);
+			mdelay(10);
+		}
 
 		if (usbdev->disable_oc) {
 			dev_err(dev, "%s: oc disable otg\n", __func__);
