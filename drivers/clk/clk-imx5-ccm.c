@@ -188,7 +188,7 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 	clk[ecspi_podf]     = imx_clk_divider("ecspi_podf",     "ecspi_pred",     base + CCM_CSCDR2, 19, 6);
 	clk[ecspi_pred]     = imx_clk_divider("ecspi_pred",     "ecspi_sel",      base + CCM_CSCDR2, 25, 3);
 
-	/* NEKO: note registering usb_phy_podf/pred meaningless since we reparent to OSC and bypass these */
+	/* NEKO: note MX51: registering usb_phy_podf/pred meaningless since we reparent to OSC and bypass these */
 	clk[usb_phy_podf]   = imx_clk_divider("usb_phy_podf",   "usb_phy_pred",   base + CCM_CDCDR,   0, 3);
 	clk[usb_phy_pred]   = imx_clk_divider("usb_phy_pred",   "pll3_sw",        base + CCM_CDCDR,   3, 3);
 	clk[di_pred]        = imx_clk_divider("di_pred",        "pll3_sw",        base + CCM_CDCDR,   6, 3);
