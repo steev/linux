@@ -19,13 +19,6 @@
 
 #include "clk-imx.h"
 
-/* NEKO move */
-void imx_gpt_register(void);//common.h
-void imx_epit_register(void);//common.h
-extern void imx_print_silicon_rev(const char *cpu, int srev);//common.h
-extern int mx51_revision(void); //mx51.h
-extern int mx53_revision(void); //common.h
-
 /* Low-power Audio Playback Mode clock */
 static const char *lp_apm_sel[] = { "osc", };
 
@@ -305,19 +298,14 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 	clk_register_clkdev(clk[gpc_dvfs], "gpc_dvfs", NULL);
 	clk_register_clkdev(clk[epit1_ipg_gate], "ipg", "imx-epit.0");
 	clk_register_clkdev(clk[epit1_hf_gate], "per", "imx-epit.0");
-	/* I think this is wrong on i.MX51 - there's only one EPIT! */
 	clk_register_clkdev(clk[epit2_ipg_gate], "ipg", "imx-epit.1");
 	clk_register_clkdev(clk[epit2_hf_gate], "per", "imx-epit.1");
 
 	/* Set perclk_ipg_sel to derive clock from IPG rather than PLL */
+	/* NEKO: this disables the ability for GPT/EPIT to switch to a high res clock
+	 * greater than 66MHz - that said, the PLL would have to never change. For
+	 * PLL2 though that's going to be true... */
 	clk_set_parent(clk[per_root], clk[ipg]);
-
-	/* Set SDHC parents to be PLL2 */
-	clk_set_parent(clk[esdhc_a_sel], __clk_lookup("pll2_sw"));
-	clk_set_parent(clk[esdhc_b_sel], __clk_lookup("pll2_sw"));
-
-	/* move usb phy clk to 24MHz */
-	clk_set_parent(clk[usb_phy_sel], __clk_lookup("osc"));
 
 	clk_prepare_enable(clk[gpc_dvfs]);
 	clk_prepare_enable(clk[ahb_max]); /* esdhc3 */
@@ -337,8 +325,6 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 
 int __init imx51_clocks_init(void __iomem *base)
 {
-	unsigned long r;
-
 	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", base + CCM_CSCMR2, 26, 3,
 				mx51_ipu_di0_sel, ARRAY_SIZE(mx51_ipu_di0_sel));
 	clk[ipu_di1_sel] = imx_clk_mux("ipu_di1_sel", base + CCM_CSCMR2, 29, 3,
@@ -382,34 +368,11 @@ int __init imx51_clocks_init(void __iomem *base)
 	clk_register_clkdev(__clk_lookup("dummy"), "ahb", "sdhci-esdhc-imx51.3");
 	clk_register_clkdev(clk[esdhc4_per_gate], "per", "sdhci-esdhc-imx51.3");
 
-	/* ipu di external clock to pll3_sw */
-	clk_set_parent(clk[ipu_di0_sel], clk[di_pred]);
-
-	/* set the usboh3 parent to pll2_sw */
-	clk_set_parent(clk[usboh3_sel], __clk_lookup("pll2_sw"));
-
-	/* set SDHC root clock to 166.25MHZ*/
-	clk_set_rate(clk[esdhc_a_podf], 166250000);
-	clk_set_rate(clk[esdhc_b_podf], 166250000);
-
-	/* System timers - will use sched_clock based on dt property */
-	imx_gpt_register();
-	imx_epit_register();
-
-	clk_prepare_enable(clk[iim_gate]);
-	imx_print_silicon_rev("i.MX51", mx51_revision());
-	clk_disable_unprepare(clk[iim_gate]);
-
-	r = clk_round_rate(clk[usboh3_per_gate], 54000000);
-	clk_set_rate(clk[usboh3_per_gate], r);
-
 	return 0;
 }
 
 int __init imx53_clocks_init(void __iomem *base)
 {
-	unsigned long r;
-
 	clk[ldb_di1_sel] = imx_clk_mux("ldb_di1_sel", base + CCM_CSCMR2, 9, 1,
 				mx53_ldb_di1_sel, ARRAY_SIZE(mx53_ldb_di1_sel));
 	clk[ldb_di1_div_3_5] = imx_clk_fixed_factor("ldb_di1_div_3_5", "ldb_di1_sel", 2, 7);
@@ -474,20 +437,6 @@ int __init imx53_clocks_init(void __iomem *base)
 	clk_register_clkdev(clk[uart5_per_gate], "per", "imx21-uart.4");
 	clk_register_clkdev(clk[uart5_ipg_gate], "ipg", "imx21-uart.4");
 
-	/* set SDHC root clock to 200MHZ*/
-	clk_set_rate(clk[esdhc_a_podf], 200000000);
-	clk_set_rate(clk[esdhc_b_podf], 200000000);
-
-	/* System timers - will use sched_clock based on dt property */
-	imx_gpt_register();
-
-	clk_prepare_enable(clk[iim_gate]);
-	imx_print_silicon_rev("i.MX53", mx53_revision());
-	clk_disable_unprepare(clk[iim_gate]);
-
-	r = clk_round_rate(clk[usboh3_per_gate], 54000000);
-	clk_set_rate(clk[usboh3_per_gate], r);
-
 	return 0;
 }
 
@@ -508,6 +457,7 @@ void imx5_sanity_check_clocks(void)
 void imx5_sanity_check_clocks(void) { }
 #endif
 
+/* called by of_clk_init */
 void __init imx51_ccm_setup(struct device_node *np)
 {
 	void __iomem *base;
@@ -526,6 +476,7 @@ void __init imx51_ccm_setup(struct device_node *np)
 	imx5_sanity_check_clocks();
 }
 
+/* called by of_clk_init */
 void __init imx53_ccm_setup(struct device_node *np)
 {
 	void __iomem *base;
