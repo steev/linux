@@ -164,9 +164,6 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 	clk[tve_di]           = imx_clk_fixed("tve_di", 65000000); /* FIXME - tve driver should create this */
 
 	/*                                      name             parent_name          reg       shift width */
-	clk[cpu_podf]       = imx_clk_divider_no_srp(
-	                                      "cpu_podf",       "pll1_sw",        base + CCM_CACRR,   0, 3);
-	/* NEKO : CPU_PODF is our first device-tree divider candidate! */
 	clk[per_podf]       = imx_clk_divider("per_podf",       "per_pred2",      base + CCM_CBCDR,   0, 3);
 	clk[per_pred2]      = imx_clk_divider("per_pred2",      "per_pred1",      base + CCM_CBCDR,   3, 3);
 	clk[per_pred1]      = imx_clk_divider("per_pred1",      "per_lp_apm",     base + CCM_CBCDR,   6, 2);
@@ -313,7 +310,6 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 	clk_register_clkdev(clk[ssi_ext1_gate], "ssi_ext1", NULL);
 	clk_register_clkdev(clk[ssi_ext2_gate], "ssi_ext2", NULL);
 	clk_register_clkdev(clk[sdma_gate], NULL, "imx35-sdma");
-	clk_register_clkdev(clk[cpu_podf], NULL, "cpu0");
 	clk_register_clkdev(clk[iim_gate], "iim", NULL);
 	clk_register_clkdev(__clk_lookup("dummy"), NULL, "imx2-wdt.0");
 	clk_register_clkdev(__clk_lookup("dummy"), NULL, "imx2-wdt.1");
@@ -497,9 +493,54 @@ void imx5_sanity_check_clocks(void)
 void imx5_sanity_check_clocks(void) { }
 #endif
 
+static void __init imx_divider_setup(struct device_node *node)
+{
+	u32 reg, width, shift;
+	unsigned long flags = 0;
+	struct clk *clk;
+	const char *clk_name = node->name;
+	const char *parent_name;
+	void __iomem *clock_base;
+	int rc;
+
+	rc = of_property_read_u32(node, "reg", &reg);
+	WARN_ON(rc);
+
+	rc = of_property_read_u32(node, "bit-width", &width);
+	WARN_ON(rc);
+
+	rc = of_property_read_u32(node, "bit-shift", &shift);
+	WARN_ON(rc);
+
+	clock_base = ccm_base + reg;
+
+	of_property_read_string(node, "clock-output-names", &clk_name);
+	parent_name = of_clk_get_parent_name(node, 0);
+
+	if (!of_find_property(node, "clk,no-set-rate-parent", NULL))
+		flags |= CLK_SET_RATE_PARENT;
+
+	pr_info("%s: registering %s (%s) of parent %s (0x%02x[%d:%d]) flags=0x%08x\n",
+		__func__, clk_name, node->name, parent_name, reg, width+shift-1, shift, flags);
+
+	clk = clk_register_divider(NULL, clk_name, parent_name, flags,
+		clock_base, (u8) shift, (u8) width, 0, &imx_ccm_lock);
+
+	//WARN_ON(IS_ERR_PTR(clk));
+
+	rc = of_clk_add_provider(node, of_clk_src_simple_get, clk);
+	WARN_ON(rc);
+}
+
+static const __initconst struct of_device_id ccm_child_match[] = {
+	{ .compatible = "divider-clock", .data = imx_divider_setup, },
+	{ },
+};
+
 /* called by of_clk_init */
 void __init imx51_ccm_setup(struct device_node *np)
 {
+	struct device_node *parent, *child, *mp;
 	void __iomem *base;
 
 	base = of_iomap(np, 0);
@@ -509,6 +550,25 @@ void __init imx51_ccm_setup(struct device_node *np)
 	clk_data.clks = clk;
 	clk_data.clk_num = ARRAY_SIZE(clk);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
+
+	/* this is messy for debug, the real code starts at mp = np below*/
+#if 1
+	parent = of_find_node_by_name(np, "ccm-clocks");
+	if (!parent) {
+		pr_info("NEKO: couldn't find a clocks node under ccm..?\n");
+	}
+
+	for_each_child_of_node(parent, child) {
+		pr_info("NEKO: I got a clock \"%s\" here..\n", child->name);
+	}
+#endif
+
+	mp = np;
+	for_each_matching_node(mp, ccm_child_match) {
+		const struct of_device_id *match = of_match_node(ccm_child_match, mp);
+		of_clk_init_cb_t clk_init_cb = match->data;
+		clk_init_cb(mp);
+	}
 
 	imx51_clocks_init(ccm_base);
 	//clk[pll3_sw] = ERR_PTR(-EFAULT);
