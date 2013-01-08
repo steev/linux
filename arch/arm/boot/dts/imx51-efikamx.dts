@@ -28,17 +28,15 @@
 		};
 	};
 
-/*
 	clocks {
-		sgtl5000_mclk {
+		sgtl5000_mclk: sgtl5000_mclk {
 			#clock-cells = <0>;
 			compatible = "fixed-clock";
 			gpios = <&gpio1 9 1>;
-			clock-frequency = "12288000";
-			clock-output-names = "mclk";
+			clock-frequency = <12288000>;
+			clock-output-names = "sgtl5000_mclk";
 		};
 	};
-*/
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -87,7 +85,7 @@
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias",
 			"Ext Spk", "LINE_OUT";
-		audio-codec = <&codec>;
+		audio-codec = <&sgtl5000>;
 		mux-int-port = <2>;
 		mux-ext-port = <3>;
 	};
@@ -101,17 +99,6 @@
 		regulator-boot-on;
 		regulator-always-on;
 	};
-
-/*
-	audio-clk-en {
-		compatible = "regulator-fixed";
-		regulator-name = "audio-clk-en";
-		gpio = <&gpio1 9 0>;
-		enable-active-high;
-		regulator-boot-on;
-		regulator-always-on;
-	};
-*/
 
 	usb_hub_reset: usb-hub-reset {
 		compatible = "regulator-fixed";
@@ -451,14 +438,13 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	codec: sgtl5000@0a {
+	sgtl5000: sgtl5000@0a {
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
-//		clocks = <&sgtl5000_mclk>;
-		clock-frequency = <12288000>;
 		VDDA-supply = <&reg_1V65>; // 2V775 connected here too
 		VDDIO-supply = <&reg_2V775>;
 		VDDD-supply = <&reg_1V2_DIG2>;
+		clocks = <&sgtl5000_mclk>;
 	};
 
 	hdmi: sii9022@39 {
