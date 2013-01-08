@@ -32,9 +32,17 @@
 		sgtl5000_mclk: sgtl5000_mclk {
 			#clock-cells = <0>;
 			compatible = "fixed-clock";
-			gpios = <&gpio1 9 1>;
 			clock-frequency = <12288000>;
 			clock-output-names = "sgtl5000_mclk";
+		};
+
+		/* this one is wishful thinking for now.. */
+		sgtl5000_gate: sgtl5000_gate {
+			#clock-cells = <0>;
+			compatible = "xxx,gpio-gate-clock";
+			gpio = <&gpio1 9 1>;
+			clocks = <&sgtl5000_mclk>;
+			clock-names = "mclk";
 		};
 	};
 
@@ -51,7 +59,6 @@
 
 	gpio-leds {
 		compatible = "gpio-leds";
-
 
 		red {
 			label = "red";
@@ -146,8 +153,7 @@
 	pinctrl-0 = <&pinctrl_ecspi1_1>;
 	fsl,spi-num-chipselects = <2>;
 	reg = <0x70010000 0x4000>;
-	cs-gpios = <&gpio4 24 0>, /* GPIO4_24 */
-		   <&gpio4 25 0>; /* GPIO4_25 */
+	cs-gpios = <&gpio4 24 0>, <&gpio4 25 0>;
 	status = "okay";
 
 	pmic: mc13892@0 {
