@@ -159,98 +159,120 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 	clk[ssi_ext1_sel]     = imx_clk_mux("ssi_ext1_sel",     base + CCM_CSCMR1, 28, 2, ssi_clk_sels,      ARRAY_SIZE(ssi_clk_sels));
 	clk[ssi_ext2_sel]     = imx_clk_mux("ssi_ext2_sel",     base + CCM_CSCMR1, 30, 2, ssi_clk_sels,      ARRAY_SIZE(ssi_clk_sels));
 
-	clk[per_pred1]         = imx_clk_divider("per_pred1", "per_lp_apm", base + CCM_CBCDR, 6, 2);
-	clk[per_pred2]         = imx_clk_divider("per_pred2", "per_pred1", base + CCM_CBCDR, 3, 3);
-	clk[per_podf]          = imx_clk_divider("per_podf", "per_pred2", base + CCM_CBCDR, 0, 3);
-	clk[ahb] = imx_clk_divider("ahb", "main_bus", base + CCM_CBCDR, 10, 3);
-	clk[ahb_max] = imx_clk_gate2("ahb_max", "ahb", base + CCM_CCGR0, 28);
-	clk[aips_tz1] = imx_clk_gate2("aips_tz1", "ahb", base + CCM_CCGR0, 24);
-	clk[aips_tz2] = imx_clk_gate2("aips_tz2", "ahb", base + CCM_CCGR0, 26);
-	clk[tmax1] = imx_clk_gate2("tmax1", "ahb", base + CCM_CCGR1, 0);
-	clk[tmax2] = imx_clk_gate2("tmax2", "ahb", base + CCM_CCGR1, 2);
-	clk[tmax3] = imx_clk_gate2("tmax3", "ahb", base + CCM_CCGR1, 4);
-	clk[spba] = imx_clk_gate2("spba", "ipg", base + CCM_CCGR5, 0);
-	clk[ipg] = imx_clk_divider("ipg", "ahb", base + CCM_CBCDR, 8, 2);
-	clk[axi_a] = imx_clk_divider("axi_a", "main_bus", base + CCM_CBCDR, 16, 3);
-	clk[axi_b] = imx_clk_divider("axi_b", "main_bus", base + CCM_CBCDR, 19, 3);
-	clk[uart_pred] = imx_clk_divider("uart_pred", "uart_sel", base + CCM_CSCDR1, 3, 3);
-	clk[uart_root] = imx_clk_divider("uart_root", "uart_pred", base + CCM_CSCDR1, 0, 3);
+	clk[tve_di]         = imx_clk_fixed("tve_di", 65000000); /* FIXME */
 
-	clk[esdhc_a_pred] = imx_clk_divider("esdhc_a_pred", "esdhc_a_sel", base + CCM_CSCDR1, 16, 3);
-	clk[esdhc_a_podf] = imx_clk_divider("esdhc_a_podf", "esdhc_a_pred", base + CCM_CSCDR1, 11, 3);
-	clk[esdhc_b_pred] = imx_clk_divider("esdhc_b_pred", "esdhc_b_sel", base + CCM_CSCDR1, 22, 3);
-	clk[esdhc_b_podf] = imx_clk_divider("esdhc_b_podf", "esdhc_b_pred", base + CCM_CSCDR1, 19, 3);
+	/*                                      name             parent_name          reg       shift width */
+	clk[cpu_podf]       = imx_clk_divider_no_srp(
+	                                      "cpu_podf",       "pll1_sw",        base + CCM_CACRR,   0, 3);
+	/* NEKO : CPU_PODF is our first device-tree divider candidate! */
+	clk[per_podf]       = imx_clk_divider("per_podf",       "per_pred2",      base + CCM_CBCDR,   0, 3);
+	clk[per_pred2]      = imx_clk_divider("per_pred2",      "per_pred1",      base + CCM_CBCDR,   3, 3);
+	clk[per_pred1]      = imx_clk_divider("per_pred1",      "per_lp_apm",     base + CCM_CBCDR,   6, 2);
+	clk[ipg]            = imx_clk_divider("ipg",            "ahb",            base + CCM_CBCDR,   8, 2);
+	clk[ahb]            = imx_clk_divider("ahb",            "main_bus",       base + CCM_CBCDR,  10, 3);
+	clk[axi_a]          = imx_clk_divider("axi_a",          "main_bus",       base + CCM_CBCDR,  16, 3);
+	clk[axi_b]          = imx_clk_divider("axi_b",          "main_bus",       base + CCM_CBCDR,  19, 3);
 
-	clk[emi_slow_podf] = imx_clk_divider("emi_slow_podf", "emi_sel", base + CCM_CBCDR, 22, 3);
-	clk[nfc_podf] = imx_clk_divider("nfc_podf", "emi_slow_podf", base + CCM_CBCDR, 13, 3);
-	clk[ecspi_pred] = imx_clk_divider("ecspi_pred", "ecspi_sel", base + CCM_CSCDR2, 25, 3);
-	clk[ecspi_podf] = imx_clk_divider("ecspi_podf", "ecspi_pred", base + CCM_CSCDR2, 19, 6);
-	clk[usboh3_pred] = imx_clk_divider("usboh3_pred", "usboh3_sel", base + CCM_CSCDR1, 8, 3);
-	clk[usboh3_podf] = imx_clk_divider("usboh3_podf", "usboh3_pred", base + CCM_CSCDR1, 6, 2);
-	clk[usb_phy_pred] = imx_clk_divider("usb_phy_pred", "pll3_sw", base + CCM_CDCDR, 3, 3);
-	clk[usb_phy_podf] = imx_clk_divider("usb_phy_podf", "usb_phy_pred", base + CCM_CDCDR, 0, 3);
-	clk[cpu_podf] = imx_clk_divider_fixedparent("cpu_podf", "pll1_sw", base + CCM_CACRR, 0, 3);
-	clk[di_pred] = imx_clk_divider("di_pred", "pll3_sw", base + CCM_CDCDR, 6, 3);
-	clk[tve_di] = imx_clk_fixed("tve_di", 65000000); /* FIXME */
-	clk[iim_gate] = imx_clk_gate2("iim_gate", "ipg", base + CCM_CCGR0, 30);
-	clk[uart1_ipg_gate] = imx_clk_gate2("uart1_ipg_gate", "ipg", base + CCM_CCGR1, 6);
-	clk[uart1_per_gate] = imx_clk_gate2("uart1_per_gate", "uart_root", base + CCM_CCGR1, 8);
-	clk[uart2_ipg_gate] = imx_clk_gate2("uart2_ipg_gate", "ipg", base + CCM_CCGR1, 10);
+	clk[uart_root]      = imx_clk_divider("uart_root",      "uart_pred",      base + CCM_CSCDR1,  0, 3);
+	clk[uart_pred]      = imx_clk_divider("uart_pred",      "uart_sel",       base + CCM_CSCDR1,  3, 3);
+	clk[usboh3_podf]    = imx_clk_divider("usboh3_podf",    "usboh3_pred",    base + CCM_CSCDR1,  6, 2);
+	clk[usboh3_pred]    = imx_clk_divider("usboh3_pred",    "usboh3_sel",     base + CCM_CSCDR1,  8, 3);
+	clk[esdhc_a_podf]   = imx_clk_divider("esdhc_a_podf",   "esdhc_a_pred",   base + CCM_CSCDR1, 11, 3);
+	clk[esdhc_a_pred]   = imx_clk_divider("esdhc_a_pred",   "esdhc_a_sel",    base + CCM_CSCDR1, 16, 3);
+	clk[esdhc_b_podf]   = imx_clk_divider("esdhc_b_podf",   "esdhc_b_pred",   base + CCM_CSCDR1, 19, 3);
+	clk[esdhc_b_pred]   = imx_clk_divider("esdhc_b_pred",   "esdhc_b_sel",    base + CCM_CSCDR1, 22, 3);
+
+	clk[nfc_podf]       = imx_clk_divider("nfc_podf",       "emi_slow_podf",  base + CCM_CBCDR,  13, 3);
+	clk[emi_slow_podf]  = imx_clk_divider("emi_slow_podf",  "emi_sel",        base + CCM_CBCDR,  22, 3);
+
+	clk[ecspi_podf]     = imx_clk_divider("ecspi_podf",     "ecspi_pred",     base + CCM_CSCDR2, 19, 6);
+	clk[ecspi_pred]     = imx_clk_divider("ecspi_pred",     "ecspi_sel",      base + CCM_CSCDR2, 25, 3);
+
+	clk[usb_phy_podf]   = imx_clk_divider("usb_phy_podf",   "usb_phy_pred",   base + CCM_CDCDR,   0, 3);
+	clk[usb_phy_pred]   = imx_clk_divider("usb_phy_pred",   "pll3_sw",        base + CCM_CDCDR,   3, 3);
+	clk[di_pred]        = imx_clk_divider("di_pred",        "pll3_sw",        base + CCM_CDCDR,   6, 3);
+
+	clk[ssi1_root_podf] = imx_clk_divider("ssi1_root_podf", "ssi1_root_pred", base + CCM_CS1CDR,  0, 6);
+	clk[ssi1_root_pred] = imx_clk_divider("ssi1_root_pred", "ssi1_root_sel",  base + CCM_CS1CDR,  6, 3);
+	clk[ssi_ext1_podf]  = imx_clk_divider("ssi_ext1_podf",  "ssi_ext1_pred",  base + CCM_CS1CDR, 16, 6);
+	clk[ssi_ext1_pred]  = imx_clk_divider("ssi_ext1_pred",  "ssi_ext1_sel",   base + CCM_CS1CDR, 22, 3);
+
+	clk[ssi2_root_podf] = imx_clk_divider("ssi2_root_podf", "ssi2_root_pred", base + CCM_CS2CDR,  0, 6);
+	clk[ssi2_root_pred] = imx_clk_divider("ssi2_root_pred", "ssi2_root_sel",  base + CCM_CS2CDR,  6, 3);
+	clk[ssi_ext2_podf]  = imx_clk_divider("ssi_ext2_podf",  "ssi_ext2_pred",  base + CCM_CS2CDR, 16, 6);
+	clk[ssi_ext2_pred]  = imx_clk_divider("ssi_ext2_pred",  "ssi_ext2_sel",   base + CCM_CS2CDR, 22, 3);
+
+	/*                            name         parent_name     reg      shift */
+	clk[aips_tz1] = imx_clk_gate2("aips_tz1",  "ahb", base + CCM_CCGR0, 24);
+	clk[aips_tz2] = imx_clk_gate2("aips_tz2",  "ahb", base + CCM_CCGR0, 26);
+	clk[ahb_max]  = imx_clk_gate2("ahb_max",   "ahb", base + CCM_CCGR0, 28);
+	clk[iim_gate] = imx_clk_gate2("iim_gate",  "ipg", base + CCM_CCGR0, 30);
+
+	/*                                  name              parent_name           reg      shift */
+	clk[tmax1]          = imx_clk_gate2("tmax1",          "ahb",       base + CCM_CCGR1,  0);
+	clk[tmax2]          = imx_clk_gate2("tmax2",          "ahb",       base + CCM_CCGR1,  2);
+	clk[tmax3]          = imx_clk_gate2("tmax3",          "ahb",       base + CCM_CCGR1,  4);
+	clk[uart1_ipg_gate] = imx_clk_gate2("uart1_ipg_gate", "ipg",       base + CCM_CCGR1,  6);
+	clk[uart1_per_gate] = imx_clk_gate2("uart1_per_gate", "uart_root", base + CCM_CCGR1,  8);
+	clk[uart2_ipg_gate] = imx_clk_gate2("uart2_ipg_gate", "ipg",       base + CCM_CCGR1, 10);
 	clk[uart2_per_gate] = imx_clk_gate2("uart2_per_gate", "uart_root", base + CCM_CCGR1, 12);
-	clk[uart3_ipg_gate] = imx_clk_gate2("uart3_ipg_gate", "ipg", base + CCM_CCGR1, 14);
+	clk[uart3_ipg_gate] = imx_clk_gate2("uart3_ipg_gate", "ipg",       base + CCM_CCGR1, 14);
 	clk[uart3_per_gate] = imx_clk_gate2("uart3_per_gate", "uart_root", base + CCM_CCGR1, 16);
-	clk[i2c1_gate] = imx_clk_gate2("i2c1_gate", "per_root", base + CCM_CCGR1, 18);
-	clk[i2c2_gate] = imx_clk_gate2("i2c2_gate", "per_root", base + CCM_CCGR1, 20);
-	clk[pwm1_ipg_gate] = imx_clk_gate2("pwm1_ipg_gate", "ipg", base + CCM_CCGR2, 10);
-	clk[pwm1_hf_gate] = imx_clk_gate2("pwm1_hf_gate", "per_root", base + CCM_CCGR2, 12);
-	clk[pwm2_ipg_gate] = imx_clk_gate2("pwm2_ipg_gate", "ipg", base + CCM_CCGR2, 14);
-	clk[pwm2_hf_gate] = imx_clk_gate2("pwm2_hf_gate", "per_root", base + CCM_CCGR2, 16);
-	clk[gpt_ipg_gate] = imx_clk_gate2("gpt_ipg_gate", "ipg", base + CCM_CCGR2, 18);
-	clk[gpt_hf_gate] = imx_clk_gate2("gpt_hf_gate", "per_root", base + CCM_CCGR2, 20);
-	clk[fec_gate] = imx_clk_gate2("fec_gate", "ipg", base + CCM_CCGR2, 24);
-	clk[usboh3_gate] = imx_clk_gate2("usboh3_gate", "ipg", base + CCM_CCGR2, 26);
+	clk[i2c1_gate]      = imx_clk_gate2("i2c1_gate",      "per_root",  base + CCM_CCGR1, 18);
+	clk[i2c2_gate]      = imx_clk_gate2("i2c2_gate",      "per_root",  base + CCM_CCGR1, 20);
+
+	/*                                   name               parent_name           reg        shift */
+	clk[epit1_ipg_gate]  = imx_clk_gate2("epit1_ipg_gate",  "ipg",         base + CCM_CCGR2,  2);
+	clk[epit1_hf_gate]   = imx_clk_gate2("epit1_hf_gate",   "per_root",    base + CCM_CCGR2,  4);
+	clk[epit2_ipg_gate]  = imx_clk_gate2("epit2_ipg_gate",  "ipg",         base + CCM_CCGR2,  6);
+	clk[epit2_hf_gate]   = imx_clk_gate2("epit2_hf_gate",   "per_root",    base + CCM_CCGR2,  8);
+	clk[pwm1_ipg_gate]   = imx_clk_gate2("pwm1_ipg_gate",   "ipg",         base + CCM_CCGR2, 10);
+	clk[pwm1_hf_gate]    = imx_clk_gate2("pwm1_hf_gate",    "per_root",    base + CCM_CCGR2, 12);
+	clk[pwm2_ipg_gate]   = imx_clk_gate2("pwm2_ipg_gate",   "ipg",         base + CCM_CCGR2, 14);
+	clk[pwm2_hf_gate]    = imx_clk_gate2("pwm2_hf_gate",    "per_root",    base + CCM_CCGR2, 16);
+	clk[gpt_ipg_gate]    = imx_clk_gate2("gpt_ipg_gate",    "ipg",         base + CCM_CCGR2, 18);
+	clk[gpt_hf_gate]     = imx_clk_gate2("gpt_hf_gate",     "per_root",    base + CCM_CCGR2, 20);
+	clk[fec_gate]        = imx_clk_gate2("fec_gate",        "ipg",         base + CCM_CCGR2, 24);
+	clk[usboh3_gate]     = imx_clk_gate2("usboh3_gate",     "ipg",         base + CCM_CCGR2, 26);
 	clk[usboh3_per_gate] = imx_clk_gate2("usboh3_per_gate", "usboh3_podf", base + CCM_CCGR2, 28);
-	clk[esdhc1_ipg_gate] = imx_clk_gate2("esdhc1_ipg_gate", "ipg", base + CCM_CCGR3, 0);
-	clk[esdhc2_ipg_gate] = imx_clk_gate2("esdhc2_ipg_gate", "ipg", base + CCM_CCGR3, 4);
-	clk[esdhc3_ipg_gate] = imx_clk_gate2("esdhc3_ipg_gate", "ipg", base + CCM_CCGR3, 8);
-	clk[esdhc4_ipg_gate] = imx_clk_gate2("esdhc4_ipg_gate", "ipg", base + CCM_CCGR3, 12);
-	clk[ssi1_ipg_gate] = imx_clk_gate2("ssi1_ipg_gate", "ipg", base + CCM_CCGR3, 16);
-	clk[ssi2_ipg_gate] = imx_clk_gate2("ssi2_ipg_gate", "ipg", base + CCM_CCGR3, 20);
-	clk[ssi3_ipg_gate] = imx_clk_gate2("ssi3_ipg_gate", "ipg", base + CCM_CCGR3, 24);
-	clk[ecspi1_ipg_gate] = imx_clk_gate2("ecspi1_ipg_gate", "ipg", base + CCM_CCGR4, 18);
+
+	/*                                   name               parent_name               reg         shift */
+	clk[esdhc1_ipg_gate] = imx_clk_gate2("esdhc1_ipg_gate", "ipg",              base + CCM_CCGR3,  0);
+	clk[esdhc2_ipg_gate] = imx_clk_gate2("esdhc2_ipg_gate", "ipg",              base + CCM_CCGR3,  4);
+	clk[esdhc3_ipg_gate] = imx_clk_gate2("esdhc3_ipg_gate", "ipg",              base + CCM_CCGR3,  8);
+	clk[esdhc4_ipg_gate] = imx_clk_gate2("esdhc4_ipg_gate", "ipg",              base + CCM_CCGR3, 12);
+	clk[ssi1_ipg_gate]   = imx_clk_gate2("ssi1_ipg_gate",   "ipg",              base + CCM_CCGR3, 16);
+	clk[ssi1_root_gate]  = imx_clk_gate2("ssi1_root_gate",  "ssi1_root_podf",   base + CCM_CCGR3, 18);
+	clk[ssi2_ipg_gate]   = imx_clk_gate2("ssi2_ipg_gate",   "ipg",              base + CCM_CCGR3, 20);
+	clk[ssi2_root_gate]  = imx_clk_gate2("ssi2_root_gate",  "ssi2_root_podf",   base + CCM_CCGR3, 22);
+	clk[ssi3_ipg_gate]   = imx_clk_gate2("ssi3_ipg_gate",   "ipg",              base + CCM_CCGR3, 24);
+	clk[ssi3_root_gate]  = imx_clk_gate2("ssi3_root_gate",  "ssi3_root_sel",    base + CCM_CCGR3, 26);
+	clk[ssi_ext1_gate]   = imx_clk_gate2("ssi_ext1_gate",   "ssi_ext1_com_sel", base + CCM_CCGR3, 28);
+	clk[ssi_ext2_gate]   = imx_clk_gate2("ssi_ext2_gate",   "ssi_ext2_com_sel", base + CCM_CCGR3, 30);
+
+	/*                                   name               parent_name           reg       shift */
+	clk[ecspi1_ipg_gate] = imx_clk_gate2("ecspi1_ipg_gate", "ipg",        base + CCM_CCGR4, 18);
 	clk[ecspi1_per_gate] = imx_clk_gate2("ecspi1_per_gate", "ecspi_podf", base + CCM_CCGR4, 20);
-	clk[ecspi2_ipg_gate] = imx_clk_gate2("ecspi2_ipg_gate", "ipg", base + CCM_CCGR4, 22);
+	clk[ecspi2_ipg_gate] = imx_clk_gate2("ecspi2_ipg_gate", "ipg",        base + CCM_CCGR4, 22);
 	clk[ecspi2_per_gate] = imx_clk_gate2("ecspi2_per_gate", "ecspi_podf", base + CCM_CCGR4, 24);
-	clk[cspi_ipg_gate] = imx_clk_gate2("cspi_ipg_gate", "ipg", base + CCM_CCGR4, 26);
-	clk[sdma_gate] = imx_clk_gate2("sdma_gate", "ipg", base + CCM_CCGR4, 30);
-	clk[emi_fast_gate] = imx_clk_gate2("emi_fast_gate", "dummy", base + CCM_CCGR5, 14);
-	clk[emi_slow_gate] = imx_clk_gate2("emi_slow_gate", "emi_slow_podf", base + CCM_CCGR5, 16);
-	clk[ipu_gate] = imx_clk_gate2("ipu_gate", "ipu_sel", base + CCM_CCGR5, 10);
-	clk[nfc_gate] = imx_clk_gate2("nfc_gate", "nfc_podf", base + CCM_CCGR5, 20);
+	clk[cspi_ipg_gate]   = imx_clk_gate2("cspi_ipg_gate",   "ipg",        base + CCM_CCGR4, 26);
+	clk[srtc_gate]       = imx_clk_gate2("srtc_gate",       "per_root",   base + CCM_CCGR4, 28);
+	clk[sdma_gate]       = imx_clk_gate2("sdma_gate",       "ipg",        base + CCM_CCGR4, 30);
+
+	/*                                      name                  parent_name           reg        shift */
+	clk[spba]               = imx_clk_gate2("spba",               "ipg",           base + CCM_CCGR5,  0);
+	clk[vpu_gate]           = imx_clk_gate2("vpu_gate",           "vpu_sel",       base + CCM_CCGR5,  6);
+	clk[vpu_reference_gate] = imx_clk_gate2("vpu_reference_gate", "osc",           base + CCM_CCGR5,  8);
+	clk[ipu_gate]           = imx_clk_gate2("ipu_gate",           "ipu_sel",       base + CCM_CCGR5, 10);
+	clk[emi_fast_gate]      = imx_clk_gate2("emi_fast_gate",      "dummy",         base + CCM_CCGR5, 14);
+	clk[emi_slow_gate]      = imx_clk_gate2("emi_slow_gate",      "emi_slow_podf", base + CCM_CCGR5, 16);
+	clk[nfc_gate]           = imx_clk_gate2("nfc_gate",           "nfc_podf",      base + CCM_CCGR5, 20);
+	clk[gpc_dvfs]           = imx_clk_gate2("gpc_dvfs",           "dummy",         base + CCM_CCGR5, 24);
+
+	/*                                name            parent_name           reg        shift */
 	clk[ipu_di0_gate] = imx_clk_gate2("ipu_di0_gate", "ipu_di0_sel", base + CCM_CCGR6, 10);
 	clk[ipu_di1_gate] = imx_clk_gate2("ipu_di1_gate", "ipu_di1_sel", base + CCM_CCGR6, 12);
-	clk[vpu_gate] = imx_clk_gate2("vpu_gate", "vpu_sel", base + CCM_CCGR5, 6);
-	clk[vpu_reference_gate] = imx_clk_gate2("vpu_reference_gate", "osc", base + CCM_CCGR5, 8);
-	clk[gpc_dvfs] = imx_clk_gate2("gpc_dvfs", "dummy", base + CCM_CCGR5, 24);
 
-	clk[ssi1_root_pred] = imx_clk_divider("ssi1_root_pred", "ssi1_root_sel", base + CCM_CS1CDR, 6, 3);
-	clk[ssi1_root_podf] = imx_clk_divider("ssi1_root_podf", "ssi1_root_pred", base + CCM_CS1CDR, 0, 6);
-	clk[ssi2_root_pred] = imx_clk_divider("ssi2_root_pred", "ssi2_root_sel", base + CCM_CS2CDR, 6, 3);
-	clk[ssi2_root_podf] = imx_clk_divider("ssi2_root_podf", "ssi2_root_pred", base + CCM_CS2CDR, 0, 6);
-	clk[ssi_ext1_pred] = imx_clk_divider("ssi_ext1_pred", "ssi_ext1_sel", base + CCM_CS1CDR, 22, 3);
-	clk[ssi_ext1_podf] = imx_clk_divider("ssi_ext1_podf", "ssi_ext1_pred", base + CCM_CS1CDR, 16, 6);
-	clk[ssi_ext2_pred] = imx_clk_divider("ssi_ext2_pred", "ssi_ext2_sel", base + CCM_CS2CDR, 22, 3);
-	clk[ssi_ext2_podf] = imx_clk_divider("ssi_ext2_podf", "ssi_ext2_pred", base + CCM_CS2CDR, 16, 6);
-	clk[ssi1_root_gate] = imx_clk_gate2("ssi1_root_gate", "ssi1_root_podf", base + CCM_CCGR3, 18);
-	clk[ssi2_root_gate] = imx_clk_gate2("ssi2_root_gate", "ssi2_root_podf", base + CCM_CCGR3, 22);
-	clk[ssi3_root_gate] = imx_clk_gate2("ssi3_root_gate", "ssi3_root_sel", base + CCM_CCGR3, 26);
-	clk[ssi_ext1_gate] = imx_clk_gate2("ssi_ext1_gate", "ssi_ext1_com_sel", base + CCM_CCGR3, 28);
-	clk[ssi_ext2_gate] = imx_clk_gate2("ssi_ext2_gate", "ssi_ext2_com_sel", base + CCM_CCGR3, 30);
-	clk[epit1_ipg_gate] = imx_clk_gate2("epit1_ipg_gate", "ipg", base + CCM_CCGR2, 2);
-	clk[epit1_hf_gate] = imx_clk_gate2("epit1_hf_gate", "per_root", base + CCM_CCGR2, 4);
-	clk[epit2_ipg_gate] = imx_clk_gate2("epit2_ipg_gate", "ipg", base + CCM_CCGR2, 6);
-	clk[epit2_hf_gate] = imx_clk_gate2("epit2_hf_gate", "per_root", base + CCM_CCGR2, 8);
-	clk[srtc_gate] = imx_clk_gate2("srtc_gate", "per_root", base + CCM_CCGR4, 28);
 
 	clk_register_clkdev(clk[gpt_hf_gate], "per", "imx-gpt.0");
 	clk_register_clkdev(clk[gpt_ipg_gate], "ipg", "imx-gpt.0");
