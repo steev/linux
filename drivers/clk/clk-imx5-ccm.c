@@ -19,6 +19,8 @@
 
 #include "clk-imx.h"
 
+static void __iomem *ccm_base;
+
 /* Low-power Audio Playback Mode clock */
 static const char *lp_apm_sel[] = { "osc", };
 
@@ -502,15 +504,14 @@ void __init imx51_ccm_setup(struct device_node *np)
 
 	base = of_iomap(np, 0);
 	WARN_ON(!base);
+	ccm_base = base;
 
 	clk_data.clks = clk;
 	clk_data.clk_num = ARRAY_SIZE(clk);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
-	imx51_clocks_init(base);
-
+	imx51_clocks_init(ccm_base);
 	//clk[pll3_sw] = ERR_PTR(-EFAULT);
-
 	imx5_sanity_check_clocks();
 }
 
@@ -521,12 +522,13 @@ void __init imx53_ccm_setup(struct device_node *np)
 
 	base = of_iomap(np, 0);
 	WARN_ON(!base);
+	ccm_base = base;
 
 	clk_data.clks = clk;
 	clk_data.clk_num = ARRAY_SIZE(clk);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
-	imx53_clocks_init(base);
+	imx53_clocks_init(ccm_base);
 	imx5_sanity_check_clocks();
 }
 #endif /* CONFIG_OF */
