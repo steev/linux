@@ -266,14 +266,6 @@
 				regulator-always-on;
 			};
 
-			reg_2V5: vcam {
-				/* 2V5 - voltage divider for PMIC ADC input */
-				regulator-name = "2V5";
-				regulator-min-microvolt = <2500000>;
-				regulator-max-microvolt = <2500000>;
-				regulator-always-on;
-			};
-
 			reg_1V2_DIG2: vgen1 {
 				/* 1V2_DIG2 - (SII9022-AVCC, SII9022-CAVCC, VGA, SGTL5000-VDDD) */
 				regulator-name = "1V2_DIG2";
