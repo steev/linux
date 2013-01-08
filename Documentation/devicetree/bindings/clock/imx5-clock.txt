@@ -12,11 +12,11 @@ clocks and IDs.
 
 	Clock			ID
 	---------------------------
-	dummy			0
-	ckil			1
-	osc			2
-	ckih1			3
-	ckih2			4
+	<reserved>		0
+	<reserved>		1
+	<reserved>		2
+	<reserved>		3
+	<reserved>		4
 	ahb			5
 	ipg			6
 	axi_a			7
@@ -124,9 +124,9 @@ clocks and IDs.
 	emi_fast_gate		109
 	ipu_di0_gate		110
 	gpc_dvfs		111
-	pll1_sw			112
-	pll2_sw			113
-	pll3_sw			114
+	<reserved>		112
+	<reserved>		113
+	<reserved>		114
 	ipu_di0_sel		115
 	ipu_di1_sel		116
 	tve_ext_sel		117

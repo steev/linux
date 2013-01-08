@@ -12,10 +12,10 @@ clocks and IDs.
 
 	Clock			ID
 	---------------------------
-	dummy			0
-	ckil			1
-	ckih			2
-	osc			3
+	<reserved>			0
+	<reserved>			1
+	<reserved>			2
+	<reserved>			3
 	pll2_pfd0_352m		4
 	pll2_pfd1_594m		5
 	pll2_pfd2_396m		6
