@@ -10,6 +10,8 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
 #include <linux/irq.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
@@ -60,10 +62,51 @@ static void __init imx51_dt_init(void)
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 }
 
+static void __init imx51_clocks_fixup(void)
+{
+	struct clk *pll2, *usboh3_per_gate;
+
+	pll2 = __clk_lookup("pll2_sw");
+
+	/* Set SDHC parents to be PLL2 */
+	clk_set_parent(__clk_lookup("esdhc_a_sel"), pll2);
+	clk_set_parent(__clk_lookup("esdhc_b_sel"), pll2);
+
+	/* set SDHC root clock to 166.25MHZ*/
+	clk_set_rate(__clk_lookup("esdhc_a_podf"), 166250000);
+	clk_set_rate(__clk_lookup("esdhc_b_podf"), 166250000);
+
+	/* set the usboh3 parent to pll2_sw */
+	clk_set_parent(__clk_lookup("usboh3_sel"), pll2);
+
+	usboh3_per_gate = __clk_lookup("usboh3_per_gate");
+	//r = clk_round_rate(usboh3_per_gate, 54000000);
+	clk_set_rate(usboh3_per_gate, 54000000);
+
+	/* move usb phy clk to 24MHz */
+	clk_set_parent(__clk_lookup("usb_phy_sel"), __clk_lookup("osc"));
+
+	/* ipu di external clock to pll3_sw */
+	clk_set_parent(__clk_lookup("ipu_di0_sel"), __clk_lookup("di_pred"));
+}
+
 static void __init imx51_timer_init(void)
 {
+	struct clk *iim;
+
 	/* this is finally calling drivers/clk/clk-imx.c */
 	imx5_clocks_init();
+
+	imx51_clocks_fixup();
+	imx_gpt_register();
+	imx_epit_register();
+
+	iim = __clk_lookup("iim_gate");
+	if (iim) {
+		clk_prepare_enable(iim);
+		imx_print_silicon_rev("i.MX51", mx51_revision());
+		clk_disable_unprepare(iim);
+	}
 }
 
 static struct sys_timer imx51_timer = {
