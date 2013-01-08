@@ -12,6 +12,7 @@
 
 #include <linux/clk.h>
 #include <linux/clkdev.h>
+#include <linux/clk-provider.h>
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/irq.h>
@@ -36,6 +37,28 @@ static void __init imx53_qsb_init(void)
 	clk_register_clkdev(clk, NULL, "0-000a");
 }
 
+static void __init imx53_clocks_fixup(void)
+{
+	struct clk *pll2, *usboh3_per_gate;
+
+	pll2 = __clk_lookup("pll2_sw");
+
+	/* Set SDHC parents to be PLL2 */
+	clk_set_parent(__clk_lookup("esdhc_a_sel"), pll2);
+	clk_set_parent(__clk_lookup("esdhc_b_sel"), pll2);
+
+	/* set SDHC root clock to 200MHZ*/
+	clk_set_rate(__clk_lookup("esdhc_a_podf"), 200000000);
+	clk_set_rate(__clk_lookup("esdhc_b_podf"), 200000000);
+
+	usboh3_per_gate = __clk_lookup("usboh3_per_gate");
+	//r = clk_round_rate(usboh3_per_gate, 54000000);
+	clk_set_rate(usboh3_per_gate, 54000000);
+
+	/* move usb phy clk to 24MHz */
+	clk_set_parent(__clk_lookup("usb_phy_sel"), __clk_lookup("osc"));
+}
+
 static void __init imx53_dt_init(void)
 {
 	if (of_machine_is_compatible("fsl,imx53-qsb"))
@@ -46,8 +69,21 @@ static void __init imx53_dt_init(void)
 
 static void __init imx53_timer_init(void)
 {
+	struct clk *iim;
+
 	/* this is finally calling drivers/clk/clk-imx.c */
 	imx5_clocks_init();
+
+	imx53_clocks_fixup();
+	imx_gpt_register();
+	imx_epit_register();
+
+	iim = __clk_lookup("iim_gate");
+	if (iim) {
+		clk_prepare_enable(iim);
+		imx_print_silicon_rev("i.MX53", mx53_revision());
+		clk_disable_unprepare(iim);
+	}
 }
 
 static struct sys_timer imx53_timer = {
