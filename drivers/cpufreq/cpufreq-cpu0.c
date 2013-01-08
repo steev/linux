@@ -194,7 +194,8 @@ static int cpu0_cpufreq_driver_init(void)
 
 	cpu_dev->of_node = np;
 
-	cpu_clk = clk_get(cpu_dev, NULL);
+	/* this seems redundant to give it a name.. */
+	cpu_clk = of_clk_get_by_name(np, "cpu0");
 	if (IS_ERR(cpu_clk)) {
 		ret = PTR_ERR(cpu_clk);
 		pr_err("failed to get cpu0 clock: %d\n", ret);
