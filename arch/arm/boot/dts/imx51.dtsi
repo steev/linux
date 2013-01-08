@@ -38,9 +38,11 @@
 				/* KHz    uV */
 				800000 1100000
 				400000 950000
-				166250 850000
+				160000 850000
 			>;
 			clock-latency = <61036>; /* two CLK32 periods */
+			clocks = <&cpu_podf_clk>;
+			clock-names = "cpu0";
 		};
 	};
 
@@ -585,6 +587,22 @@
 				reg = <0x73fd4000 0x4000>;
 				interrupts = <0 71 0x04 0 72 0x04>;
 				#clock-cells = <1>;
+
+				ccm-clocks {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					cpu_podf_clk: cpu_podf {
+						#clock-cells = <0>;
+						compatible = "divider-clock";
+						reg = <0x10>;
+						bit-width = <3>;
+						bit-shift = <0>;
+						clocks = <&pll1_sw>;
+						clock-output-names = "cpu_podf";
+						clk,no-set-rate-parent; // fix my name?
+					};
+				};
 			};
 		};
 
@@ -596,6 +614,7 @@
 			ranges;
 
 			pll1_sw: pll1@83f80000 {
+				#clock-cells = <0>;
 				compatible = "fsl,imx-pllv2";
 				reg = <0x83f80000 0x4000>;
 				clocks = <&clk_osc>;
@@ -603,6 +622,7 @@
 			};
 
 			pll2_sw: pll2@83f84000 {
+				#clock-cells = <0>;
 				compatible = "fsl,imx-pllv2";
 				reg = <0x83f84000 0x4000>;
 				clocks = <&clk_osc>;
@@ -610,6 +630,7 @@
 			};
 
 			pll3_sw: pll3@83f88000 {
+				#clock-cells = <0>;
 				compatible = "fsl,imx-pllv2";
 				reg = <0x83f88000 0x4000>;
 				clocks = <&clk_osc>;
