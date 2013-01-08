@@ -403,41 +403,51 @@ int __init imx51_clocks_init(void __iomem *base)
 
 int __init imx53_clocks_init(void __iomem *base)
 {
-	clk[ldb_di1_sel] = imx_clk_mux("ldb_di1_sel", base + CCM_CSCMR2, 9, 1,
-				mx53_ldb_di1_sel, ARRAY_SIZE(mx53_ldb_di1_sel));
-	clk[ldb_di1_div_3_5] = imx_clk_fixed_factor("ldb_di1_div_3_5", "ldb_di1_sel", 2, 7);
-	clk[ldb_di1_div] = imx_clk_divider("ldb_di1_div", "ldb_di1_div_3_5", base + CCM_CSCMR2, 11, 1);
-	clk[di_pll4_podf] = imx_clk_divider("di_pll4_podf", "pll4_sw", base + CCM_CDCDR, 16, 3);
-	clk[ldb_di0_sel] = imx_clk_mux("ldb_di0_sel", base + CCM_CSCMR2, 8, 1,
-				mx53_ldb_di0_sel, ARRAY_SIZE(mx53_ldb_di0_sel));
+	/*                              name                  reg     shift width parent_names       num_parents */
+	clk[tve_ext_sel] = imx_clk_mux("tve_ext_sel", base + CCM_CSCMR1,  6, 1, mx53_tve_ext_sel, ARRAY_SIZE(mx53_tve_ext_sel));
+	clk[can_sel]     = imx_clk_mux("can_sel",     base + CCM_CSCMR2,  6, 2, mx53_can_sel,     ARRAY_SIZE(mx53_can_sel));
+	clk[ldb_di0_sel] = imx_clk_mux("ldb_di0_sel", base + CCM_CSCMR2,  8, 1, mx53_ldb_di0_sel, ARRAY_SIZE(mx53_ldb_di0_sel));
+	clk[ldb_di1_sel] = imx_clk_mux("ldb_di1_sel", base + CCM_CSCMR2,  9, 1, mx53_ldb_di1_sel, ARRAY_SIZE(mx53_ldb_di1_sel));
+	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", base + CCM_CSCMR2, 26, 3, mx53_ipu_di0_sel, ARRAY_SIZE(mx53_ipu_di0_sel));
+	clk[ipu_di1_sel] = imx_clk_mux("ipu_di1_sel", base + CCM_CSCMR2, 29, 3, mx53_ipu_di1_sel, ARRAY_SIZE(mx53_ipu_di1_sel));
+
 	clk[ldb_di0_div_3_5] = imx_clk_fixed_factor("ldb_di0_div_3_5", "ldb_di0_sel", 2, 7);
-	clk[ldb_di0_div] = imx_clk_divider("ldb_di0_div", "ldb_di0_div_3_5", base + CCM_CSCMR2, 10, 1);
-	clk[ldb_di0_gate] = imx_clk_gate2("ldb_di0_gate", "ldb_di0_div", base + CCM_CCGR6, 28);
-	clk[ldb_di1_gate] = imx_clk_gate2("ldb_di1_gate", "ldb_di1_div", base + CCM_CCGR6, 30);
-	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", base + CCM_CSCMR2, 26, 3,
-				mx53_ipu_di0_sel, ARRAY_SIZE(mx53_ipu_di0_sel));
-	clk[ipu_di1_sel] = imx_clk_mux("ipu_di1_sel", base + CCM_CSCMR2, 29, 3,
-				mx53_ipu_di1_sel, ARRAY_SIZE(mx53_ipu_di1_sel));
-	clk[tve_ext_sel] = imx_clk_mux("tve_ext_sel", base + CCM_CSCMR1, 6, 1,
-				mx53_tve_ext_sel, ARRAY_SIZE(mx53_tve_ext_sel));
-	clk[tve_gate] = imx_clk_gate2("tve_gate", "tve_pred", base + CCM_CCGR2, 30);
-	clk[tve_pred] = imx_clk_divider("tve_pred", "tve_ext_sel", base + CCM_CDCDR, 28, 3);
-	clk[esdhc1_per_gate] = imx_clk_gate2("esdhc1_per_gate", "esdhc_a_podf", base + CCM_CCGR3, 2);
-	clk[esdhc2_per_gate] = imx_clk_gate2("esdhc2_per_gate", "esdhc_c_sel", base + CCM_CCGR3, 6);
+	clk[ldb_di1_div_3_5] = imx_clk_fixed_factor("ldb_di1_div_3_5", "ldb_di1_sel", 2, 7);
+
+	/*                                  name            parent_name      reg       shift */
+	clk[di_pll4_podf] = imx_clk_divider("di_pll4_podf", "pll4_sw", base + CCM_CDCDR, 16, 3);
+	clk[tve_pred]     = imx_clk_divider("tve_pred", "tve_ext_sel", base + CCM_CDCDR, 28, 3);
+	clk[ldb_di0_div]  = imx_clk_divider("ldb_di0_div", "ldb_di0_div_3_5", base + CCM_CSCMR2, 10, 1);
+	clk[ldb_di1_div]  = imx_clk_divider("ldb_di1_div", "ldb_di1_div_3_5", base + CCM_CSCMR2, 11, 1);
+
+	/*                                  name       parent_name      reg         shift */
+	clk[i2c3_gate]    = imx_clk_gate2("i2c3_gate", "per_root", base + CCM_CCGR1, 22);
+
+	/*                                  name       parent_name      reg         shift */
+	clk[tve_gate]     = imx_clk_gate2("tve_gate",  "tve_pred", base + CCM_CCGR2, 30);
+
+	/*                                    name              parent_name          reg         shift */
+	clk[esdhc1_per_gate] = imx_clk_gate2("esdhc1_per_gate", "esdhc_a_podf", base + CCM_CCGR3,  2);
+	clk[esdhc2_per_gate] = imx_clk_gate2("esdhc2_per_gate", "esdhc_c_sel",  base + CCM_CCGR3,  6);
 	clk[esdhc3_per_gate] = imx_clk_gate2("esdhc3_per_gate", "esdhc_b_podf", base + CCM_CCGR3, 10);
-	clk[esdhc4_per_gate] = imx_clk_gate2("esdhc4_per_gate", "esdhc_d_sel", base + CCM_CCGR3, 14);
-	clk[usb_phy1_gate] = imx_clk_gate2("usb_phy1_gate", "usb_phy_sel", base + CCM_CCGR4, 10);
-	clk[usb_phy2_gate] = imx_clk_gate2("usb_phy2_gate", "usb_phy_sel", base + CCM_CCGR4, 12);
-	clk[can_sel] = imx_clk_mux("can_sel", base + CCM_CSCMR2, 6, 2,
-				mx53_can_sel, ARRAY_SIZE(mx53_can_sel));
-	clk[can1_serial_gate] = imx_clk_gate2("can1_serial_gate", "can_sel", base + CCM_CCGR6, 22);
-	clk[can1_ipg_gate] = imx_clk_gate2("can1_ipg_gate", "ipg", base + CCM_CCGR6, 20);
-	clk[can2_serial_gate] = imx_clk_gate2("can2_serial_gate", "can_sel", base + CCM_CCGR4, 8);
-	clk[can2_ipg_gate] = imx_clk_gate2("can2_ipg_gate", "ipg", base + CCM_CCGR4, 6);
-	clk[i2c3_gate] = imx_clk_gate2("i2c3_gate", "per_root", base + CCM_CCGR1, 22);
-	clk[uart4_ipg_gate] = imx_clk_gate2("uart4_ipg_gate", "ipg", base + CCM_CCGR7, 8);
+	clk[esdhc4_per_gate] = imx_clk_gate2("esdhc4_per_gate", "esdhc_d_sel",  base + CCM_CCGR3, 14);
+
+	/*                                    name                parent_name         reg        shift */
+	clk[can2_ipg_gate]    = imx_clk_gate2("can2_ipg_gate",    "ipg",         base + CCM_CCGR4,  6);
+	clk[can2_serial_gate] = imx_clk_gate2("can2_serial_gate", "can_sel",     base + CCM_CCGR4,  8);
+	clk[usb_phy1_gate]    = imx_clk_gate2("usb_phy1_gate",    "usb_phy_sel", base + CCM_CCGR4, 10);
+	clk[usb_phy2_gate]    = imx_clk_gate2("usb_phy2_gate",    "usb_phy_sel", base + CCM_CCGR4, 12);
+
+	/*                                    name                parent_name          reg         shift */
+	clk[can1_ipg_gate]    = imx_clk_gate2("can1_ipg_gate",    "ipg",         base + CCM_CCGR6, 20);
+	clk[can1_serial_gate] = imx_clk_gate2("can1_serial_gate", "can_sel",     base + CCM_CCGR6, 22);
+	clk[ldb_di0_gate]     = imx_clk_gate2("ldb_di0_gate",     "ldb_di0_div", base + CCM_CCGR6, 28);
+	clk[ldb_di1_gate]     = imx_clk_gate2("ldb_di1_gate",     "ldb_di1_div", base + CCM_CCGR6, 30);
+
+	/*                                  name              parent_name         reg      shift */
+	clk[uart4_ipg_gate] = imx_clk_gate2("uart4_ipg_gate", "ipg",       base + CCM_CCGR7,  8);
 	clk[uart4_per_gate] = imx_clk_gate2("uart4_per_gate", "uart_root", base + CCM_CCGR7, 10);
-	clk[uart5_ipg_gate] = imx_clk_gate2("uart5_ipg_gate", "ipg", base + CCM_CCGR7, 12);
+	clk[uart5_ipg_gate] = imx_clk_gate2("uart5_ipg_gate", "ipg",       base + CCM_CCGR7, 12);
 	clk[uart5_per_gate] = imx_clk_gate2("uart5_per_gate", "uart_root", base + CCM_CCGR7, 14);
 
 	imx5_clocks_common_init(base);
@@ -471,8 +481,6 @@ int __init imx53_clocks_init(void __iomem *base)
 }
 
 #ifdef CONFIG_OF
-extern void imx5_clocks_init(void); // in clk-pllv2.c for now
-
 #ifdef DEBUG
 void imx5_sanity_check_clocks(void)
 {
@@ -521,4 +529,4 @@ void __init imx53_ccm_setup(struct device_node *np)
 	imx53_clocks_init(base);
 	imx5_sanity_check_clocks();
 }
-#endif
+#endif /* CONFIG_OF */
