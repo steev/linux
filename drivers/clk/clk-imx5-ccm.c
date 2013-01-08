@@ -159,7 +159,7 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 	clk[ssi_ext1_sel]     = imx_clk_mux("ssi_ext1_sel",     base + CCM_CSCMR1, 28, 2, ssi_clk_sels,      ARRAY_SIZE(ssi_clk_sels));
 	clk[ssi_ext2_sel]     = imx_clk_mux("ssi_ext2_sel",     base + CCM_CSCMR1, 30, 2, ssi_clk_sels,      ARRAY_SIZE(ssi_clk_sels));
 
-	clk[tve_di]         = imx_clk_fixed("tve_di", 65000000); /* FIXME */
+	clk[tve_di]           = imx_clk_fixed("tve_di", 65000000); /* FIXME - tve driver should create this */
 
 	/*                                      name             parent_name          reg       shift width */
 	clk[cpu_podf]       = imx_clk_divider_no_srp(
@@ -188,6 +188,7 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 	clk[ecspi_podf]     = imx_clk_divider("ecspi_podf",     "ecspi_pred",     base + CCM_CSCDR2, 19, 6);
 	clk[ecspi_pred]     = imx_clk_divider("ecspi_pred",     "ecspi_sel",      base + CCM_CSCDR2, 25, 3);
 
+	/* NEKO: note registering usb_phy_podf/pred meaningless since we reparent to OSC and bypass these */
 	clk[usb_phy_podf]   = imx_clk_divider("usb_phy_podf",   "usb_phy_pred",   base + CCM_CDCDR,   0, 3);
 	clk[usb_phy_pred]   = imx_clk_divider("usb_phy_pred",   "pll3_sw",        base + CCM_CDCDR,   3, 3);
 	clk[di_pred]        = imx_clk_divider("di_pred",        "pll3_sw",        base + CCM_CDCDR,   6, 3);
@@ -347,25 +348,32 @@ static void __init imx5_clocks_common_init(void __iomem *base)
 
 int __init imx51_clocks_init(void __iomem *base)
 {
-	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", base + CCM_CSCMR2, 26, 3,
-				mx51_ipu_di0_sel, ARRAY_SIZE(mx51_ipu_di0_sel));
-	clk[ipu_di1_sel] = imx_clk_mux("ipu_di1_sel", base + CCM_CSCMR2, 29, 3,
-				mx51_ipu_di1_sel, ARRAY_SIZE(mx51_ipu_di1_sel));
-	clk[tve_ext_sel] = imx_clk_mux("tve_ext_sel", base + CCM_CSCMR1, 6, 1,
-				mx51_tve_ext_sel, ARRAY_SIZE(mx51_tve_ext_sel));
-	clk[tve_gate] = imx_clk_gate2("tve_gate", "tve_sel", base + CCM_CCGR2, 30);
+	/*                              name                  reg     shift width parent_names       num_parents */
+	clk[tve_ext_sel] = imx_clk_mux("tve_ext_sel", base + CCM_CSCMR1,  6, 1, mx51_tve_ext_sel, ARRAY_SIZE(mx51_tve_ext_sel));
+	clk[ipu_di0_sel] = imx_clk_mux("ipu_di0_sel", base + CCM_CSCMR2, 26, 3, mx51_ipu_di0_sel, ARRAY_SIZE(mx51_ipu_di0_sel));
+	clk[ipu_di1_sel] = imx_clk_mux("ipu_di1_sel", base + CCM_CSCMR2, 29, 3, mx51_ipu_di1_sel, ARRAY_SIZE(mx51_ipu_di1_sel));
+
 	clk[tve_pred] = imx_clk_divider("tve_pred", "pll3_sw", base + CCM_CDCDR, 28, 3);
-	clk[esdhc1_per_gate] = imx_clk_gate2("esdhc1_per_gate", "esdhc_a_podf", base + CCM_CCGR3, 2);
-	clk[esdhc2_per_gate] = imx_clk_gate2("esdhc2_per_gate", "esdhc_b_podf", base + CCM_CCGR3, 6);
-	clk[esdhc3_per_gate] = imx_clk_gate2("esdhc3_per_gate", "esdhc_c_sel", base + CCM_CCGR3, 10);
-	clk[esdhc4_per_gate] = imx_clk_gate2("esdhc4_per_gate", "esdhc_d_sel", base + CCM_CCGR3, 14);
-	clk[usb_phy_gate] = imx_clk_gate2("usb_phy_gate", "usb_phy_sel", base + CCM_CCGR2, 0);
+
+	/*                              name          parent_name     reg      shift */
 	clk[hsi2c_gate] = imx_clk_gate2("hsi2c_gate", "ipg", base + CCM_CCGR1, 22);
-	clk[mipi_hsc1_gate] = imx_clk_gate2("mipi_hsc1_gate", "ipg", base + CCM_CCGR4, 6);
-	clk[mipi_hsc2_gate] = imx_clk_gate2("mipi_hsc2_gate", "ipg", base + CCM_CCGR4, 8);
-	clk[mipi_esc_gate] = imx_clk_gate2("mipi_esc_gate", "ipg", base + CCM_CCGR4, 10);
-	clk[mipi_hsp_gate] = imx_clk_gate2("mipi_hsp_gate", "ipg", base + CCM_CCGR4, 12);
-	clk[pata_gate] = imx_clk_gate2("pata_gate", "ipg", base + CCM_CCGR4, 0);
+
+	/*                                name            parent_name           reg        shift */
+	clk[usb_phy_gate] = imx_clk_gate2("usb_phy_gate", "usb_phy_sel", base + CCM_CCGR2,  0);
+	clk[tve_gate]     = imx_clk_gate2("tve_gate",     "tve_sel",     base + CCM_CCGR2, 30);
+
+	/*                                   name               parent_name           reg        shift */
+	clk[esdhc1_per_gate] = imx_clk_gate2("esdhc1_per_gate", "esdhc_a_podf", base + CCM_CCGR3,  2);
+	clk[esdhc2_per_gate] = imx_clk_gate2("esdhc2_per_gate", "esdhc_b_podf", base + CCM_CCGR3,  6);
+	clk[esdhc3_per_gate] = imx_clk_gate2("esdhc3_per_gate", "esdhc_c_sel",  base + CCM_CCGR3, 10);
+	clk[esdhc4_per_gate] = imx_clk_gate2("esdhc4_per_gate", "esdhc_d_sel",  base + CCM_CCGR3, 14);
+
+	/*                                  name            parent_name      reg       shift */
+	clk[pata_gate]      = imx_clk_gate2("pata_gate",      "ipg", base + CCM_CCGR4,  0);
+	clk[mipi_hsc1_gate] = imx_clk_gate2("mipi_hsc1_gate", "ipg", base + CCM_CCGR4,  6);
+	clk[mipi_hsc2_gate] = imx_clk_gate2("mipi_hsc2_gate", "ipg", base + CCM_CCGR4,  8);
+	clk[mipi_esc_gate]  = imx_clk_gate2("mipi_esc_gate",  "ipg", base + CCM_CCGR4, 10);
+	clk[mipi_hsp_gate]  = imx_clk_gate2("mipi_hsp_gate",  "ipg", base + CCM_CCGR4, 12);
 
 	imx5_clocks_common_init(base);
 
