@@ -140,6 +140,9 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		       CI13XXX_DISABLE_STREAMING |
 		       CI13XXX_REGS_SHARED;
 
+	if (of_find_property(pdev->dev.of_node, "genesi,chrgvbus-is-vbus-det", NULL))
+		pdata->flags |= CI13XXX_CHRGVBUS_IS_VBUS_DET;
+
 	pdata->power_budget = 500; // hack??
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
@@ -160,7 +163,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 			PTR_ERR(pinctrl));
 		pinctrl = NULL;
 	}
-			
+
 	pinctrl_default = pinctrl_lookup_state(pinctrl, "default");
 	if (IS_ERR(pinctrl_default)) {
 		dev_warn(&pdev->dev, "pinctrl lookup default failed, err=%ld\n",
@@ -170,8 +173,8 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		pinctrl_select_state(pinctrl, pinctrl_default);
 		msleep(100);
 	}
-	
-/*	
+
+/*
 	pinctrl_stp_gpio = pinctrl_lookup_state(pinctrl, "stp-gpio");
 	if (IS_ERR(pinctrl_stp_gpio)) {
 		dev_warn(&pdev->dev, "pinctrl lookup stp-gpio failed, err=%ld\n",
@@ -180,14 +183,14 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	} else {
 		stp_gpio = of_get_named_gpio(pdev->dev.of_node, "stp-gpio", 0);
 	}
-	
+
 	pinctrl_stp_usb = pinctrl_lookup_state(pinctrl, "stp-usb");
 	if (IS_ERR(pinctrl_stp_usb)) {
 		dev_warn(&pdev->dev, "pinctrl lookup stp-usb failed, err=%ld\n",
 			PTR_ERR(pinctrl_stp_usb));
 		pinctrl_stp_usb = NULL;
 	}
-*/		
+*/
 	data->clk_ahb = devm_clk_get(&pdev->dev, "ahb");
 	if (IS_ERR(data->clk_ahb)) {
 		dev_err(&pdev->dev,
@@ -219,16 +222,16 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	if (pinctrl && pinctrl_stp_usb) {
 		dev_dbg(&pdev->dev, "%s: switching to stp usb\n", __func__);
 		pinctrl_select_state(pinctrl, pinctrl_stp_usb);
-	}	
-	
+	}
+
 	if (pinctrl && pinctrl_stp_gpio) {
 		dev_dbg(&pdev->dev, "%s: switching to stp gpio\n", __func__);
 		pinctrl_select_state(pinctrl, pinctrl_stp_gpio);
 		gpio_request_one(stp_gpio, GPIOF_DIR_OUT, "stp-gpio");
 		gpio_set_value(stp_gpio, 1);
 		msleep(100);
-	}	
-*/	
+	}
+*/
 	ret = clk_prepare_enable(data->clk_ahb);
 	if (ret) {
 		dev_err(&pdev->dev,
@@ -271,7 +274,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	if (IS_ERR(data->supply_hub_reset)) {
 		data->supply_hub_reset = NULL;
 	}
-	
+
 	data->supply_phy_reset = devm_regulator_get(&pdev->dev, "phy-reset");
 	if (IS_ERR(data->supply_phy_reset)) {
 		data->supply_phy_reset = NULL;
@@ -289,7 +292,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		msleep(2);
 		regulator_disable(data->supply_phy_reset);
 	}
-	
+
 	phy_np = of_parse_phandle(pdev->dev.of_node, "fsl,usbphy", 0);
 	if (phy_np) {
 		data->phy_np = phy_np;
@@ -312,7 +315,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		reg_vbus = NULL;
 
 	pdata->phy = data->phy;
-	
+
 	if (!pdev->dev.dma_mask) {
 		pdev->dev.dma_mask = devm_kzalloc(&pdev->dev,
 				      sizeof(*pdev->dev.dma_mask), GFP_KERNEL);
@@ -336,7 +339,7 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 
 	ci13xxx_get_dr_flags(pdev->dev.of_node, pdata);
 	ci13xxx_get_dr_mode(pdev->dev.of_node, pdata);
-	
+
 	plat_ci = ci13xxx_add_device(&pdev->dev,
 				pdev->resource, pdev->num_resources,
 				pdata);
@@ -356,14 +359,14 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 			goto put_np;
 		}
 	}
-	
+
 	if (data->supply_hub_reset) {
 		dev_dbg(&pdev->dev, "%s: hub reset release\n", __func__);
 		msleep(50);
 		regulator_disable(data->supply_hub_reset);
 		msleep(2);
-	}	
-	
+	}
+
 	data->ci_pdev = plat_ci;
 	platform_set_drvdata(pdev, data);
 

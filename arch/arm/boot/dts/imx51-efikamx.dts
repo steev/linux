@@ -508,7 +508,8 @@
 	fsl,usbmisc = <&usbmisc 1>;
 	phy-mode = "ulpi";
 	ext-clk;
-//	disable-over-current;
+	disable-over-current;
+	genesi,chrgvbus-is-vbus-det;
 	hub-supply = <&reg_1V8_DIG2>;
 	hub-reset-supply = <&usb_hub_reset>;
 	phy-reset-supply = <&usb_phy_reset>;
