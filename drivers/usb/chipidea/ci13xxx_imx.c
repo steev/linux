@@ -140,6 +140,9 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		       CI13XXX_DISABLE_STREAMING |
 		       CI13XXX_REGS_SHARED;
 
+	if (of_find_property(pdev->dev.of_node, "genesi,chrgvbus-is-vbus-det", NULL))
+		pdata->flags |= CI13XXX_CHRGVBUS_IS_VBUS_DET;
+
 	pdata->power_budget = 500; // hack??
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);

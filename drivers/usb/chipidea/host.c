@@ -95,9 +95,15 @@ static int host_start(struct ci13xxx *ci)
 	 * hub is to connect the 100ohm resistor between the PHY 3.3V
 	 * supply and it's VBUS output giving us an active high GPIO
 	 * in all essence.
+	 *
+	 * Also, it seems, on the Smarttop despite being as per SMSC
+	 * recommendations and compliant with all USB specifications,
+	 * if CHRGVBUS is not set then the USB hub behind UH1 never
+	 * powers up (is this a race condition?)
 	 */
 	if (ci->otg && (ci->platdata->flags & CI13XXX_PORTSC_PTS_ULPI) &&
-			(ci->platdata->flags & CI13XXX_CHRGVBUS_IS_VBUS_DET)) {
+		(ci->platdata->flags & CI13XXX_CHRGVBUS_IS_VBUS_DET)) {
+
 		pr_err("%s: hacking CHRGVBUS\n", __func__);
 		flags = usb_phy_io_read(ci->transceiver, ULPI_OTG_CTRL);
 		flags |= ULPI_OTG_CTRL_CHRGVBUS;

@@ -219,9 +219,9 @@ static int usbmisc_imx51_init(struct device *dev)
 
 			dev_err(dev, "%s: USB_CTRL 0x%08x\n", __func__, val);
 
-			val |= MX51_USB_CTRL_H1PM;
+			val &= ~MX51_USB_CTRL_H1PM;
 
-			dev_err(dev, "%s: USB_CTRL set H1PM 0x%08x\n", __func__, val);
+			dev_err(dev, "%s: USB_CTRL mask out H1PM 0x%08x\n", __func__, val);
 
 			writel(val, reg);
 			mdelay(10);
@@ -256,7 +256,7 @@ static int usbmisc_imx51_init(struct device *dev)
 		if (usbdev->disable_oc) {
 			dev_err(dev, "%s: oc disable h2\n", __func__);
 			reg = usbmisc->base + MX51_USB_UH2_CTRL_OFFSET;
-			val = readl(reg) | MX51_USB_UH2_CTRL_H2PM;
+			val = readl(reg) & ~MX51_USB_UH2_CTRL_H2PM;
 
 			writel(val, reg);
 			mdelay(10);
