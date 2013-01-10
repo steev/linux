@@ -64,7 +64,7 @@ static void __init imx51_dt_init(void)
 
 static void __init imx51_clocks_fixup(void)
 {
-	struct clk *pll2, *usboh3_per_gate;
+	struct clk *pll2;
 
 	pll2 = __clk_lookup("pll2_sw");
 
@@ -79,9 +79,8 @@ static void __init imx51_clocks_fixup(void)
 	/* set the usboh3 parent to pll2_sw */
 	clk_set_parent(__clk_lookup("usboh3_sel"), pll2);
 
-	usboh3_per_gate = __clk_lookup("usboh3_per_gate");
-	//r = clk_round_rate(usboh3_per_gate, 54000000);
-	clk_set_rate(usboh3_per_gate, 54000000);
+	/* set the usboh3 clock to 66.5MHz */
+	clk_set_rate(__clk_lookup("usboh3_per_gate"), 665000000);
 
 	/* move usb phy clk to 24MHz */
 	clk_set_parent(__clk_lookup("usb_phy_sel"), __clk_lookup("osc"));
