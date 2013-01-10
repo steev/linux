@@ -316,7 +316,6 @@ static void __init mx5_clocks_common_init(void)
 int __init mx51_clocks_init(void)
 {
 	void __iomem *base;
-	unsigned long r;
 	int i, irq;
 	struct device_node *np;
 
@@ -394,8 +393,7 @@ int __init mx51_clocks_init(void)
 	imx_print_silicon_rev("i.MX51", mx51_revision());
 	clk_disable_unprepare(clk[iim_gate]);
 
-	r = clk_round_rate(clk[usboh3_per_gate], 54000000);
-	clk_set_rate(clk[usboh3_per_gate], r);
+	clk_set_rate(clk[usboh3_per_gate], 66500000);
 
 	return 0;
 }
