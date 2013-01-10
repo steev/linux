@@ -107,6 +107,13 @@
 		regulator-always-on;
 	};
 
+	usb_hub_enable: usb-hub-en {
+		compatible = "regulator-fixed";
+		regulator-name = "usb-hub-en";
+		gpio = <&gpio3 12 0>;
+		enable-active-high;
+	};
+
 	usb_hub_reset: usb-hub-reset {
 		compatible = "regulator-fixed";
 		regulator-name = "usb-hub-reset";
@@ -344,6 +351,7 @@
 
 				740 0x85	/* MX51_PAD_GPIO1_6__GPIO1_6 (PMIC interrupt) */
 
+				343 0x85	/* MX51_PAD_CSI1_D8__GPIO3_12 (USB hub enable, 0 = enable) */
 				737 0x85	/* MX51_PAD_GPIO1_5__GPIO1_5 (USB hub reset, 0 = reset) */
 				63  0x85	/* MX51_PAD_EIM_D27__GPIO2_9 (USB phy reset, 0 = reset) */
 
@@ -511,6 +519,7 @@
 	disable-over-current;
 	genesi,chrgvbus-is-vbus-det;
 	hub-supply = <&reg_1V8_DIG2>;
+	hub-en-supply = <&usb_hub_enable>;
 	hub-reset-supply = <&usb_hub_reset>;
 	phy-reset-supply = <&usb_phy_reset>;
 	status = "okay";

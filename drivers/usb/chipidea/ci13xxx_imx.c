@@ -37,6 +37,7 @@ struct ci13xxx_imx_data {
 	struct clk *clk_per;
 	struct clk *clk_phy;
 	struct regulator *supply_hub;
+	struct regulator *supply_hub_enable;
 	struct regulator *supply_phy_reset;
 	struct regulator *supply_hub_reset;
 	struct regulator *reg_vbus;
@@ -270,6 +271,11 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 		msleep(50);
 	}
 
+	data->supply_hub_enable = devm_regulator_get(&pdev->dev, "hub-en");
+	if (IS_ERR(data->supply_hub_enable)) {
+		data->supply_hub_enable = NULL;
+	}
+
 	data->supply_hub_reset = devm_regulator_get(&pdev->dev, "hub-reset");
 	if (IS_ERR(data->supply_hub_reset)) {
 		data->supply_hub_reset = NULL;
@@ -278,6 +284,12 @@ static int __devinit ci13xxx_imx_probe(struct platform_device *pdev)
 	data->supply_phy_reset = devm_regulator_get(&pdev->dev, "phy-reset");
 	if (IS_ERR(data->supply_phy_reset)) {
 		data->supply_phy_reset = NULL;
+	}
+
+	if (data->supply_hub_enable) {
+		dev_dbg(&pdev->dev, "%s: hub enable hold\n", __func__);
+		regulator_enable(data->supply_hub_enable);
+		msleep(2);
 	}
 
 	if (data->supply_hub_reset) {
