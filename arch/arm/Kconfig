@@ -1642,6 +1642,11 @@ config ARCH_NR_GPIO
 
 source kernel/Kconfig.preempt
 
+# HZ=100 by default since with CONFIG_NO_HZ this should be a very reasonable
+# value for every system. However, some platforms (EBSA110, AT91, SHMOBILE)
+# require exact HZ values to take into account their timers. This is not
+# exactly ARCH_MULTIPLATFORM compatible.. but we will fix that later when
+# the ARM guys figure out the best HZ value for multiplatform..
 config HZ
 	int
 	default 200 if ARCH_EBSA110 || ARCH_S3C24XX || ARCH_S5P64X0 || \
@@ -1649,6 +1654,12 @@ config HZ
 	default OMAP_32K_TIMER_HZ if ARCH_OMAP && OMAP_32K_TIMER
 	default AT91_TIMER_HZ if ARCH_AT91
 	default SHMOBILE_TIMER_HZ if ARCH_SHMOBILE
+	default 100
+
+# From kernel/Kconfig.hz but since we have arch-specific requirements
+# we cannot source it here. Reproduce the config item.
+config SCHED_HRTICK
+	def_bool HIGH_RES_TIMERS && (!SMP || USE_GENERIC_SMP_HELPERS)
 
 config THUMB2_KERNEL
 	bool "Compile the kernel in Thumb-2 mode"
@@ -1848,8 +1859,6 @@ config CC_STACKPROTECTOR
 	  overwrite the canary, which gets detected and the attack is then
 	  neutralized via a kernel panic.
 	  This feature requires gcc version 4.2 or above.
-
-source "kernel/Kconfig.hz"
 
 config XEN_DOM0
 	def_bool y
