@@ -265,6 +265,11 @@ void __init imx_gpt_register(void)
 #define GPTCR_FLAGS	GPTCR_CLKSRC_IPG_HIGH | GPTCR_FRR | GPTCR_WAITEN | GPTCR_EN
 	imx_gpt_write(GPTCR_FLAGS, REG_GPTCR);
 
+	if (of_find_property(np, "linux,delay-timer", NULL)) {
+		imx_gpt_delay_timer.freq = clk_get_rate(clk_per);
+		register_current_timer_delay(&imx_gpt_delay_timer);
+	}
+
 	if (of_find_property(np, "linux,scheduler-clock", NULL))
 		use_sched_clock = true;
 
@@ -274,9 +279,4 @@ void __init imx_gpt_register(void)
 
 	/* Make irqs happen */
 	setup_irq(irq, &imx_gpt_irq);
-
-	if (of_find_property(np, "linux,delay-timer", NULL)) {
-		imx_gpt_delay_timer.freq = clk_get_rate(clk_per);
-		register_current_timer_delay(&imx_gpt_delay_timer);
-	}
 }
