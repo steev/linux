@@ -57,14 +57,15 @@
 	};
 
 	sound {
-		compatible = "fsl,imx51-efikasb-sgtl5000",
-			     "fsl,imx-audio-sgtl5000";
-		model = "imx51-efikasb-sgtl5000";
-		ssi-controller = <&ssi1>;
-		audio-codec = <&sgtl5000>;
+		compatible = "fsl,imx-audio-sgtl5000";
+		model = "Efika MX Internal";
+		ssi-controller = <&ssi2>;
 		audio-routing =
-			"Headphone Jack", "HP_OUT";
-		mux-int-port = <1>;
+			"MIC_IN", "Mic Jack",
+			"Mic Jack", "Mic Bias",
+			"Ext Spk", "LINE_OUT";
+		audio-codec = <&sgtl5000>;
+		mux-int-port = <2>;
 		mux-ext-port = <3>;
 	};
 

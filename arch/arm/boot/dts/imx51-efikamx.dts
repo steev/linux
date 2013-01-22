@@ -86,7 +86,7 @@
 
 	sound {
 		compatible = "fsl,imx-audio-sgtl5000";
-		model = "efikamx-sgtl5000";
+		model = "Efika MX Internal";
 		ssi-controller = <&ssi2>;
 		audio-routing =
 			"MIC_IN", "Mic Jack",
