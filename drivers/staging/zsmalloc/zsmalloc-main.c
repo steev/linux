@@ -228,7 +228,7 @@ struct zs_pool {
  * mapping rather than copying
  * for object mapping.
 */
-#if defined(CONFIG_ARM)
+#if defined(CONFIG_ARM) && !defined(CONFIG_SMP)
 #define USE_PGTABLE_MAPPING
 #endif
 
