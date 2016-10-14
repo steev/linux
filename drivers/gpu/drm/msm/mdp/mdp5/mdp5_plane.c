@@ -106,6 +106,7 @@ static void mdp5_plane_install_properties(struct drm_plane *plane,
 				ARRAY_SIZE(name##_prop_enum_list))
 
 	INSTALL_RANGE_PROPERTY(zpos, ZPOS, 1, 255, 1);
+	INSTALL_RANGE_PROPERTY(alpha, ALPHA, 0, 255, 255);
 
 	mdp5_plane_install_rotation_property(dev, plane);
 
@@ -134,6 +135,7 @@ static int mdp5_plane_atomic_set_property(struct drm_plane *plane,
 	} while (0)
 
 	SET_PROPERTY(zpos, ZPOS, uint8_t);
+	SET_PROPERTY(alpha, ALPHA, uint8_t);
 
 	dev_err(dev->dev, "Invalid property\n");
 	ret = -EINVAL;
@@ -162,6 +164,7 @@ static int mdp5_plane_atomic_get_property(struct drm_plane *plane,
 	} while (0)
 
 	GET_PROPERTY(zpos, ZPOS, uint8_t);
+	GET_PROPERTY(alpha, ALPHA, uint8_t);
 
 	dev_err(dev->dev, "Invalid property\n");
 	ret = -EINVAL;
