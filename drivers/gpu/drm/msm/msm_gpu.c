@@ -93,6 +93,9 @@ static int enable_clk(struct msm_gpu *gpu)
 {
 	int i;
 
+	if (gpu->grp_clks[4])
+		clk_set_rate(gpu->grp_clks[4], INT_MAX);
+
 	if (gpu->core_clk && gpu->fast_rate)
 		clk_set_rate(gpu->core_clk, gpu->fast_rate);
 
