@@ -1112,23 +1112,33 @@
 			reg = <0x1a400000 0x100>;
 		};
 
-		gpu: adreno-3xx@4300000 {
-			compatible = "qcom,adreno-3xx";
+		gpu_opp_table: opp_table {
+			compatible = "operating-points-v2";
+
+			opp@450000000 {
+				opp-hz = /bits/ 64 <450000000>;
+			};
+			opp@27000000 {
+				opp-hz = /bits/ 64 <27000000>;
+			};
+		};
+
+		gpu@4300000 {
+			compatible = "qcom,adreno-320.2", "qcom,adreno";
 			reg = <0x04300000 0x20000>;
 			reg-names = "kgsl_3d0_reg_memory";
 			interrupts = <GIC_SPI 80 0>;
 			interrupt-names = "kgsl_3d0_irq";
 			clock-names =
-			    "core_clk",
-			    "iface_clk",
-			    "mem_clk",
-			    "mem_iface_clk";
+			    "core",
+			    "iface",
+			    "mem",
+			    "mem_iface";
 			clocks =
 			    <&mmcc GFX3D_CLK>,
 			    <&mmcc GFX3D_AHB_CLK>,
 			    <&mmcc GFX3D_AXI_CLK>,
 			    <&mmcc MMSS_IMEM_AHB_CLK>;
-			qcom,chipid = <0x03020002>;
 
 			iommus = <&gfx3d 0
 				  &gfx3d 1
@@ -1195,15 +1205,7 @@
 				  &gfx3d1 30
 				  &gfx3d1 31>;
 
-			qcom,gpu-pwrlevels {
-				compatible = "qcom,gpu-pwrlevels";
-				qcom,gpu-pwrlevel@0 {
-					qcom,gpu-freq = <450000000>;
-				};
-				qcom,gpu-pwrlevel@1 {
-					qcom,gpu-freq = <27000000>;
-				};
-			};
+			operating-points-v2 = <&gpu_opp_table>;
 		};
 
 		mmss_sfpb: syscon@5700000 {
