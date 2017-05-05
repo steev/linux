@@ -34,7 +34,6 @@ static const struct attribute_group *iommu_dev_groups[] = {
 
 static void iommu_release_device(struct device *dev)
 {
-	kfree(dev);
 }
 
 static struct class iommu_class = {
