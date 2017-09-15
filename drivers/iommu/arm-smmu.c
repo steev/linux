@@ -669,6 +669,7 @@ static void arm_smmu_write_context_bank(struct arm_smmu_device *smmu, int idx)
 	      ARM_SMMU_SCTLR_TRE | ARM_SMMU_SCTLR_M;
 	if (stage1)
 		reg |= ARM_SMMU_SCTLR_S1_ASIDPNE;
+	reg |= ARM_SMMU_SCTLR_HUPCF;
 	if (IS_ENABLED(CONFIG_CPU_BIG_ENDIAN))
 		reg |= ARM_SMMU_SCTLR_E;
 
