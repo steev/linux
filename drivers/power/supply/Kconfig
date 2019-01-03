@@ -905,4 +905,15 @@ config BATTERY_UG3105
 	  device is off or suspended, the functionality of this driver is
 	  limited to reporting capacity only.
 
+config LENOVO_YOGA_C630_EC
+	tristate "Lenovo Yoga C630 EC battery driver"
+	depends on DRM
+	depends on I2C
+	help
+	  Driver for the Embedded Controller in the Qualcomm Snapdragon-based
+	  Lenovo Yoga C630, which provides battery information and USB Type-C
+	  altmode notifications.
+
+	  Say M or Y here to include this support.
+
 endif # POWER_SUPPLY
