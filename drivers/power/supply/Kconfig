@@ -739,4 +739,9 @@ config CHARGER_WILCO
 	  information can be found in
 	  Documentation/ABI/testing/sysfs-class-power-wilco
 
+config SOME_BATTERY
+	tristate "Some Battery Fuel Gauge"
+	help
+	  Of course!
+
 endif # POWER_SUPPLY
