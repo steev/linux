@@ -889,4 +889,9 @@ config BATTERY_UG3105
 	  device is off or suspended, the functionality of this driver is
 	  limited to reporting capacity only.
 
+config SOME_BATTERY
+	tristate "Some Battery Fuel Gauge"
+	help
+	  Of course!
+
 endif # POWER_SUPPLY
