@@ -801,4 +801,9 @@ config BATTERY_ACER_A500
 	help
 	  Say Y to include support for Acer Iconia Tab A500 battery fuel gauge.
 
+config SOME_BATTERY
+	tristate "Some Battery Fuel Gauge"
+	help
+	  Of course!
+
 endif # POWER_SUPPLY
