@@ -54,6 +54,17 @@
 #define  BPP_18_RGB				BIT(0)
 #define SN_HPD_DISABLE_REG			0x5C
 #define  HPD_DISABLE				BIT(0)
+#define SN_GPIO_CTRL				0x5F
+#define  GPIO_CTRL_INPUT			0
+#define  GPIO_CTRL_OUTPUT			1
+#define  GPIO_CTRL_PWM				2
+#define  GPIO_CTRL_SYNC				2
+#define  GPIO_CTRL_SUSPEND			2
+#define  GPIO_CTRL_MASK				3
+#define  GPIO_CTRL_GPIO1_SHIFT			0
+#define  GPIO_CTRL_GPIO2_SHIFT			2
+#define  GPIO_CTRL_GPIO3_SHIFT			4
+#define  GPIO_CTRL_GPIO4_SHIFT			6
 #define SN_AUX_WDATA_REG(x)			(0x64 + (x))
 #define SN_AUX_ADDR_19_16_REG			0x74
 #define SN_AUX_ADDR_15_8_REG			0x75
@@ -72,6 +83,13 @@
 #define SN_ML_TX_MODE_REG			0x96
 #define  ML_TX_MAIN_LINK_OFF			0
 #define  ML_TX_NORMAL_MODE			BIT(0)
+#define SN_BACKLIGHT_SCALE_LOW			0xA1
+#define SN_BACKLIGHT_SCALE_HIGH			0xA2
+#define SN_BACKLIGHT_LOW			0xA3
+#define SN_BACKLIGHT_HIGH			0xA4
+#define SN_BACKLIGHT_PWM			0xA5
+#define  BL_PWM_ENABLE				BIT(1)
+#define  BL_PWM_INVERT				BIT(0)
 #define SN_AUX_CMD_STATUS_REG			0xF4
 #define  AUX_IRQ_STATUS_AUX_RPLY_TOUT		BIT(3)
 #define  AUX_IRQ_STATUS_AUX_SHORT		BIT(5)
@@ -102,6 +120,8 @@ struct ti_sn_bridge {
 	struct gpio_desc		*enable_gpio;
 	struct regulator_bulk_data	supplies[SN_REGULATOR_SUPPLY_NUM];
 	int				dp_lanes;
+	u32				brightness;
+	u32				max_brightness;
 };
 
 static const struct regmap_range ti_sn_bridge_volatile_ranges[] = {
@@ -119,6 +139,8 @@ static const struct regmap_config ti_sn_bridge_regmap_config = {
 	.volatile_table = &ti_sn_bridge_volatile_table,
 	.cache_type = REGCACHE_NONE,
 };
+
+static int ti_sn_backlight_update(struct ti_sn_bridge *pdata);
 
 static void ti_sn_bridge_write_u16(struct ti_sn_bridge *pdata,
 				   unsigned int reg, u16 val)
@@ -140,7 +162,7 @@ static int __maybe_unused ti_sn_bridge_resume(struct device *dev)
 
 	gpiod_set_value(pdata->enable_gpio, 1);
 
-	return ret;
+	return ti_sn_backlight_update(pdata);
 }
 
 static int __maybe_unused ti_sn_bridge_suspend(struct device *dev)
@@ -874,6 +896,104 @@ static int ti_sn_bridge_parse_dsi_host(struct ti_sn_bridge *pdata)
 	return 0;
 }
 
+static int ti_sn_backlight_update(struct ti_sn_bridge *pdata)
+{
+	if (!pdata->max_brightness)
+		return 0;
+
+	/* Enable PWM on GPIO4 */
+	regmap_update_bits(pdata->regmap, SN_GPIO_CTRL,
+			   GPIO_CTRL_MASK << GPIO_CTRL_GPIO4_SHIFT,
+			   GPIO_CTRL_PWM << GPIO_CTRL_GPIO4_SHIFT);
+
+	/* Set max brightness, high and low bytes */
+	ti_sn_bridge_write_u16(pdata, SN_BACKLIGHT_SCALE_LOW, pdata->max_brightness);
+
+	if (pdata->brightness) {
+		/* Set brightness */
+		ti_sn_bridge_write_u16(pdata, SN_BACKLIGHT_LOW, pdata->brightness);
+
+		/* Reduce the PWM frequency */
+		regmap_write(pdata->regmap, 0xa0, 75);
+
+		/* Enable PWM */
+		regmap_update_bits(pdata->regmap, SN_BACKLIGHT_PWM, BL_PWM_ENABLE, BL_PWM_ENABLE);
+	} else {
+		regmap_update_bits(pdata->regmap, SN_BACKLIGHT_PWM, BL_PWM_ENABLE, 0);
+	}
+
+	return 0;
+}
+
+static int ti_sn_backlight_update_status(struct backlight_device *bl)
+{
+	struct ti_sn_bridge *pdata = bl_get_data(bl);
+	int brightness = bl->props.brightness;
+
+	if (bl->props.power != FB_BLANK_UNBLANK ||
+	    bl->props.fb_blank != FB_BLANK_UNBLANK ||
+	    bl->props.state & BL_CORE_FBBLANK) {
+		pdata->brightness = 0;
+	}
+
+	pdata->brightness = brightness;
+
+	return ti_sn_backlight_update(pdata);
+}
+
+static int ti_sn_backlight_get_brightness(struct backlight_device *bl)
+{
+	struct ti_sn_bridge *pdata = bl_get_data(bl);
+	unsigned int high;
+	unsigned int low;
+	int ret;
+
+	ret = regmap_read(pdata->regmap, SN_BACKLIGHT_LOW, &low);
+	if (ret)
+		return ret;
+
+	ret = regmap_read(pdata->regmap, SN_BACKLIGHT_HIGH, &high);
+	if (ret)
+		return ret;
+
+	return high << 8 | low;
+}
+
+const struct backlight_ops ti_sn_backlight_ops = {
+	.update_status = ti_sn_backlight_update_status,
+	.get_brightness = ti_sn_backlight_get_brightness,
+};
+
+static int ti_sn_backlight_init(struct ti_sn_bridge *pdata)
+{
+	struct backlight_properties props = {};
+	struct backlight_device	*bl;
+	struct device *dev = pdata->dev;
+	struct device_node *np = dev->of_node;
+	int ret;
+
+	ret = of_property_read_u32(np, "max-brightness", &pdata->max_brightness);
+	if (ret == -EINVAL) {
+		DRM_ERROR("max-brightness omitted\n");
+		return 0;
+	}
+	else if (ret || pdata->max_brightness >= 0xffff) {
+		DRM_ERROR("invalid max-brightness\n");
+		return -EINVAL;
+	}
+
+	props.type = BACKLIGHT_RAW;
+	props.max_brightness = pdata->max_brightness;
+	bl = devm_backlight_device_register(dev, "sn65dsi86", dev, pdata,
+					     &ti_sn_backlight_ops, &props);
+	if (IS_ERR(bl)) {
+		DRM_ERROR("failed to register backlight device\n");
+		return PTR_ERR(bl);
+	}
+
+	return 0;
+}
+
 static int ti_sn_bridge_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
 {
@@ -932,6 +1052,10 @@ static int ti_sn_bridge_probe(struct i2c_client *client,
 	}
 
 	ret = ti_sn_bridge_parse_dsi_host(pdata);
+	if (ret)
+		return ret;
+
+	ret = ti_sn_backlight_init(pdata);
 	if (ret)
 		return ret;
 
