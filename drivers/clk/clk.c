@@ -72,6 +72,7 @@ struct clk_core {
 	unsigned long		flags;
 	bool			orphan;
 	bool			rpm_enabled;
+	bool			inherit_enabled; /* clock was enabled by bootloader */
 	unsigned int		enable_count;
 	unsigned int		prepare_count;
 	unsigned int		protect_count;
@@ -1200,6 +1201,9 @@ static void __init clk_unprepare_unused_subtree(struct clk_core *core)
 	hlist_for_each_entry(child, &core->children, child_node)
 		clk_unprepare_unused_subtree(child);
 
+	if (core->inherit_enabled)
+		return;
+
 	if (core->prepare_count)
 		return;
 
@@ -1230,6 +1234,9 @@ static void __init clk_disable_unused_subtree(struct clk_core *core)
 
 	hlist_for_each_entry(child, &core->children, child_node)
 		clk_disable_unused_subtree(child);
+
+	if (core->inherit_enabled)
+		return;
 
 	if (core->flags & CLK_OPS_PARENT_ENABLE)
 		clk_core_prepare_enable(core->parent);
@@ -1303,6 +1310,37 @@ static int __init clk_disable_unused(void)
 	return 0;
 }
 late_initcall_sync(clk_disable_unused);
+
+/* Ignore CLK_INHERIT_BOOTLOADER clocks enabled by bootloader.  This
+ * gives a debug knob to disable inheriting clks from bootloader, so
+ * that drivers that used to work, when loaded as a module, thanks
+ * to disabling "unused" clocks at late_initcall(), can continue to
+ * work.
+ *
+ * The proper solution is to fix the drivers.
+ */
+static bool clk_ignore_inherited;
+static int __init clk_ignore_inherited_setup(char *__unused)
+{
+	clk_ignore_inherited = true;
+	return 1;
+}
+__setup("clk_ignore_inherited", clk_ignore_inherited_setup);
+
+/* clock and it's parents are already prepared/enabled from bootloader,
+ * so simply record the fact.
+ */
+static void __clk_inherit_enabled(struct clk_core *core)
+{
+	unsigned long parent_rate = 0;
+	core->inherit_enabled = true;
+	if (core->parent) {
+		__clk_inherit_enabled(core->parent);
+		parent_rate = core->parent->rate;
+	}
+	if (core->ops->recalc_rate)
+		core->rate = core->ops->recalc_rate(core->hw, parent_rate);
+}
 
 static int clk_core_determine_round_nolock(struct clk_core *core,
 					   struct clk_rate_request *req)
@@ -3323,6 +3361,8 @@ static void clk_core_reparent_orphans_nolock(void)
 		 * are enabled during init but might not have a parent yet.
 		 */
 		if (parent) {
+			if (orphan->inherit_enabled)
+				__clk_inherit_enabled(parent);
 			/* update the clk tree topology */
 			__clk_set_parent_before(orphan, parent);
 			__clk_set_parent_after(orphan, parent, NULL);
@@ -3514,8 +3554,17 @@ static int __clk_core_init(struct clk_core *core)
 
 	clk_core_reparent_orphans_nolock();
 
-
 	kref_init(&core->ref);
+
+	if ((core->flags & CLK_INHERIT_BOOTLOADER) &&
+			clk_core_is_enabled(core) &&
+			!clk_ignore_inherited) {
+		dev_dbg(core->dev, "%s is enabled from bootloader!\n",
+			core->name);
+
+		__clk_inherit_enabled(core);
+	}
+
 out:
 	clk_pm_runtime_put(core);
 unlock:
