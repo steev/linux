@@ -532,6 +532,16 @@ static int genpd_power_off(struct generic_pm_domain *genpd, bool one_dev_on,
 			not_suspended++;
 	}
 
+	/*
+	 * If the power domain is enabled by the bootloader (for example
+	 * display enabled by bootloader), but no devices attached yet
+	 * (perhaps because driver built as kernel module), then do not
+	 * suspend.
+	 */
+	if ((genpd->flags & GENPD_FLAG_INHERIT_BL) &&
+		list_empty(&genpd->dev_list))
+		not_suspended++;
+
 	if (not_suspended > 1 || (not_suspended == 1 && !one_dev_on))
 		return -EBUSY;
 
