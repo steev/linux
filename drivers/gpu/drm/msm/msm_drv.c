@@ -101,6 +101,33 @@ struct clk *msm_clk_bulk_get_clock(struct clk_bulk_data *bulk, int count,
 	return NULL;
 }
 
+#include <linux/clk-provider.h>  /* hack to get __clk_is_enabled() */
+
+/* Check if any clk associated with the device is enabled, which would be
+ * an indication that display was enabled by bootloader
+ */
+bool msm_is_enabled(struct device *dev)
+{
+	struct clk_bulk_data *bulk;
+	int i, num_clks;
+	bool enabled = false;
+
+	num_clks = clk_bulk_get_all(dev, &bulk);
+	if (num_clks <= 0)
+		return false;
+
+	for (i = 0; i < num_clks; i++) {
+		if (__clk_is_enabled(bulk[i].clk)) {
+			enabled = true;
+			break;
+		}
+	}
+
+	clk_bulk_put_all(num_clks, bulk);
+
+	return enabled;
+}
+
 struct clk *msm_clk_get(struct platform_device *pdev, const char *name)
 {
 	struct clk *clk;
