@@ -990,6 +990,8 @@ static int ti_sn_backlight_init(struct ti_sn_bridge *pdata)
 
 	props.type = BACKLIGHT_RAW;
 	props.max_brightness = pdata->max_brightness;
+	props.brightness = pdata->max_brightness;
+	pdata->brightness = pdata->max_brightness;
 	bl = devm_backlight_device_register(dev, "sn65dsi86", dev, pdata,
 					     &ti_sn_backlight_ops, &props);
 	if (IS_ERR(bl)) {
