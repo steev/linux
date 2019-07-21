@@ -70,7 +70,6 @@ static int dsi_mgr_setup_components(int id)
 	struct msm_dsi *other_dsi = dsi_mgr_get_other_dsi(id);
 	struct msm_dsi *clk_master_dsi = dsi_mgr_get_dsi(DSI_CLOCK_MASTER);
 	struct msm_dsi *clk_slave_dsi = dsi_mgr_get_dsi(DSI_CLOCK_SLAVE);
-	struct msm_dsi_pll *src_pll;
 	int ret;
 
 	if (!IS_DUAL_DSI()) {
@@ -79,10 +78,6 @@ static int dsi_mgr_setup_components(int id)
 			return ret;
 
 		msm_dsi_phy_set_usecase(msm_dsi->phy, MSM_DSI_PHY_STANDALONE);
-		src_pll = msm_dsi_phy_get_pll(msm_dsi->phy);
-		if (IS_ERR(src_pll))
-			return PTR_ERR(src_pll);
-		ret = msm_dsi_host_set_src_pll(msm_dsi->host, src_pll);
 	} else if (!other_dsi) {
 		ret = 0;
 	} else {
@@ -109,6 +104,26 @@ static int dsi_mgr_setup_components(int id)
 					MSM_DSI_PHY_MASTER);
 		msm_dsi_phy_set_usecase(clk_slave_dsi->phy,
 					MSM_DSI_PHY_SLAVE);
+	}
+
+	return ret;
+}
+
+int msm_dsi_manager_setup_pll(struct msm_dsi *msm_dsi)
+{
+	struct msm_dsi *other_dsi = dsi_mgr_get_other_dsi(msm_dsi->id);
+	struct msm_dsi *clk_master_dsi = dsi_mgr_get_dsi(DSI_CLOCK_MASTER);
+	struct msm_dsi_pll *src_pll;
+	int ret;
+
+	if (!IS_DUAL_DSI()) {
+		src_pll = msm_dsi_phy_get_pll(msm_dsi->phy);
+		if (IS_ERR(src_pll))
+			return PTR_ERR(src_pll);
+		ret = msm_dsi_host_set_src_pll(msm_dsi->host, src_pll);
+	} else if (!other_dsi) {
+		ret = 0;
+	} else {
 		src_pll = msm_dsi_phy_get_pll(clk_master_dsi->phy);
 		if (IS_ERR(src_pll))
 			return PTR_ERR(src_pll);
