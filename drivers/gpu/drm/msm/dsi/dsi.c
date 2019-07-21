@@ -97,6 +97,10 @@ static struct msm_dsi *dsi_init(struct platform_device *pdev)
 
 	msm_dsi_host_post_init(msm_dsi);
 
+	ret = msm_dsi_manager_setup_pll(msm_dsi);
+	if (ret)
+		goto destroy_dsi;
+
 	return msm_dsi;
 
 destroy_dsi:
