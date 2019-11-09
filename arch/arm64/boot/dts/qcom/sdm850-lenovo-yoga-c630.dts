@@ -34,9 +34,12 @@
 		qcom,pmic-id = "a";
 
 		vdd-l2-l8-l17-supply = <&vreg_s3a_1p35>;
+		vdd-l4-l5-supply = <&vreg_s7a_1p025>;
 		vdd-l7-l12-l14-l15-supply = <&vreg_s5a_2p04>;
 
 		vreg_s2a_1p125: smps2 {
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
 		};
 
 		vreg_s3a_1p35: smps3 {
@@ -58,6 +61,8 @@
 		};
 
 		vreg_s7a_1p025: smps7 {
+			regulator-min-microvolt = <900000>;
+			regulator-max-microvolt = <1028000>;
 		};
 
 		vdd_qusb_hs0:
@@ -578,4 +583,14 @@
 			#sound-dai-cells = <0>;
 		};
 	};
+};
+
+&wifi {
+	status = "okay";
+	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
+	vdd-1.8-xo-supply = <&vreg_l7a_1p8>;
+	vdd-1.3-rfa-supply = <&vreg_l17a_1p3>;
+	vdd-3.3-ch0-supply = <&vreg_l25a_3p3>;
+
+	qcom,snoc-host-cap-8bit-quirk;
 };
