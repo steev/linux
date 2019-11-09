@@ -21,6 +21,50 @@
 	aliases {
 		hsuart0 = &uart6;
 	};
+
+	panel {
+		compatible = "boe,nv133fhm-n61";
+		power-supply = <&vlcm_3v3>;
+		no-hpd;
+
+		ports {
+			port {
+				panel_in_edp: endpoint {
+					remote-endpoint = <&sn65dsi86_out>;
+				};
+			};
+		};
+	};
+
+	vlcm_3v3: vlcm-3v3-power {
+		compatible = "regulator-fixed";
+		regulator-name = "VLCM_3V3";
+
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 88 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	sw_edp_1p2: sw-edp-1p2-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "SW_EDP_1P2";
+
+		vin-supply = <&vreg_l2a_1p2>;
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+
+		gpio = <&pm8998_gpio 9 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+	};
+
+	sn65dsi86_refclk: sn65dsi86-refclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+
+		clock-frequency = <19200000>;
+	};
 };
 
 &adsp_pas {
@@ -61,8 +105,9 @@
 		};
 
 		vreg_s7a_1p025: smps7 {
-			regulator-min-microvolt = <900000>;
+			regulator-min-microvolt = <1028000>;
 			regulator-max-microvolt = <1028000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vdd_qusb_hs0:
@@ -242,6 +287,25 @@
 	status = "okay";
 };
 
+&dsi0 {
+	status = "okay";
+	vdda-supply = <&vreg_l26a_1p2>;
+
+	ports {
+		port@1 {
+			endpoint {
+				remote-endpoint = <&sn65dsi86_in_a>;
+				data-lanes = <0 1 2 3>;
+			};
+		};
+	};
+};
+
+&dsi0_phy {
+	status = "okay";
+	vdds-supply = <&vreg_l1a_0p875>;
+};
+
 &gcc {
 	protected-clocks = <GCC_QSPI_CORE_CLK>,
 			   <GCC_QSPI_CORE_CLK_SRC>,
@@ -305,6 +369,51 @@
 	};
 };
 
+&i2c10 {
+	status = "okay";
+	clock-frequency = <400000>;
+
+	sn65dsi86: bridge@2c {
+		compatible = "ti,sn65dsi86";
+		reg = <0x2c>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&edp_bridge_en>, <&edp_bridge_irq>;
+
+		interrupts-extended = <&tlmm 10 IRQ_TYPE_LEVEL_HIGH>;
+
+		enable-gpios = <&tlmm 96 GPIO_ACTIVE_HIGH>;
+
+		vpll-supply = <&vreg_l14a_1p88>;
+		vccio-supply = <&vreg_l14a_1p88>;
+		vcca-supply = <&sw_edp_1p2>;
+		vcc-supply = <&sw_edp_1p2>;
+
+		clocks = <&sn65dsi86_refclk>;
+		clock-names = "refclk";
+
+		max-brightness = <255>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				sn65dsi86_in_a: endpoint {
+					remote-endpoint = <&dsi0_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				sn65dsi86_out: endpoint {
+					remote-endpoint = <&panel_in_edp>;
+				};
+			};
+		};
+	};
+};
+
 &i2c11 {
 	status = "okay";
 	clock-frequency = <400000>;
@@ -319,6 +428,14 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c12_hid_active>;
 	};
+};
+
+&mdss {
+	status = "okay";
+};
+
+&mdss_mdp {
+	status = "okay";
 };
 
 &mss_pil {
@@ -350,6 +467,14 @@
 	rx {
 		pins = "gpio48";
 		bias-pull-up;
+	};
+};
+
+&qup_i2c10_default {
+	pinconf {
+		pins = "gpio55", "gpio56";
+		drive-strength = <2>;
+		bias-disable;
 	};
 };
 
@@ -430,6 +555,17 @@
 
 &tlmm {
 	gpio-reserved-ranges = <0 4>, <81 4>;
+
+	edp_bridge_en: edp-bridge-enable {
+		pins = "gpio96";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	edp_bridge_irq: edp-bridge-irq {
+		pins = "gpio10";
+		bias-pull-down;
+	};
 
 	i2c2_hid_active: i2c2-hid-active {
 		pins = <37>;
