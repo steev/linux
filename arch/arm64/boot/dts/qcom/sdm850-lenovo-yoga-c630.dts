@@ -351,6 +351,11 @@
 &i2c1 {
 	status = "okay";
 	clock-frequency = <400000>;
+
+	battery@70 {
+		compatible = "some,battery";
+		reg = <0x70>;
+	};
 };
 
 &i2c3 {
