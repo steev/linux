@@ -26,6 +26,7 @@
 #include <linux/pr.h>
 #include <linux/refcount.h>
 #include <linux/part_stat.h>
+#include <linux/blk-crypto.h>
 
 #define DM_MSG_PREFIX "core"
 
@@ -1334,6 +1335,8 @@ static int clone_bio(struct dm_target_io *tio, struct bio *bio,
 
 	__bio_clone_fast(clone, bio);
 
+	bio_crypt_clone(clone, bio, GFP_NOIO);
+
 	if (bio_integrity(bio)) {
 		int r;
 
@@ -1787,6 +1790,9 @@ static blk_qc_t dm_make_request(struct request_queue *q, struct bio *bio)
 	blk_qc_t ret = BLK_QC_T_NONE;
 	int srcu_idx;
 	struct dm_table *map;
+
+	if (dm_get_md_type(md) == DM_TYPE_REQUEST_BASED)
+		return blk_mq_make_request(q, bio);
 
 	map = dm_get_live_table(md, &srcu_idx);
 
