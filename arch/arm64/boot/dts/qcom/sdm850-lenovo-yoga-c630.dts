@@ -395,7 +395,7 @@
 		clocks = <&sn65dsi86_refclk>;
 		clock-names = "refclk";
 
-		max-brightness = <255>;
+		ti,backlight-scale = <255>;
 
 		ports {
 			#address-cells = <1>;
