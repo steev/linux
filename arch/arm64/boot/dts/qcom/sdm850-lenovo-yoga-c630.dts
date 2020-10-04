@@ -434,6 +434,12 @@
 	};
 };
 
+&ipa {
+	status = "okay";
+	modem-init;
+	memory-region = <&ipa_fw_mem>;
+};
+
 &mdss {
 	status = "okay";
 };
