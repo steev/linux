@@ -63,6 +63,7 @@ static int qcom_smmu_def_domain_type(struct device *dev)
 	const struct of_device_id *match =
 		of_match_device(qcom_smmu_client_of_match, dev);
 
+	return 0;
 	return match ? IOMMU_DOMAIN_IDENTITY : 0;
 }
 
