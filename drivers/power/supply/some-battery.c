@@ -193,7 +193,7 @@ static int some_battery_update_status(struct some_battery *battery)
 
 	lsb = some_battery_read(battery, BAC0);
 	msb = some_battery_read(battery, BAC1);
-	battery->rate_now = sign_extend32((msb << 8) | lsb, 16);
+	battery->rate_now = sign_extend32((msb << 8) | lsb, 15) * battery-basc;
 
 	if (battery->unit_ma)
 		battery->rate_now = battery->rate_now * battery->voltage_now / 1000;
