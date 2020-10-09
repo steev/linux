@@ -193,7 +193,7 @@ static int some_battery_update_status(struct some_battery *battery)
 
 	lsb = some_battery_read(battery, BAC0);
 	msb = some_battery_read(battery, BAC1);
-	battery->rate_now = sign_extend32((msb << 8) | lsb, 16);
+	battery->rate_now = sign_extend32((msb << 8) | lsb, 15) * battery->basc;
 
 	if (battery->unit_ma)
 		battery->rate_now = battery->rate_now * battery->voltage_now / 1000;
@@ -279,16 +279,16 @@ static int bat0_get_property(struct power_supply *psy,
 		val->intval = battery->design_voltage;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = battery->design_capacity;
+		val->intval = battery->design_capacity * 100;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-		val->intval = battery->full_charge_capacity;
+		val->intval = battery->full_charge_capacity * 100;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW:
-		val->intval = battery->capacity_now;
+		val->intval = battery->capacity_now * 100;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		val->intval = battery->rate_now;
+		val->intval = battery->rate_now * 100;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = battery->voltage_now;
