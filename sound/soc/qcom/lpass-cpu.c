@@ -700,6 +700,8 @@ static bool lpass_hdmi_regmap_writeable(struct device *dev, unsigned int reg)
 		return true;
 	if (reg == LPASS_HDMITX_APP_IRQCLEAR_REG(v))
 		return true;
+	if (reg == LPASS_HDMI_TX_PARITY_ADDR(v))
+		return true;
 
 	for (i = 0; i < v->hdmi_rdma_channels; i++) {
 		if (reg == LPASS_HDMI_TX_CH_LSB_ADDR(v, i))
