@@ -347,6 +347,8 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 
 	dev_pm_opp_of_register_em(cpu_dev, policy->cpus);
 
+	cpufreq_enable_boost_support();
+
 	return 0;
 error:
 	devm_iounmap(dev, base);
