@@ -790,13 +790,11 @@ reset_assert:
 	return ret;
 }
 
-static int dwc3_qcom_remove(struct platform_device *pdev)
+static void __dwc3_qcom_teardown(struct dwc3_qcom *qcom)
 {
-	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
-	struct device *dev = &pdev->dev;
 	int i;
 
-	of_platform_depopulate(dev);
+	of_platform_depopulate(qcom->dev);
 
 	for (i = qcom->num_clocks - 1; i >= 0; i--) {
 		clk_disable_unprepare(qcom->clks[i]);
@@ -807,10 +805,25 @@ static int dwc3_qcom_remove(struct platform_device *pdev)
 	dwc3_qcom_interconnect_exit(qcom);
 	reset_control_assert(qcom->resets);
 
-	pm_runtime_allow(dev);
-	pm_runtime_disable(dev);
+	pm_runtime_allow(qcom->dev);
+	pm_runtime_disable(qcom->dev);
+}
+
+static int dwc3_qcom_remove(struct platform_device *pdev)
+{
+	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
+
+	__dwc3_qcom_teardown(qcom);
 
 	return 0;
+}
+
+static void dwc3_qcom_shutdown(struct platform_device *pdev)
+{
+	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
+
+	__dwc3_qcom_teardown(qcom);
+
 }
 
 static int __maybe_unused dwc3_qcom_pm_suspend(struct device *dev)
@@ -887,6 +900,7 @@ MODULE_DEVICE_TABLE(acpi, dwc3_qcom_acpi_match);
 static struct platform_driver dwc3_qcom_driver = {
 	.probe		= dwc3_qcom_probe,
 	.remove		= dwc3_qcom_remove,
+	.shutdown	= dwc3_qcom_shutdown,
 	.driver		= {
 		.name	= "dwc3-qcom",
 		.pm	= &dwc3_qcom_dev_pm_ops,
