@@ -63,13 +63,13 @@
 #define SN_HPD_DISABLE_REG			0x5C
 #define  HPD_DISABLE				BIT(0)
 #define SN_GPIO_IO_REG				0x5E
-#define  SN_GPIO_INPUT_SHIFT			4
-#define  SN_GPIO_OUTPUT_SHIFT			0
+#define  GPIO_INPUT_SHIFT			4
+#define  GPIO_OUTPUT_SHIFT			0
 #define SN_GPIO_CTRL_REG			0x5F
-#define  SN_GPIO_MUX_INPUT			0
-#define  SN_GPIO_MUX_OUTPUT			1
-#define  SN_GPIO_MUX_SPECIAL			2
-#define  SN_GPIO_MUX_MASK			0x3
+#define  GPIO_MUX_INPUT				0
+#define  GPIO_MUX_OUTPUT			1
+#define  GPIO_MUX_SPECIAL			2
+#define  GPIO_MUX_MASK				0x3
 #define SN_AUX_WDATA_REG(x)			(0x64 + (x))
 #define SN_AUX_ADDR_19_16_REG			0x74
 #define SN_AUX_ADDR_15_8_REG			0x75
@@ -1035,7 +1035,7 @@ static int ti_sn_bridge_gpio_get(struct gpio_chip *chip, unsigned int offset)
 	if (ret)
 		return ret;
 
-	return !!(val & BIT(SN_GPIO_INPUT_SHIFT + offset));
+	return !!(val & BIT(GPIO_INPUT_SHIFT + offset));
 }
 
 static void ti_sn_bridge_gpio_set(struct gpio_chip *chip, unsigned int offset,
@@ -1051,8 +1051,8 @@ static void ti_sn_bridge_gpio_set(struct gpio_chip *chip, unsigned int offset,
 
 	val &= 1;
 	ret = regmap_update_bits(pdata->regmap, SN_GPIO_IO_REG,
-				 BIT(SN_GPIO_OUTPUT_SHIFT + offset),
-				 val << (SN_GPIO_OUTPUT_SHIFT + offset));
+				 BIT(GPIO_OUTPUT_SHIFT + offset),
+				 val << (GPIO_OUTPUT_SHIFT + offset));
 	if (ret)
 		dev_warn(pdata->dev,
 			 "Failed to set bridge GPIO %u: %d\n", offset, ret);
@@ -1069,8 +1069,8 @@ static int ti_sn_bridge_gpio_direction_input(struct gpio_chip *chip,
 		return 0;
 
 	ret = regmap_update_bits(pdata->regmap, SN_GPIO_CTRL_REG,
-				 SN_GPIO_MUX_MASK << shift,
-				 SN_GPIO_MUX_INPUT << shift);
+				 GPIO_MUX_MASK << shift,
+				 GPIO_MUX_INPUT << shift);
 	if (ret) {
 		set_bit(offset, pdata->gchip_output);
 		return ret;
@@ -1103,8 +1103,8 @@ static int ti_sn_bridge_gpio_direction_output(struct gpio_chip *chip,
 
 	/* Set direction */
 	ret = regmap_update_bits(pdata->regmap, SN_GPIO_CTRL_REG,
-				 SN_GPIO_MUX_MASK << shift,
-				 SN_GPIO_MUX_OUTPUT << shift);
+				 GPIO_MUX_MASK << shift,
+				 GPIO_MUX_OUTPUT << shift);
 	if (ret) {
 		clear_bit(offset, pdata->gchip_output);
 		pm_runtime_put(pdata->dev);
