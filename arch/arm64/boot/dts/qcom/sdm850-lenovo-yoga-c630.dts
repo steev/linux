@@ -381,6 +381,8 @@
 		clocks = <&sn65dsi86_refclk>;
 		clock-names = "refclk";
 
+		max-brightness = <255>;
+
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
