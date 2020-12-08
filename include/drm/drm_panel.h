@@ -150,6 +150,14 @@ struct drm_panel {
 	struct backlight_device *backlight;
 
 	/**
+	 * @backlight_init_pending
+	 *
+	 * Backlight driver is not yet available so further attempts to
+	 * initialize @backlight is necessary.
+	 */
+	bool backlight_init_pending;
+
+	/**
 	 * @funcs:
 	 *
 	 * Operations that can be performed on the panel.
