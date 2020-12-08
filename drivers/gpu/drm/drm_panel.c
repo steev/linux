@@ -43,6 +43,34 @@ static LIST_HEAD(panel_list);
  * take look at drm_panel_bridge_add() and devm_drm_panel_bridge_add().
  */
 
+#if IS_REACHABLE(CONFIG_BACKLIGHT_CLASS_DEVICE)
+static int drm_panel_of_backlight_lazy(struct drm_panel *panel)
+{
+	struct backlight_device *backlight;
+
+	if (!panel || !panel->dev)
+		return -EINVAL;
+
+	backlight = devm_of_find_backlight(panel->dev);
+
+	if (IS_ERR(backlight)) {
+		if (PTR_ERR(backlight) == -EPROBE_DEFER) {
+			panel->backlight_init_pending = true;
+			return 0;
+		}
+
+		return PTR_ERR(backlight);
+	}
+
+	panel->backlight = backlight;
+	panel->backlight_init_pending = false;
+
+	return 0;
+}
+#else
+static int drm_panel_of_backlight_lazy(struct drm_panel *panel) { return 0; }
+#endif
+
 /**
  * drm_panel_init - initialize a panel
  * @panel: DRM panel
@@ -161,6 +189,9 @@ int drm_panel_enable(struct drm_panel *panel)
 			return ret;
 	}
 
+	if (panel->backlight_init_pending)
+		drm_panel_of_backlight_lazy(panel);
+
 	ret = backlight_enable(panel->backlight);
 	if (ret < 0)
 		DRM_DEV_INFO(panel->dev, "failed to enable backlight: %d\n",
@@ -186,6 +217,9 @@ int drm_panel_disable(struct drm_panel *panel)
 
 	if (!panel)
 		return -EINVAL;
+
+	if (panel->backlight_init_pending)
+		drm_panel_of_backlight_lazy(panel);
 
 	ret = backlight_disable(panel->backlight);
 	if (ret < 0)
@@ -328,18 +362,7 @@ EXPORT_SYMBOL(of_drm_get_panel_orientation);
  */
 int drm_panel_of_backlight(struct drm_panel *panel)
 {
-	struct backlight_device *backlight;
-
-	if (!panel || !panel->dev)
-		return -EINVAL;
-
-	backlight = devm_of_find_backlight(panel->dev);
-
-	if (IS_ERR(backlight))
-		return PTR_ERR(backlight);
-
-	panel->backlight = backlight;
-	return 0;
+	return drm_panel_of_backlight_lazy(panel);
 }
 EXPORT_SYMBOL(drm_panel_of_backlight);
 #endif
