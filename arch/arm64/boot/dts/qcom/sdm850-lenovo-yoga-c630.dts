@@ -64,6 +64,12 @@
 
 		clock-frequency = <19200000>;
 	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&sn65dsi86 1000000>;
+		enable-gpios = <&tlmm 11 GPIO_ACTIVE_HIGH>;
+	};
 };
 
 &adsp_pas {
@@ -380,6 +386,8 @@
 
 		clocks = <&sn65dsi86_refclk>;
 		clock-names = "refclk";
+
+		#pwm-cells = <1>;
 
 		ports {
 			#address-cells = <1>;
