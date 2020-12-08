@@ -48,6 +48,7 @@
 	panel {
 		compatible = "boe,nv133fhm-n61";
 		no-hpd;
+		backlight = <&backlight>;
 
 		ports {
 			port {
