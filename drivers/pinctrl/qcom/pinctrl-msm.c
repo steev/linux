@@ -171,7 +171,12 @@ static int msm_pinmux_set_mux(struct pinctrl_dev *pctldev,
 			      unsigned group)
 {
 	struct msm_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
+	struct gpio_chip *gc = &pctrl->chip;
+	unsigned int irq = irq_find_mapping(gc->irq.domain, group);
+	struct irq_data *d = irq_get_irq_data(irq);
+	unsigned int gpio_func = pctrl->soc->gpio_func;
 	const struct msm_pingroup *g;
+	bool should_manage_parent;
 	unsigned long flags;
 	u32 val, mask;
 	int i;
@@ -187,6 +192,23 @@ static int msm_pinmux_set_mux(struct pinctrl_dev *pctldev,
 	if (WARN_ON(i == g->nfuncs))
 		return -EINVAL;
 
+	/*
+	 * If an GPIO interrupt is setup on this pin and those interrupts are
+	 * handled by our parent we need special handling.  Specifically the
+	 * parent will still see the pin twiddle even when we're muxed away.
+	 *
+	 * If our GPIO was unmasked before muxing away from GPIO we need to
+	 * mask our parent before switching so it doesn't see the twiddling.
+	 *
+	 * When we switch back we might need to clear any interrupts that were
+	 * latched while were muxed away.
+	 */
+	should_manage_parent = d && d->parent_data &&
+			       test_bit(d->hwirq, pctrl->skip_wake_irqs);
+
+	if (i != gpio_func && should_manage_parent && !irqd_irq_masked(d))
+		irq_chip_mask_parent(d);
+
 	raw_spin_lock_irqsave(&pctrl->lock, flags);
 
 	val = msm_readl_ctl(pctrl, g);
@@ -195,6 +217,13 @@ static int msm_pinmux_set_mux(struct pinctrl_dev *pctldev,
 	msm_writel_ctl(val, pctrl, g);
 
 	raw_spin_unlock_irqrestore(&pctrl->lock, flags);
+
+	if (i == gpio_func && should_manage_parent) {
+		irq_chip_set_parent_state(d, IRQCHIP_STATE_PENDING, false);
+
+		if (!irqd_irq_masked(d))
+			irq_chip_unmask_parent(d);
+	}
 
 	return 0;
 }
@@ -1093,19 +1122,6 @@ static int msm_gpio_irq_reqres(struct irq_data *d)
 		ret = -EINVAL;
 		goto out;
 	}
-
-	/*
-	 * Clear the interrupt that may be pending before we enable
-	 * the line.
-	 * This is especially a problem with the GPIOs routed to the
-	 * PDC. These GPIOs are direct-connect interrupts to the GIC.
-	 * Disabling the interrupt line at the PDC does not prevent
-	 * the interrupt from being latched at the GIC. The state at
-	 * GIC needs to be cleared before enabling.
-	 */
-	if (d->parent_data && test_bit(d->hwirq, pctrl->skip_wake_irqs))
-		irq_chip_set_parent_state(d, IRQCHIP_STATE_PENDING, 0);
-
 	return 0;
 out:
 	module_put(gc->owner);
