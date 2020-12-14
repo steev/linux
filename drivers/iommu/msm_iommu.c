@@ -312,7 +312,7 @@ static struct iommu_domain *msm_iommu_domain_alloc(unsigned type)
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
-		goto fail_nomem;
+		return NULL;
 
 	INIT_LIST_HEAD(&priv->list_attached);
 
@@ -321,10 +321,6 @@ static struct iommu_domain *msm_iommu_domain_alloc(unsigned type)
 	priv->domain.geometry.force_aperture = true;
 
 	return &priv->domain;
-
-fail_nomem:
-	kfree(priv);
-	return NULL;
 }
 
 static void msm_iommu_domain_free(struct iommu_domain *domain)
