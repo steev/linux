@@ -760,6 +760,9 @@ int geni_icc_get(struct geni_se *se, const char *icc_ddr)
 	int i, err;
 	const char *icc_names[] = {"qup-core", "qup-config", icc_ddr};
 
+	if (has_acpi_companion(se->dev))
+		return 0;
+
 	for (i = 0; i < ARRAY_SIZE(se->icc_paths); i++) {
 		if (!icc_names[i])
 			continue;
@@ -785,6 +788,9 @@ int geni_icc_set_bw(struct geni_se *se)
 {
 	int i, ret;
 
+	if (has_acpi_companion(se->dev))
+		return 0;
+
 	for (i = 0; i < ARRAY_SIZE(se->icc_paths); i++) {
 		ret = icc_set_bw(se->icc_paths[i].path,
 			se->icc_paths[i].avg_bw, se->icc_paths[i].avg_bw);
@@ -803,6 +809,9 @@ void geni_icc_set_tag(struct geni_se *se, u32 tag)
 {
 	int i;
 
+	if (has_acpi_companion(se->dev))
+		return;
+
 	for (i = 0; i < ARRAY_SIZE(se->icc_paths); i++)
 		icc_set_tag(se->icc_paths[i].path, tag);
 }
@@ -812,6 +821,9 @@ EXPORT_SYMBOL(geni_icc_set_tag);
 int geni_icc_enable(struct geni_se *se)
 {
 	int i, ret;
+
+	if (has_acpi_companion(se->dev))
+		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(se->icc_paths); i++) {
 		ret = icc_enable(se->icc_paths[i].path);
@@ -829,6 +841,9 @@ EXPORT_SYMBOL(geni_icc_enable);
 int geni_icc_disable(struct geni_se *se)
 {
 	int i, ret;
+
+	if (has_acpi_companion(se->dev))
+		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(se->icc_paths); i++) {
 		ret = icc_disable(se->icc_paths[i].path);
