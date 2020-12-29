@@ -845,8 +845,6 @@ bool dp_link_send_edid_checksum(struct dp_link *dp_link, u8 checksum)
 
 static int dp_link_parse_vx_px(struct dp_link_private *link)
 {
-	int ret = 0;
-
 	DRM_DEBUG_DP("vx: 0=%d, 1=%d, 2=%d, 3=%d\n",
 		drm_dp_get_adjust_request_voltage(link->link_status, 0),
 		drm_dp_get_adjust_request_voltage(link->link_status, 1),
@@ -877,7 +875,7 @@ static int dp_link_parse_vx_px(struct dp_link_private *link)
 			link->dp_link.phy_params.v_level,
 			link->dp_link.phy_params.p_level);
 
-	return ret;
+	return 0;
 }
 
 /**
