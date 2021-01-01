@@ -1093,9 +1093,12 @@ static int dpu_bind(struct device *dev, struct device *master, void *data)
 		return PTR_ERR(dpu_kms->opp_table);
 	/* OPP table is optional */
 	ret = dev_pm_opp_of_add_table(dev);
-	if (ret && ret != -ENODEV) {
-		dev_err(dev, "invalid OPP table in device tree\n");
-		goto put_clkname;
+	if (ret) {
+		dev_pm_opp_put_clkname(dpu_kms->opp_table);
+		if (ret != -ENODEV) {
+			dev_err(dev, "invalid OPP table in device tree\n");
+			return ret;
+		}
 	}
 
 	mp = &dpu_kms->mp;
@@ -1122,7 +1125,6 @@ static int dpu_bind(struct device *dev, struct device *master, void *data)
 	return ret;
 err:
 	dev_pm_opp_of_remove_table(dev);
-put_clkname:
 	dev_pm_opp_put_clkname(dpu_kms->opp_table);
 	return ret;
 }
