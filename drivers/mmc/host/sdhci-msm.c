@@ -2291,9 +2291,12 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	/* OPP table is optional */
 	ret = dev_pm_opp_of_add_table(&pdev->dev);
-	if (ret && ret != -ENODEV) {
-		dev_err(&pdev->dev, "Invalid OPP table in Device tree\n");
-		goto opp_put_clkname;
+	if (ret) {
+		dev_pm_opp_put_clkname(msm_host->opp_table);
+		if (ret != -ENODEV) {
+			dev_err(&pdev->dev, "Invalid OPP table in Device tree\n");
+			goto bus_clk_disable;
+		}
 	}
 
 	/* Vote for maximum clock rate for maximum performance */
@@ -2461,7 +2464,6 @@ clk_disable:
 				   msm_host->bulk_clks);
 opp_cleanup:
 	dev_pm_opp_of_remove_table(&pdev->dev);
-opp_put_clkname:
 	dev_pm_opp_put_clkname(msm_host->opp_table);
 bus_clk_disable:
 	if (!IS_ERR(msm_host->bus_clk))
