@@ -871,31 +871,23 @@ static int core_get_v4(struct device *dev)
 	if (legacy_binding)
 		return 0;
 
-	core->opp_table = dev_pm_opp_set_clkname(dev, "core");
+	core->opp_table = devm_pm_opp_set_clkname(dev, "core");
 	if (IS_ERR(core->opp_table))
 		return PTR_ERR(core->opp_table);
 
 	if (core->res->opp_pmdomain) {
-		ret = dev_pm_opp_of_add_table(dev);
+		ret = devm_pm_opp_of_add_table(dev);
 		if (!ret) {
 			core->has_opp_table = true;
 		} else if (ret != -ENODEV) {
 			dev_err(dev, "invalid OPP table in device tree\n");
 			return ret;
 		} else {
-			dev_pm_opp_put_clkname(core->opp_table);
+			devm_pm_opp_put_clkname(dev, core->opp_table);
 		}
 	}
 
-	ret = vcodec_domains_get(dev);
-	if (ret) {
-		if (core->has_opp_table)
-			dev_pm_opp_of_remove_table(dev);
-		dev_pm_opp_put_clkname(core->opp_table);
-		return ret;
-	}
-
-	return 0;
+	return vcodec_domains_get(dev);
 }
 
 static void core_put_v4(struct device *dev)
@@ -906,11 +898,6 @@ static void core_put_v4(struct device *dev)
 		return;
 
 	vcodec_domains_put(dev);
-
-	if (core->has_opp_table)
-		dev_pm_opp_of_remove_table(dev);
-	dev_pm_opp_put_clkname(core->opp_table);
-
 }
 
 static int core_power_v4(struct device *dev, int on)
