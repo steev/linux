@@ -881,8 +881,9 @@ static int core_get_v4(struct device *dev)
 			core->has_opp_table = true;
 		} else if (ret != -ENODEV) {
 			dev_err(dev, "invalid OPP table in device tree\n");
-			dev_pm_opp_put_clkname(core->opp_table);
 			return ret;
+		} else {
+			dev_pm_opp_put_clkname(core->opp_table);
 		}
 	}
 
