@@ -1438,9 +1438,12 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 		return PTR_ERR(port->se.opp_table);
 	/* OPP table is optional */
 	ret = dev_pm_opp_of_add_table(&pdev->dev);
-	if (ret && ret != -ENODEV) {
-		dev_err(&pdev->dev, "invalid OPP table in device tree\n");
-		goto put_clkname;
+	if (ret) {
+		dev_pm_opp_put_clkname(port->se.opp_table);
+		if (ret != -ENODEV) {
+			dev_err(&pdev->dev, "invalid OPP table in device tree\n");
+			return ret;
+		}
 	}
 
 	port->private_data.drv = drv;
@@ -1482,7 +1485,6 @@ static int qcom_geni_serial_probe(struct platform_device *pdev)
 	return 0;
 err:
 	dev_pm_opp_of_remove_table(&pdev->dev);
-put_clkname:
 	dev_pm_opp_put_clkname(port->se.opp_table);
 	return ret;
 }
