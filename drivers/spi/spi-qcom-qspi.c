@@ -536,9 +536,12 @@ static int qcom_qspi_probe(struct platform_device *pdev)
 		return PTR_ERR(ctrl->opp_table);
 	/* OPP table is optional */
 	ret = dev_pm_opp_of_add_table(&pdev->dev);
-	if (ret && ret != -ENODEV) {
-		dev_err(&pdev->dev, "invalid OPP table in device tree\n");
-		goto exit_probe_put_clkname;
+	if (ret) {
+		dev_pm_opp_put_clkname(ctrl->opp_table);
+		if (ret != -ENODEV) {
+			dev_err(&pdev->dev, "invalid OPP table in device tree\n");
+			return ret;
+		}
 	}
 
 	pm_runtime_use_autosuspend(dev);
@@ -551,8 +554,6 @@ static int qcom_qspi_probe(struct platform_device *pdev)
 
 	pm_runtime_disable(dev);
 	dev_pm_opp_of_remove_table(&pdev->dev);
-
-exit_probe_put_clkname:
 	dev_pm_opp_put_clkname(ctrl->opp_table);
 
 	return ret;
