@@ -94,11 +94,6 @@ void lima_devfreq_fini(struct lima_device *ldev)
 		devfreq_cooling_unregister(devfreq->cooling);
 		devfreq->cooling = NULL;
 	}
-
-	if (devfreq->devfreq) {
-		devm_devfreq_remove_device(ldev->dev, devfreq->devfreq);
-		devfreq->devfreq = NULL;
-	}
 }
 
 int lima_devfreq_init(struct lima_device *ldev)
