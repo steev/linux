@@ -353,16 +353,20 @@ static int exynos5_init_freq_table(struct exynos5_dmc *dmc,
 
 	dmc->opp = devm_kmalloc_array(dmc->dev, dmc->opp_count,
 				      sizeof(struct dmc_opp_table), GFP_KERNEL);
-	if (!dmc->opp)
+	if (!dmc->opp) {
+		ret = -ENOMEM;
 		goto err_opp;
+	}
 
 	idx = dmc->opp_count - 1;
 	for (i = 0, freq = ULONG_MAX; i < dmc->opp_count; i++, freq--) {
 		struct dev_pm_opp *opp;
 
 		opp = dev_pm_opp_find_freq_floor(dmc->dev, &freq);
-		if (IS_ERR(opp))
+		if (IS_ERR(opp)) {
+			ret = PTR_ERR(opp);
 			goto err_opp;
+		}
 
 		dmc->opp[idx - i].freq_hz = freq;
 		dmc->opp[idx - i].volt_uv = dev_pm_opp_get_voltage(opp);
@@ -375,7 +379,7 @@ static int exynos5_init_freq_table(struct exynos5_dmc *dmc,
 err_opp:
 	dev_pm_opp_of_remove_table(dmc->dev);
 
-	return -EINVAL;
+	return ret;
 }
 
 /**
