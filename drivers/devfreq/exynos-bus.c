@@ -33,7 +33,6 @@ struct exynos_bus {
 
 	unsigned long curr_freq;
 
-	struct opp_table *opp_table;
 	struct clk *clk;
 	unsigned int ratio;
 };
@@ -159,10 +158,7 @@ static void exynos_bus_exit(struct device *dev)
 
 	platform_device_unregister(bus->icc_pdev);
 
-	dev_pm_opp_of_remove_table(dev);
 	clk_disable_unprepare(bus->clk);
-	dev_pm_opp_put_regulators(bus->opp_table);
-	bus->opp_table = NULL;
 }
 
 static void exynos_bus_passive_exit(struct device *dev)
@@ -171,7 +167,6 @@ static void exynos_bus_passive_exit(struct device *dev)
 
 	platform_device_unregister(bus->icc_pdev);
 
-	dev_pm_opp_of_remove_table(dev);
 	clk_disable_unprepare(bus->clk);
 }
 
@@ -183,14 +178,12 @@ static int exynos_bus_parent_parse_of(struct device_node *np,
 	const char *vdd = "vdd";
 	int i, ret, count, size;
 
-	opp_table = dev_pm_opp_set_regulators(dev, &vdd, 1);
+	opp_table = devm_pm_opp_set_regulators(dev, &vdd, 1);
 	if (IS_ERR(opp_table)) {
 		ret = PTR_ERR(opp_table);
 		dev_err(dev, "failed to set regulators %d\n", ret);
 		return ret;
 	}
-
-	bus->opp_table = opp_table;
 
 	/*
 	 * Get the devfreq-event devices to get the current utilization of
@@ -199,25 +192,20 @@ static int exynos_bus_parent_parse_of(struct device_node *np,
 	count = devfreq_event_get_edev_count(dev, "devfreq-events");
 	if (count < 0) {
 		dev_err(dev, "failed to get the count of devfreq-event dev\n");
-		ret = count;
-		goto err_regulator;
+		return count;
 	}
 	bus->edev_count = count;
 
 	size = sizeof(*bus->edev) * count;
 	bus->edev = devm_kzalloc(dev, size, GFP_KERNEL);
-	if (!bus->edev) {
-		ret = -ENOMEM;
-		goto err_regulator;
-	}
+	if (!bus->edev)
+		return -ENOMEM;
 
 	for (i = 0; i < count; i++) {
 		bus->edev[i] = devfreq_event_get_edev_by_phandle(dev,
 							"devfreq-events", i);
-		if (IS_ERR(bus->edev[i])) {
-			ret = -EPROBE_DEFER;
-			goto err_regulator;
-		}
+		if (IS_ERR(bus->edev[i]))
+			return -EPROBE_DEFER;
 	}
 
 	/*
@@ -234,12 +222,6 @@ static int exynos_bus_parent_parse_of(struct device_node *np,
 		bus->ratio = DEFAULT_SATURATION_RATIO;
 
 	return 0;
-
-err_regulator:
-	dev_pm_opp_put_regulators(bus->opp_table);
-	bus->opp_table = NULL;
-
-	return ret;
 }
 
 static int exynos_bus_parse_of(struct device_node *np,
@@ -264,7 +246,7 @@ static int exynos_bus_parse_of(struct device_node *np,
 	}
 
 	/* Get the freq and voltage from OPP table to scale the bus freq */
-	ret = dev_pm_opp_of_add_table(dev);
+	ret = devm_pm_opp_of_add_table(dev);
 	if (ret < 0) {
 		dev_err(dev, "failed to get OPP table\n");
 		goto err_clk;
@@ -276,15 +258,13 @@ static int exynos_bus_parse_of(struct device_node *np,
 	if (IS_ERR(opp)) {
 		dev_err(dev, "failed to find dev_pm_opp\n");
 		ret = PTR_ERR(opp);
-		goto err_opp;
+		goto err_clk;
 	}
 	bus->curr_freq = dev_pm_opp_get_freq(opp);
 	dev_pm_opp_put(opp);
 
 	return 0;
 
-err_opp:
-	dev_pm_opp_of_remove_table(dev);
 err_clk:
 	clk_disable_unprepare(bus->clk);
 
@@ -425,7 +405,7 @@ static int exynos_bus_probe(struct platform_device *pdev)
 	/* Parse the device-tree to get the resource information */
 	ret = exynos_bus_parse_of(np, bus);
 	if (ret < 0)
-		goto err_reg;
+		return ret;
 
 	if (passive)
 		ret = exynos_bus_profile_init_passive(bus, profile);
@@ -456,11 +436,7 @@ static int exynos_bus_probe(struct platform_device *pdev)
 	return 0;
 
 err:
-	dev_pm_opp_of_remove_table(dev);
 	clk_disable_unprepare(bus->clk);
-err_reg:
-	dev_pm_opp_put_regulators(bus->opp_table);
-	bus->opp_table = NULL;
 
 	return ret;
 }
