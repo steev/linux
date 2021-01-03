@@ -1483,31 +1483,31 @@ err_msg:
 static int tegra_emc_opp_table_init(struct tegra_emc *emc)
 {
 	u32 hw_version = BIT(tegra_sku_info.soc_speedo_id);
-	struct opp_table *clk_opp_table, *hw_opp_table;
+	struct opp_table *opp_table;
 	int err;
 
-	clk_opp_table = dev_pm_opp_set_clkname(emc->dev, NULL);
-	err = PTR_ERR_OR_ZERO(clk_opp_table);
+	opp_table = devm_pm_opp_set_clkname(emc->dev, NULL);
+	err = PTR_ERR_OR_ZERO(opp_table);
 	if (err) {
 		dev_err(emc->dev, "failed to set OPP clk: %d\n", err);
 		return err;
 	}
 
-	hw_opp_table = dev_pm_opp_set_supported_hw(emc->dev, &hw_version, 1);
-	err = PTR_ERR_OR_ZERO(hw_opp_table);
+	opp_table = devm_pm_opp_set_supported_hw(emc->dev, &hw_version, 1);
+	err = PTR_ERR_OR_ZERO(opp_table);
 	if (err) {
 		dev_err(emc->dev, "failed to set OPP supported HW: %d\n", err);
-		goto put_clk_table;
+		return err;
 	}
 
-	err = dev_pm_opp_of_add_table(emc->dev);
+	err = devm_pm_opp_of_add_table(emc->dev);
 	if (err) {
 		if (err == -ENODEV)
 			dev_err(emc->dev, "OPP table not found, please update your device tree\n");
 		else
 			dev_err(emc->dev, "failed to add OPP table: %d\n", err);
 
-		goto put_hw_table;
+		return err;
 	}
 
 	dev_info(emc->dev, "OPP HW ver. 0x%x, current clock rate %lu MHz\n",
@@ -1515,19 +1515,8 @@ static int tegra_emc_opp_table_init(struct tegra_emc *emc)
 
 	/* first dummy rate-set initializes voltage state */
 	err = dev_pm_opp_set_rate(emc->dev, clk_get_rate(emc->clk));
-	if (err) {
+	if (err)
 		dev_err(emc->dev, "failed to initialize OPP clock: %d\n", err);
-		goto remove_table;
-	}
-
-	return 0;
-
-remove_table:
-	dev_pm_opp_of_remove_table(emc->dev);
-put_hw_table:
-	dev_pm_opp_put_supported_hw(hw_opp_table);
-put_clk_table:
-	dev_pm_opp_put_clkname(clk_opp_table);
 
 	return err;
 }
