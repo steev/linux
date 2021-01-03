@@ -230,13 +230,7 @@ int update_devfreq(struct devfreq *devfreq);
 /* Helper functions for devfreq user device driver with OPP. */
 struct dev_pm_opp *devfreq_recommended_opp(struct device *dev,
 				unsigned long *freq, u32 flags);
-int devfreq_register_opp_notifier(struct device *dev,
-				struct devfreq *devfreq);
-int devfreq_unregister_opp_notifier(struct device *dev,
-				struct devfreq *devfreq);
 int devm_devfreq_register_opp_notifier(struct device *dev,
-				struct devfreq *devfreq);
-void devm_devfreq_unregister_opp_notifier(struct device *dev,
 				struct devfreq *devfreq);
 int devfreq_register_notifier(struct devfreq *devfreq,
 				struct notifier_block *nb,
@@ -355,27 +349,10 @@ static inline struct dev_pm_opp *devfreq_recommended_opp(struct device *dev,
 	return ERR_PTR(-EINVAL);
 }
 
-static inline int devfreq_register_opp_notifier(struct device *dev,
-					struct devfreq *devfreq)
-{
-	return -EINVAL;
-}
-
-static inline int devfreq_unregister_opp_notifier(struct device *dev,
-					struct devfreq *devfreq)
-{
-	return -EINVAL;
-}
-
 static inline int devm_devfreq_register_opp_notifier(struct device *dev,
 					struct devfreq *devfreq)
 {
 	return -EINVAL;
-}
-
-static inline void devm_devfreq_unregister_opp_notifier(struct device *dev,
-					struct devfreq *devfreq)
-{
 }
 
 static inline int devfreq_register_notifier(struct devfreq *devfreq,
