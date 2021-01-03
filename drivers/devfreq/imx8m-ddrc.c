@@ -370,11 +370,6 @@ static int imx8m_ddrc_check_opps(struct device *dev)
 	return 0;
 }
 
-static void imx8m_ddrc_exit(struct device *dev)
-{
-	dev_pm_opp_of_remove_table(dev);
-}
-
 static int imx8m_ddrc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -419,7 +414,7 @@ static int imx8m_ddrc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = dev_pm_opp_of_add_table(dev);
+	ret = devm_pm_opp_of_add_table(dev);
 	if (ret < 0) {
 		dev_err(dev, "failed to get OPP table\n");
 		return ret;
@@ -427,12 +422,11 @@ static int imx8m_ddrc_probe(struct platform_device *pdev)
 
 	ret = imx8m_ddrc_check_opps(dev);
 	if (ret < 0)
-		goto err;
+		return ret;
 
 	priv->profile.polling_ms = 1000;
 	priv->profile.target = imx8m_ddrc_target;
 	priv->profile.get_dev_status = imx8m_ddrc_get_dev_status;
-	priv->profile.exit = imx8m_ddrc_exit;
 	priv->profile.get_cur_freq = imx8m_ddrc_get_cur_freq;
 	priv->profile.initial_freq = clk_get_rate(priv->dram_core);
 
@@ -441,13 +435,8 @@ static int imx8m_ddrc_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->devfreq)) {
 		ret = PTR_ERR(priv->devfreq);
 		dev_err(dev, "failed to add devfreq device: %d\n", ret);
-		goto err;
 	}
 
-	return 0;
-
-err:
-	dev_pm_opp_of_remove_table(dev);
 	return ret;
 }
 
