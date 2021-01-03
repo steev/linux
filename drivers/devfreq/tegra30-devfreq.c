@@ -178,7 +178,6 @@ struct tegra_devfreq_soc_data {
 
 struct tegra_devfreq {
 	struct devfreq		*devfreq;
-	struct opp_table	*opp_table;
 
 	struct reset_control	*reset;
 	struct clk		*clock;
@@ -794,6 +793,7 @@ static int tegra_devfreq_probe(struct platform_device *pdev)
 	struct tegra_devfreq_device *dev;
 	struct tegra_devfreq *tegra;
 	struct devfreq *devfreq;
+	struct opp_tabl	*opp_table;
 	unsigned int i;
 	long rate;
 	int err;
@@ -841,25 +841,25 @@ static int tegra_devfreq_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	tegra->opp_table = dev_pm_opp_set_supported_hw(&pdev->dev,
-						       &hw_version, 1);
-	err = PTR_ERR_OR_ZERO(tegra->opp_table);
+	opp_table = devm_pm_opp_set_supported_hw(&pdev->dev,
+						 &hw_version, 1);
+	err = PTR_ERR_OR_ZERO(opp_table);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to set supported HW: %d\n", err);
 		return err;
 	}
 
-	err = dev_pm_opp_of_add_table(&pdev->dev);
+	err = devm_pm_opp_of_add_table(&pdev->dev);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to add OPP table: %d\n", err);
-		goto put_hw;
+		return err;
 	}
 
 	err = clk_prepare_enable(tegra->clock);
 	if (err) {
 		dev_err(&pdev->dev,
 			"Failed to prepare and enable ACTMON clock\n");
-		goto remove_table;
+		return err;
 	}
 
 	err = reset_control_reset(tegra->reset);
@@ -917,10 +917,6 @@ remove_opps:
 	reset_control_reset(tegra->reset);
 disable_clk:
 	clk_disable_unprepare(tegra->clock);
-remove_table:
-	dev_pm_opp_of_remove_table(&pdev->dev);
-put_hw:
-	dev_pm_opp_put_supported_hw(tegra->opp_table);
 
 	return err;
 }
@@ -934,9 +930,6 @@ static int tegra_devfreq_remove(struct platform_device *pdev)
 
 	reset_control_reset(tegra->reset);
 	clk_disable_unprepare(tegra->clock);
-
-	dev_pm_opp_of_remove_table(&pdev->dev);
-	dev_pm_opp_put_supported_hw(tegra->opp_table);
 
 	return 0;
 }
