@@ -61,7 +61,6 @@ static void imx_bus_exit(struct device *dev)
 {
 	struct imx_bus *priv = dev_get_drvdata(dev);
 
-	dev_pm_opp_of_remove_table(dev);
 	platform_device_unregister(priv->icc_pdev);
 }
 
@@ -123,7 +122,7 @@ static int imx_bus_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, priv);
 
-	ret = dev_pm_opp_of_add_table(dev);
+	ret = devm_pm_opp_of_add_table(dev);
 	if (ret < 0) {
 		dev_err(dev, "failed to get OPP table\n");
 		return ret;
@@ -141,18 +140,11 @@ static int imx_bus_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->devfreq)) {
 		ret = PTR_ERR(priv->devfreq);
 		dev_err(dev, "failed to add devfreq device: %d\n", ret);
-		goto err;
+		return ret;
 	}
 
-	ret = imx_bus_init_icc(dev);
-	if (ret)
-		goto err;
+	return imx_bus_init_icc(dev);
 
-	return 0;
-
-err:
-	dev_pm_opp_of_remove_table(dev);
-	return ret;
 }
 
 static const struct of_device_id imx_bus_of_match[] = {
