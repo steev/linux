@@ -231,6 +231,7 @@
 #include "bcm2711-rpi.dtsi"
 #include "bcm283x-rpi-csi1-2lane.dtsi"
 #include "bcm283x-rpi-i2c0mux_0_44.dtsi"
+#include "bcm283x-rpi-cam1-regulator.dtsi"
 
 / {
 	chosen {
@@ -517,44 +518,8 @@
 	pinctrl-0 = <&audio_pins>;
 };
 
-&vc4 {
-	status = "disabled";
-};
-
-&pixelvalve0 {
-	status = "disabled";
-};
-
-&pixelvalve1 {
-	status = "disabled";
-};
-
-&pixelvalve2 {
-	status = "disabled";
-};
-
-&pixelvalve3 {
-	status = "disabled";
-};
-
-&pixelvalve4 {
-	status = "disabled";
-};
-
-&hdmi0 {
-	status = "disabled";
-};
-
-&ddc0 {
-	status = "disabled";
-};
-
-&hdmi1 {
-	status = "disabled";
-};
-
-&ddc1 {
-	status = "disabled";
+&cam1_reg {
+	gpio = <&expgpio 5 GPIO_ACTIVE_HIGH>;
 };
 
 / {
