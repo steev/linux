@@ -373,6 +373,12 @@
 	arcrimi=	[HW,NET] ARCnet - "RIM I" (entirely mem-mapped) cards
 			Format: <io>,<irq>,<nodeID>
 
+	arm64.disable_ptr_auth=
+			[ARM64] Force disable Linux support for address
+			authentication (both user and in-kernel).
+			0 - Pointer authentication is enabled[Default]
+			1 - Pointer authentication is force disabled
+
 	ataflop=	[HW,M68k]
 
 	atarimouse=	[HW,MOUSE] Atari Mouse
