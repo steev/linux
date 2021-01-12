@@ -1763,10 +1763,11 @@ static int free_pool_huge_page(struct hstate *h, nodemask_t *nodes_allowed,
  * nothing for in-use hugepages and non-hugepages.
  * This function returns values like below:
  *
- *  -EBUSY: failed to dissolved free hugepages or the hugepage is in-use
- *          (allocated or reserved.)
- *       0: successfully dissolved free hugepages or the page is not a
- *          hugepage (considered as already dissolved)
+ *  -EAGAIN: race with __free_huge_page() and can do a retry
+ *  -EBUSY:  failed to dissolved free hugepages or the hugepage is in-use
+ *           (allocated or reserved.)
+ *       0:  successfully dissolved free hugepages or the page is not a
+ *           hugepage (considered as already dissolved)
  */
 int dissolve_free_huge_page(struct page *page)
 {
@@ -1793,8 +1794,10 @@ int dissolve_free_huge_page(struct page *page)
 		 * We should make sure that the page is already on the free list
 		 * when it is dissolved.
 		 */
-		if (unlikely(!PageHugeFreed(head)))
+		if (unlikely(!PageHugeFreed(head))) {
+			rc = -EAGAIN;
 			goto out;
+		}
 
 		/*
 		 * Move PageHWPoison flag from head page to the raw error page,
@@ -1813,6 +1816,14 @@ int dissolve_free_huge_page(struct page *page)
 	}
 out:
 	spin_unlock(&hugetlb_lock);
+
+	/*
+	 * If the freeing of the HugeTLB page is put on a work queue, we should
+	 * flush the work before retrying.
+	 */
+	if (unlikely(rc == -EAGAIN))
+		flush_work(&free_hpage_work);
+
 	return rc;
 }
 
@@ -1835,7 +1846,12 @@ int dissolve_free_huge_pages(unsigned long start_pfn, unsigned long end_pfn)
 
 	for (pfn = start_pfn; pfn < end_pfn; pfn += 1 << minimum_order) {
 		page = pfn_to_page(pfn);
+retry:
 		rc = dissolve_free_huge_page(page);
+		if (rc == -EAGAIN) {
+			cpu_relax();
+			goto retry;
+		}
 		if (rc)
 			break;
 	}
