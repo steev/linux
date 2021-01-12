@@ -79,7 +79,9 @@ static void kasan_test_exit(struct kunit *test)
 				NULL,				\
 				&resource,			\
 				"kasan_data", &fail_data);	\
+	barrier();						\
 	expression;						\
+	barrier();						\
 	KUNIT_EXPECT_EQ(test,					\
 			fail_data.report_expected,		\
 			fail_data.report_found);		\
