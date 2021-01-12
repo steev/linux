@@ -315,7 +315,10 @@ static inline void *kasan_krealloc(const void *object, size_t new_size,
 	return (void *)object;
 }
 static inline void kasan_kfree_large(void *ptr, unsigned long ip) {}
-static inline bool kasan_check_byte(const void *address, unsigned long ip) {}
+static inline bool kasan_check_byte(const void *address, unsigned long ip)
+{
+	return true;
+}
 
 #endif /* CONFIG_KASAN */
 
