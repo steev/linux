@@ -345,7 +345,7 @@ static bool ____kasan_slab_free(struct kmem_cache *cache, void *object,
 	if (unlikely(cache->flags & SLAB_TYPESAFE_BY_RCU))
 		return false;
 
-	if (kasan_check_invalid_free(tagged_object)) {
+	if (!kasan_check(tagged_object)) {
 		kasan_report_invalid_free(tagged_object, ip);
 		return true;
 	}
@@ -489,4 +489,13 @@ void __kasan_kfree_large(void *ptr, unsigned long ip)
 	if (ptr != page_address(virt_to_head_page(ptr)))
 		kasan_report_invalid_free(ptr, ip);
 	/* The object will be poisoned by kasan_free_pages(). */
+}
+
+bool __kasan_check_byte(const void *address, unsigned long ip)
+{
+	if (!kasan_check(address)) {
+		kasan_report_invalid_free((void *)address, ip);
+		return false;
+	}
+	return true;
 }
