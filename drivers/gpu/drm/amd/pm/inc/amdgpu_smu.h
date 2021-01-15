@@ -471,6 +471,7 @@ struct smu_context
 	uint32_t cpu_actual_soft_min_freq;
 	uint32_t cpu_actual_soft_max_freq;
 	uint32_t cpu_core_id_select;
+	uint16_t cpu_core_num;
 };
 
 struct i2c_adapter;
