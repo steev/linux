@@ -25,13 +25,14 @@
 #include <linux/quota.h>
 #include <linux/unicode.h>
 #include <linux/part_stat.h>
+#include <linux/zstd.h>
+#include <linux/lz4.h>
 
 #include "f2fs.h"
 #include "node.h"
 #include "segment.h"
 #include "xattr.h"
 #include "gc.h"
-#include "trace.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/f2fs.h>
@@ -464,6 +465,56 @@ static int f2fs_set_test_dummy_encryption(struct super_block *sb,
 	return 0;
 }
 
+#ifdef CONFIG_F2FS_FS_COMPRESSION
+static int f2fs_compress_set_level(struct f2fs_sb_info *sbi, const char *str,
+						int type)
+{
+	unsigned int level;
+	int len;
+
+	if (type == COMPRESS_LZ4)
+		len = 3;
+	else if (type == COMPRESS_ZSTD)
+		len = 4;
+	else
+		return 0;
+
+	if (strlen(str) == len)
+		return 0;
+
+	str += len;
+
+	if (str[0] != ':') {
+		f2fs_info(sbi, "wrong format, e.g. <alg_name>:<compr_level>");
+		return -EINVAL;
+	}
+	if (kstrtouint(str + 1, 10, &level))
+		return -EINVAL;
+	if (type == COMPRESS_LZ4) {
+#ifdef CONFIG_F2FS_FS_LZ4HC
+		if (level < LZ4HC_MIN_CLEVEL || level > LZ4HC_MAX_CLEVEL) {
+			f2fs_info(sbi, "invalid lz4hc compress level: %d", level);
+			return -EINVAL;
+		}
+#else
+		f2fs_info(sbi, "doesn't support lz4hc compression");
+		return 0;
+#endif
+	} else if (type == COMPRESS_ZSTD) {
+#ifdef CONFIG_F2FS_FS_ZSTD
+		if (!level || level > ZSTD_maxCLevel()) {
+			f2fs_info(sbi, "invalid zstd compress level: %d", level);
+			return -EINVAL;
+		}
+#else
+		f2fs_info(sbi, "doesn't support zstd compression");
+#endif
+	}
+	F2FS_OPTION(sbi).compress_level = level;
+	return 0;
+}
+#endif
+
 static int parse_options(struct super_block *sb, char *options, bool is_remount)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
@@ -882,17 +933,45 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 			if (!name)
 				return -ENOMEM;
 			if (!strcmp(name, "lzo")) {
+#ifdef CONFIG_F2FS_FS_LZO
 				F2FS_OPTION(sbi).compress_algorithm =
 								COMPRESS_LZO;
-			} else if (!strcmp(name, "lz4")) {
+#else
+				f2fs_info(sbi, "kernel doesn't support lzo compression");
+#endif
+			} else if (!strncmp(name, "lz4", 3)) {
+#ifdef CONFIG_F2FS_FS_LZ4
+				ret = f2fs_compress_set_level(sbi, name,
+								COMPRESS_LZ4);
+				if (ret) {
+					kfree(name);
+					return -EINVAL;
+				}
 				F2FS_OPTION(sbi).compress_algorithm =
 								COMPRESS_LZ4;
-			} else if (!strcmp(name, "zstd")) {
+#else
+				f2fs_info(sbi, "kernel doesn't support lz4 compression");
+#endif
+			} else if (!strncmp(name, "zstd", 4)) {
+#ifdef CONFIG_F2FS_FS_ZSTD
+				ret = f2fs_compress_set_level(sbi, name,
+								COMPRESS_ZSTD);
+				if (ret) {
+					kfree(name);
+					return -EINVAL;
+				}
 				F2FS_OPTION(sbi).compress_algorithm =
 								COMPRESS_ZSTD;
+#else
+				f2fs_info(sbi, "kernel doesn't support zstd compression");
+#endif
 			} else if (!strcmp(name, "lzo-rle")) {
+#ifdef CONFIG_F2FS_FS_LZORLE
 				F2FS_OPTION(sbi).compress_algorithm =
 								COMPRESS_LZORLE;
+#else
+				f2fs_info(sbi, "kernel doesn't support lzorle compression");
+#endif
 			} else {
 				kfree(name);
 				return -EINVAL;
@@ -1075,8 +1154,6 @@ static struct inode *f2fs_alloc_inode(struct super_block *sb)
 
 	/* Will be used by directory only */
 	fi->i_dir_level = F2FS_SB(sb)->dir_level;
-
-	fi->ra_offset = -1;
 
 	return &fi->vfs_inode;
 }
@@ -1349,8 +1426,6 @@ int f2fs_sync_fs(struct super_block *sb, int sync)
 		err = f2fs_write_checkpoint(sbi, &cpc);
 		up_write(&sbi->gc_lock);
 	}
-	f2fs_trace_ios(NULL, 1);
-
 	return err;
 }
 
@@ -1535,6 +1610,9 @@ static inline void f2fs_show_compress_options(struct seq_file *seq,
 		break;
 	}
 	seq_printf(seq, ",compress_algorithm=%s", algtype);
+
+	if (F2FS_OPTION(sbi).compress_level)
+		seq_printf(seq, ":%d", F2FS_OPTION(sbi).compress_level);
 
 	seq_printf(seq, ",compress_log_size=%u",
 			F2FS_OPTION(sbi).compress_log_size);
@@ -2635,10 +2713,10 @@ static const struct export_operations f2fs_export_ops = {
 	.get_parent = f2fs_get_parent,
 };
 
-static loff_t max_file_blocks(void)
+loff_t max_file_blocks(struct inode *inode)
 {
 	loff_t result = 0;
-	loff_t leaf_count = DEF_ADDRS_PER_BLOCK;
+	loff_t leaf_count;
 
 	/*
 	 * note: previously, result is equal to (DEF_ADDRS_PER_INODE -
@@ -2646,6 +2724,11 @@ static loff_t max_file_blocks(void)
 	 * space in inode.i_addr, it will be more safe to reassign
 	 * result as zero.
 	 */
+
+	if (inode && f2fs_compressed_file(inode))
+		leaf_count = ADDRS_PER_BLOCK(inode);
+	else
+		leaf_count = DEF_ADDRS_PER_BLOCK;
 
 	/* two direct node blocks */
 	result += (leaf_count * 2);
@@ -3530,8 +3613,7 @@ try_onemore:
 	if (err)
 		goto free_options;
 
-	sbi->max_file_blocks = max_file_blocks();
-	sb->s_maxbytes = sbi->max_file_blocks <<
+	sb->s_maxbytes = max_file_blocks(NULL) <<
 				le32_to_cpu(raw_super->log_blocksize);
 	sb->s_max_links = F2FS_LINK_MAX;
 
@@ -4021,8 +4103,6 @@ static int __init init_f2fs_fs(void)
 		return -EINVAL;
 	}
 
-	f2fs_build_trace_ios();
-
 	err = init_inodecache();
 	if (err)
 		goto fail;
@@ -4115,7 +4195,6 @@ static void __exit exit_f2fs_fs(void)
 	f2fs_destroy_segment_manager_caches();
 	f2fs_destroy_node_manager_caches();
 	destroy_inodecache();
-	f2fs_destroy_trace_ios();
 }
 
 module_init(init_f2fs_fs)
