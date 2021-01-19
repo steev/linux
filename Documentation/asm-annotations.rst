@@ -153,6 +153,15 @@ This section covers ``SYM_FUNC_*`` and ``SYM_CODE_*`` enumerated above.
   To some extent, this category corresponds to deprecated ``ENTRY`` and
   ``END``. Except ``END`` had several other meanings too.
 
+  Developers should avoid using local symbol names that are prefixed with
+  ``.L``, as this has special meaning for the assembler; a symbol entry will
+  not be emitted into the symbol table. This can prevent ``objtool`` from
+  generating correct unwind info. Symbols with STB_LOCAL binding may still be
+  used, and ``.L`` prefixed local symbol names are still generally useable
+  within a function, but ``.L`` prefixed local symbol names should not be used
+  to denote the beginning or end of code regions via
+  ``SYM_CODE_START_LOCAL``/``SYM_CODE_END``.
+
 * ``SYM_INNER_LABEL*`` is used to denote a label inside some
   ``SYM_{CODE,FUNC}_START`` and ``SYM_{CODE,FUNC}_END``.  They are very similar
   to C labels, except they can be made global. An example of use::

@@ -270,7 +270,10 @@
 	SYM_END(name, SYM_T_FUNC)
 #endif
 
-/* SYM_CODE_START -- use for non-C (special) functions */
+/*
+ * SYM_CODE_START -- use for non-C (special) functions, avoid .L prefixed local
+ * symbol names which may not emit a symbol table entry.
+ */
 #ifndef SYM_CODE_START
 #define SYM_CODE_START(name)				\
 	SYM_START(name, SYM_L_GLOBAL, SYM_A_ALIGN)
