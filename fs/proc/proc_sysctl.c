@@ -1757,6 +1757,11 @@ static int process_sysctl_arg(char *param, char *val,
 	loff_t pos = 0;
 	ssize_t wret;
 
+	if (!val) {
+		pr_err("Missing param value! Expected '%s=...value...'\n", param);
+		return 0;
+	}
+
 	if (strncmp(param, "sysctl", sizeof("sysctl") - 1) == 0) {
 		param += sizeof("sysctl") - 1;
 
