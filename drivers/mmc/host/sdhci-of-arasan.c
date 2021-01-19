@@ -1380,26 +1380,25 @@ static void sdhci_arasan_unregister_sdclk(struct device *dev)
 
 /**
  * sdhci_arasan_update_support64b - Set SUPPORT_64B (64-bit System Bus Support)
+ * @host:		The sdhci_host
+ * @value:		The value to write
  *
  * This should be set based on the System Address Bus.
  * 0: the Core supports only 32-bit System Address Bus.
  * 1: the Core supports 64-bit System Address Bus.
  *
- * NOTES:
- * - For Keem Bay, it is required to clear this bit. Its default value is 1'b1.
- *   Keem Bay does not support 64-bit access.
- *
- * @host:		The sdhci_host
- * @value:		The value to write
+ * NOTE:
+ * For Keem Bay, it is required to clear this bit. Its default value is 1'b1.
+ * Keem Bay does not support 64-bit access.
  */
 static void sdhci_arasan_update_support64b(struct sdhci_host *host, u32 value)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_arasan_data *sdhci_arasan = sdhci_pltfm_priv(pltfm_host);
-	const struct sdhci_arasan_soc_ctl_map *soc_ctl_map =
-		sdhci_arasan->soc_ctl_map;
+	const struct sdhci_arasan_soc_ctl_map *soc_ctl_map;
 
 	/* Having a map is optional */
+	soc_ctl_map = sdhci_arasan->soc_ctl_map;
 	if (!soc_ctl_map)
 		return;
 
