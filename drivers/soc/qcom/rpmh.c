@@ -458,22 +458,33 @@ static int send_single(struct rpmh_ctrlr *ctrlr, enum rpmh_state state,
  * rpmh_flush() - Flushes the buffered sleep and wake sets to TCSes
  *
  * @ctrlr: Controller making request to flush cached data
+ * @from_last_cpu: Set if invoked from last cpu with irqs disabled
  *
  * Return:
  * * 0          - Success
  * * Error code - Otherwise
  */
-int rpmh_flush(struct rpmh_ctrlr *ctrlr)
+int rpmh_flush(struct rpmh_ctrlr *ctrlr, bool from_last_cpu)
 {
 	struct cache_req *p;
 	int ret = 0;
 
-	lockdep_assert_irqs_disabled();
+	/*
+	 * rpmh_flush() can be called when we think we're running
+	 * on the last CPU with irqs_disabled or when RPMH client
+	 * explicitly requests to write sleep and wake data.
+	 * (for e.g. when in solver mode clients can requests to flush)
+	 *
+	 * Conditionally check for irqs_disabled only when called
+	 * from last cpu.
+	 */
+
+	if (from_last_cpu)
+		lockdep_assert_irqs_disabled();
 
 	/*
-	 * Currently rpmh_flush() is only called when we think we're running
-	 * on the last processor.  If the lock is busy it means another
-	 * processor is up and it's better to abort than spin.
+	 * If the lock is busy it means another transaction is on going,
+	 * in such case it's better to abort than spin.
 	 */
 	if (!spin_trylock(&ctrlr->cache_lock))
 		return -EBUSY;
@@ -526,7 +537,7 @@ exit:
  */
 int rpmh_write_sleep_and_wake(const struct device *dev)
 {
-	return rpmh_flush(get_rpmh_ctrlr(dev));
+	return rpmh_flush(get_rpmh_ctrlr(dev), false);
 }
 EXPORT_SYMBOL(rpmh_write_sleep_and_wake);
 
