@@ -845,7 +845,8 @@ static int rpmh_rsc_cpu_pm_callback(struct notifier_block *nfb,
 	 * CPU.
 	 */
 	if (spin_trylock(&drv->lock)) {
-		if (rpmh_rsc_ctrlr_is_busy(drv) || rpmh_flush(&drv->client))
+		if (rpmh_rsc_ctrlr_is_busy(drv) ||
+		    rpmh_flush(&drv->client, true))
 			ret = NOTIFY_BAD;
 		spin_unlock(&drv->lock);
 	} else {

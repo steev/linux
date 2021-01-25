@@ -136,6 +136,6 @@ void rpmh_rsc_invalidate(struct rsc_drv *drv);
 int rpmh_rsc_mode_solver_set(struct rsc_drv *drv, bool enable);
 
 void rpmh_tx_done(const struct tcs_request *msg, int r);
-int rpmh_flush(struct rpmh_ctrlr *ctrlr);
+int rpmh_flush(struct rpmh_ctrlr *ctrlr, bool from_last_cpu);
 
 #endif /* __RPM_INTERNAL_H__ */
