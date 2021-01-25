@@ -71,6 +71,26 @@ TRACE_EVENT(rpmh_send_msg,
 		  __entry->addr, __entry->data, __entry->wait)
 );
 
+TRACE_EVENT(rpmh_solver_set,
+
+	TP_PROTO(struct rsc_drv *d, bool set),
+
+	TP_ARGS(d, set),
+
+	TP_STRUCT__entry(
+			 __string(name, d->name)
+			 __field(bool, set)
+	),
+
+	TP_fast_assign(
+		       __assign_str(name, d->name);
+		       __entry->set = set;
+	),
+
+	TP_printk("%s: solver mode set: %d",
+		  __get_str(name), __entry->set)
+);
+
 #endif /* _TRACE_RPMH_H */
 
 #undef TRACE_INCLUDE_PATH
