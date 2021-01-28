@@ -109,6 +109,7 @@ snd-soc-lochnagar-sc-objs := lochnagar-sc.o
 snd-soc-lpass-wsa-macro-objs := lpass-wsa-macro.o
 snd-soc-lpass-va-macro-objs := lpass-va-macro.o
 snd-soc-lpass-rx-macro-objs := lpass-rx-macro.o
+snd-soc-lpass-tx-macro-objs := lpass-tx-macro.o
 snd-soc-madera-objs := madera.o
 snd-soc-max9759-objs := max9759.o
 snd-soc-max9768-objs := max9768.o
@@ -629,6 +630,7 @@ obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
 obj-$(CONFIG_SND_SOC_LPASS_WSA_MACRO)	+= snd-soc-lpass-wsa-macro.o
 obj-$(CONFIG_SND_SOC_LPASS_VA_MACRO)	+= snd-soc-lpass-va-macro.o
 obj-$(CONFIG_SND_SOC_LPASS_RX_MACRO)	+= snd-soc-lpass-rx-macro.o
+obj-$(CONFIG_SND_SOC_LPASS_TX_MACRO)	+= snd-soc-lpass-tx-macro.o
 
 # Mux
 obj-$(CONFIG_SND_SOC_SIMPLE_MUX)	+= snd-soc-simple-mux.o
