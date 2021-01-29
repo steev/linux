@@ -110,7 +110,9 @@ struct qcom_swrm_ctrl {
 	u8 wr_cmd_id;
 	u8 rd_cmd_id;
 	int irq;
-	unsigned int version;
+	u8 version_major;
+	u8 version_minor;
+	u8 version_step;
 	int num_din_ports;
 	int num_dout_ports;
 	int cols_index;
@@ -961,7 +963,7 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 	prop->default_col = data->default_cols;
 	prop->default_row = data->default_rows;
 
-	ctrl->reg_read(ctrl, SWRM_COMP_HW_VERSION, &ctrl->version);
+	ctrl->reg_read(ctrl, SWRM_COMP_HW_VERSION, &val);
 
 	ret = devm_request_threaded_irq(dev, ctrl->irq, NULL,
 					qcom_swrm_irq_handler,
@@ -985,9 +987,11 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_master_add;
 
+	ctrl->version_major = (val >> 24) & 0xff;
+	ctrl->version_minor = (val >> 16) & 0xff;
+	ctrl->version_step = val & 0xffff;
 	dev_info(dev, "Qualcomm Soundwire controller v%x.%x.%x Registered\n",
-		 (ctrl->version >> 24) & 0xff, (ctrl->version >> 16) & 0xff,
-		 ctrl->version & 0xffff);
+		 ctrl->version_major, ctrl->version_minor, ctrl->version_step);
 
 	return 0;
 
