@@ -153,34 +153,64 @@
  * all modifications to the memory map (from sdm845.dtsi) in one place.
  */
 
-/*
- * Our mpss_region is 8MB bigger than the default one and that conflicts
- * with venus_mem and cdsp_mem.
- *
- * For venus_mem we'll delete and re-create at a different address.
- *
- * cdsp_mem isn't used on cheza right now so we won't bother re-creating it; but
- * that also means we need to delete cdsp_pas.
- */
-/delete-node/ &venus_mem;
-/delete-node/ &cdsp_mem;
-/delete-node/ &cdsp_pas;
-/delete-node/ &gpu_mem;
-
-/* Increase the size from 120 MB to 128 MB */
-&mpss_region {
-	reg = <0 0x8e000000 0 0x8000000>;
-};
-
-/* Increase the size from 2MB to 8MB */
-&rmtfs_mem {
-	reg = <0 0x88f00000 0 0x800000>;
-};
-
 / {
 	reserved-memory {
+		tz_mem: memory@86200000 {
+			reg = <0 0x86200000 0 0x2d00000>;
+			no-map;
+		};
+
+		rmtfs_mem: memory@88f00000 {
+			compatible = "qcom,rmtfs-mem";
+			reg = <0 0x88f00000 0 0x800000>;
+			no-map;
+
+			qcom,client-id = <1>;
+			qcom,vmid = <15>;
+		};
+
+		ipa_fw_mem: memory@8c400000 {
+			reg = <0 0x8c400000 0 0x10000>;
+			no-map;
+		};
+
+		ipa_gsi_mem: memory@8c410000 {
+			reg = <0 0x8c410000 0 0x5000>;
+			no-map;
+		};
+
+		adsp_mem: memory@8c500000 {
+			reg = <0 0x8c500000 0 0x1a00000>;
+			no-map;
+		};
+
+		wlan_msa_mem: memory@8df00000 {
+			reg = <0 0x8df00000 0 0x100000>;
+			no-map;
+		};
+
+		mpss_region: memory@8e000000 {
+			reg = <0 0x8e000000 0 0x8000000>;
+			no-map;
+		};
+
 		venus_mem: memory@96000000 {
 			reg = <0 0x96000000 0 0x500000>;
+			no-map;
+		};
+
+		mba_region: memory@96500000 {
+			reg = <0 0x96500000 0 0x200000>;
+			no-map;
+		};
+
+		slpi_mem: memory@96700000 {
+			reg = <0 0x96700000 0 0x1400000>;
+			no-map;
+		};
+
+		spss_mem: memory@97b00000 {
+			reg = <0 0x97b00000 0 0x100000>;
 			no-map;
 		};
 	};
@@ -205,7 +235,6 @@
 		spi-rx-bus-width = <2>;
 	};
 };
-
 
 &apps_rsc {
 	pm8998-rpmh-regulators {
@@ -645,6 +674,14 @@ ap_ts_i2c: &i2c14 {
 &mss_pil {
 	iommus = <&apps_smmu 0x781 0x0>,
 		 <&apps_smmu 0x724 0x3>;
+
+	mba {
+		memory-region = <&mba_region>;
+	};
+
+	mpss {
+		memory-region = <&mpss_region>;
+	};
 };
 
 &pm8998_pwrkey {
@@ -850,6 +887,7 @@ ap_ts_i2c: &i2c14 {
 
 &wifi {
 	status = "okay";
+	memory-region = <&wlan_msa_mem>;
 
 	vdd-0.8-cx-mx-supply = <&src_pp800_l5a >;
 	vdd-1.8-xo-supply = <&pp1800_l7a_wcn3990>;
@@ -1321,6 +1359,7 @@ ap_ts_i2c: &i2c14 {
 };
 
 &venus {
+	memory-region = <&venus_mem>;
 	video-firmware {
 		iommus = <&apps_smmu 0x10b2 0x0>;
 	};
