@@ -426,6 +426,32 @@ int dpu_encoder_helper_unregister_irq(struct dpu_encoder_phys *phys_enc,
 	return 0;
 }
 
+int dpu_encoder_get_frame_count(struct drm_encoder *drm_enc)
+{
+	struct dpu_encoder_virt *dpu_enc;
+	struct dpu_encoder_phys *phy_enc;
+
+	dpu_enc = to_dpu_encoder_virt(drm_enc);
+	phy_enc = dpu_enc ? dpu_enc->cur_master : NULL;
+
+	return phy_enc ? atomic_read(&phy_enc->vsync_cnt) : 0;
+}
+
+int dpu_encoder_get_linecount(struct drm_encoder *drm_enc)
+{
+	struct dpu_encoder_virt *dpu_enc;
+	struct dpu_encoder_phys *phys;
+	int linecount = 0;
+
+	dpu_enc = to_dpu_encoder_virt(drm_enc);
+	phys = dpu_enc ? dpu_enc->cur_master : NULL;
+
+	if (phys && phys->ops.get_line_count)
+		linecount = phys->ops.get_line_count(phys);
+
+	return linecount;
+}
+
 void dpu_encoder_get_hw_resources(struct drm_encoder *drm_enc,
 				  struct dpu_encoder_hw_resources *hw_res)
 {
@@ -1289,12 +1315,12 @@ static void dpu_encoder_vblank_callback(struct drm_encoder *drm_enc,
 	DPU_ATRACE_BEGIN("encoder_vblank_callback");
 	dpu_enc = to_dpu_encoder_virt(drm_enc);
 
+	atomic_inc(&phy_enc->vsync_cnt);
 	spin_lock_irqsave(&dpu_enc->enc_spinlock, lock_flags);
 	if (dpu_enc->crtc)
 		dpu_crtc_vblank_callback(dpu_enc->crtc);
 	spin_unlock_irqrestore(&dpu_enc->enc_spinlock, lock_flags);
 
-	atomic_inc(&phy_enc->vsync_cnt);
 	DPU_ATRACE_END("encoder_vblank_callback");
 }
 
