@@ -16,6 +16,7 @@
 #include <linux/bitfield.h>
 #include <linux/blk-pm.h>
 #include <linux/blkdev.h>
+#include <scsi/scsi_driver.h>
 #include "ufshcd.h"
 #include "ufs_quirks.h"
 #include "unipro.h"
@@ -77,6 +78,8 @@
 
 /* Polling time to wait for fDeviceInit */
 #define FDEVICEINIT_COMPL_TIMEOUT 1500 /* millisecs */
+
+#define wlun_dev_to_hba(dv) shost_priv(to_scsi_device(dv)->host)
 
 #define ufshcd_toggle_vreg(_dev, _vreg, _on)				\
 	({                                                              \
@@ -1558,7 +1561,7 @@ static ssize_t ufshcd_clkscale_enable_store(struct device *dev,
 	if (value == hba->clk_scaling.is_enabled)
 		goto out;
 
-	pm_runtime_get_sync(hba->dev);
+	scsi_autopm_get_device(hba->sdev_ufs_device);
 	ufshcd_hold(hba, false);
 
 	hba->clk_scaling.is_enabled = value;
@@ -1574,7 +1577,7 @@ static ssize_t ufshcd_clkscale_enable_store(struct device *dev,
 	}
 
 	ufshcd_release(hba);
-	pm_runtime_put_sync(hba->dev);
+	scsi_autopm_put_device(hba->sdev_ufs_device);
 out:
 	up(&hba->host_sem);
 	return err ? err : count;
@@ -2572,6 +2575,17 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 static inline u16 ufshcd_upiu_wlun_to_scsi_wlun(u8 upiu_wlun_id)
 {
 	return (upiu_wlun_id & ~UFS_UPIU_WLUN_ID) | SCSI_W_LUN_BASE;
+}
+
+static inline bool is_rpmb_wlun(struct scsi_device *sdev)
+{
+	return (sdev->lun == ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN));
+}
+
+static inline bool is_device_wlun(struct scsi_device *sdev)
+{
+	return (sdev->lun ==
+		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_UFS_DEVICE_WLUN));
 }
 
 static void ufshcd_init_lrb(struct ufs_hba *hba, struct ufshcd_lrb *lrb, int i)
@@ -4810,6 +4824,41 @@ static inline void ufshcd_get_lu_power_on_wp_status(struct ufs_hba *hba,
 }
 
 /**
+ * ufshcd_setup_links - associate link b/w device wlun and other luns
+ * @sdev: pointer to SCSI device
+ * @hba: pointer to ufs hba
+ */
+static void ufshcd_setup_links(struct ufs_hba *hba, struct scsi_device *sdev)
+{
+	struct device_link *link;
+
+	/*
+	 * device wlun is the supplier & rest of the luns are consumers
+	 * This ensures that device wlun suspends after all other luns.
+	 */
+	if (hba->sdev_ufs_device) {
+		link = device_link_add(&sdev->sdev_gendev,
+				       &hba->sdev_ufs_device->sdev_gendev,
+				       DL_FLAG_PM_RUNTIME);
+		if (!link) {
+			dev_err(&sdev->sdev_gendev, "Failed establishing link - %s\n",
+				dev_name(&hba->sdev_ufs_device->sdev_gendev));
+			return;
+		}
+		hba->luns_avail--;
+		/* Ignore REPORT_LUN wlun probing */
+		if (hba->luns_avail != 1)
+			return;
+
+		pm_runtime_put_noidle(&hba->sdev_ufs_device->sdev_gendev);
+		pm_runtime_mark_last_busy(&hba->sdev_ufs_device->sdev_gendev);
+	} else {
+		/* device wlun is probed */
+		hba->luns_avail--;
+	}
+}
+
+/**
  * ufshcd_slave_alloc - handle initial SCSI device configurations
  * @sdev: pointer to SCSI device
  *
@@ -4839,6 +4888,8 @@ static int ufshcd_slave_alloc(struct scsi_device *sdev)
 	ufshcd_set_queue_depth(sdev);
 
 	ufshcd_get_lu_power_on_wp_status(hba, sdev);
+
+	ufshcd_setup_links(hba, sdev);
 
 	return 0;
 }
@@ -4987,15 +5038,9 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 			 * UFS device needs urgent BKOPs.
 			 */
 			if (!hba->pm_op_in_progress &&
-			    ufshcd_is_exception_event(lrbp->ucd_rsp_ptr) &&
-			    schedule_work(&hba->eeh_work)) {
-				/*
-				 * Prevent suspend once eeh_work is scheduled
-				 * to avoid deadlock between ufshcd_suspend
-				 * and exception event handler.
-				 */
-				pm_runtime_get_noresume(hba->dev);
-			}
+			    ufshcd_is_exception_event(lrbp->ucd_rsp_ptr))
+				/* Flushed in suspend */
+				schedule_work(&hba->eeh_work);
 			break;
 		case UPIU_TRANSACTION_REJECT_UPIU:
 			/* TODO: handle Reject UPIU Response */
@@ -5591,8 +5636,8 @@ static void ufshcd_rpm_dev_flush_recheck_work(struct work_struct *work)
 	 * after a certain delay to recheck the threshold by next runtime
 	 * suspend.
 	 */
-	pm_runtime_get_sync(hba->dev);
-	pm_runtime_put_sync(hba->dev);
+	scsi_autopm_get_device(hba->sdev_ufs_device);
+	scsi_autopm_put_device(hba->sdev_ufs_device);
 }
 
 /**
@@ -5609,7 +5654,6 @@ static void ufshcd_exception_event_handler(struct work_struct *work)
 	u32 status = 0;
 	hba = container_of(work, struct ufs_hba, eeh_work);
 
-	pm_runtime_get_sync(hba->dev);
 	ufshcd_scsi_block_requests(hba);
 	err = ufshcd_get_ee_status(hba, &status);
 	if (err) {
@@ -5625,14 +5669,6 @@ static void ufshcd_exception_event_handler(struct work_struct *work)
 
 out:
 	ufshcd_scsi_unblock_requests(hba);
-	/*
-	 * pm_runtime_get_noresume is called while scheduling
-	 * eeh_work to avoid suspend racing with exception work.
-	 * Hence decrement usage counter using pm_runtime_put_noidle
-	 * to allow suspend on completion of exception event handler.
-	 */
-	pm_runtime_put_noidle(hba->dev);
-	pm_runtime_put(hba->dev);
 	return;
 }
 
@@ -7212,8 +7248,7 @@ static inline void ufshcd_blk_pm_runtime_init(struct scsi_device *sdev)
 	scsi_autopm_get_device(sdev);
 	blk_pm_runtime_init(sdev->request_queue, &sdev->sdev_gendev);
 	if (sdev->rpm_autosuspend)
-		pm_runtime_set_autosuspend_delay(&sdev->sdev_gendev,
-						 RPM_AUTOSUSPEND_DELAY_MS);
+		pm_runtime_set_autosuspend_delay(&sdev->sdev_gendev, 0);
 	scsi_autopm_put_device(sdev);
 }
 
@@ -7256,6 +7291,15 @@ static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 		goto out;
 	}
 	ufshcd_blk_pm_runtime_init(hba->sdev_ufs_device);
+	/*
+	 * A pm_runtime_put_sync is invoked when this device enables blk_pm_runtime
+	 * & would suspend the device-wlun upon timer expiry.
+	 * But suspending device wlun _may_ put the ufs device in the pre-defined
+	 * low power mode (SSU <rpm_lvl>). Probing of other luns may fail then.
+	 * Don't allow this suspend until all the luns have been probed.
+	 * See pm_runtime_mark_last_busy in ufshcd_setup_links.
+	 */
+	pm_runtime_get_noresume(&hba->sdev_ufs_device->sdev_gendev);
 	scsi_device_put(hba->sdev_ufs_device);
 
 	hba->sdev_rpmb = __scsi_add_device(hba->host, 0, 0,
@@ -7418,6 +7462,9 @@ static int ufs_get_device_desc(struct ufs_hba *hba)
 			__func__, err);
 		goto out;
 	}
+
+	hba->luns_avail = desc_buf[DEVICE_DESC_PARAM_NUM_LU] +
+		desc_buf[DEVICE_DESC_PARAM_NUM_WLU];
 
 	ufs_fixup_device_setup(hba);
 
@@ -7894,6 +7941,7 @@ static int ufshcd_probe_hba(struct ufs_hba *hba, bool async)
 	ufshcd_set_ufs_dev_active(hba);
 	ufshcd_force_reset_auto_bkops(hba);
 	hba->wlun_dev_clr_ua = true;
+	hba->wlun_rpmb_clr_ua = true;
 
 	/* Gear up to HS gear if supported */
 	if (hba->max_pwr_info.is_valid) {
@@ -7966,6 +8014,7 @@ out:
 		pm_runtime_put_sync(hba->dev);
 		ufshcd_hba_exit(hba);
 	}
+	hba->init_done = true;
 }
 
 static const struct attribute_group *ufshcd_driver_groups[] = {
@@ -8477,7 +8526,8 @@ static int ufshcd_set_dev_pwr_mode(struct ufs_hba *hba,
 	 * handling context.
 	 */
 	hba->host->eh_noresume = 1;
-	ufshcd_clear_ua_wluns(hba);
+	if (hba->wlun_dev_clr_ua)
+		ufshcd_clear_ua_wlun(hba, UFS_UPIU_UFS_DEVICE_WLUN);
 
 	cmd[4] = pwr_mode << 4;
 
@@ -8652,19 +8702,269 @@ static void ufshcd_hba_vreg_set_hpm(struct ufs_hba *hba)
 		ufshcd_setup_hba_vreg(hba, true);
 }
 
+static int __ufshcd_wl_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+{
+	int ret = 0;
+	enum ufs_pm_level pm_lvl;
+	enum ufs_dev_pwr_mode req_dev_pwr_mode;
+	enum uic_link_state req_link_state;
+
+	/*
+	 * Is invoked when the device wlun is added to sysfs
+	 * But by then hba->sdev_ufs_device may not be initialized.
+	 */
+	if (!hba->init_done)
+		return 0;
+	hba->pm_op_in_progress = true;
+	if (!ufshcd_is_shutdown_pm(pm_op)) {
+		pm_lvl = ufshcd_is_runtime_pm(pm_op) ?
+			 hba->rpm_lvl : hba->spm_lvl;
+		req_dev_pwr_mode = ufs_get_pm_lvl_to_dev_pwr_mode(pm_lvl);
+		req_link_state = ufs_get_pm_lvl_to_link_pwr_state(pm_lvl);
+	} else {
+		req_dev_pwr_mode = UFS_POWERDOWN_PWR_MODE;
+		req_link_state = UIC_LINK_OFF_STATE;
+	}
+
+	/*
+	 * If we can't transition into any of the low power modes
+	 * just gate the clocks.
+	 */
+	ufshcd_hold(hba, false);
+
+	if (ufshcd_is_clkscaling_supported(hba))
+		ufshcd_clk_scaling_suspend(hba, true);
+
+	if (req_dev_pwr_mode == UFS_ACTIVE_PWR_MODE &&
+			req_link_state == UIC_LINK_ACTIVE_STATE) {
+		goto enable_scaling;
+	}
+
+	if ((req_dev_pwr_mode == hba->curr_dev_pwr_mode) &&
+	    (req_link_state == hba->uic_link_state))
+		goto enable_scaling;
+
+	/* UFS device & link must be active before we enter in this function */
+	if (!ufshcd_is_ufs_dev_active(hba) || !ufshcd_is_link_active(hba)) {
+		ret = -EINVAL;
+		goto enable_scaling;
+	}
+
+	if (ufshcd_is_runtime_pm(pm_op)) {
+		if (ufshcd_can_autobkops_during_suspend(hba)) {
+			/*
+			 * The device is idle with no requests in the queue,
+			 * allow background operations if bkops status shows
+			 * that performance might be impacted.
+			 */
+			ret = ufshcd_urgent_bkops(hba);
+			if (ret)
+				goto enable_scaling;
+		} else {
+			/* make sure that auto bkops is disabled */
+			ufshcd_disable_auto_bkops(hba);
+		}
+		/*
+		 * If device needs to do BKOP or WB buffer flush during
+		 * Hibern8, keep device power mode as "active power mode"
+		 * and VCC supply.
+		 */
+		hba->dev_info.b_rpm_dev_flush_capable =
+			hba->auto_bkops_enabled ||
+			(((req_link_state == UIC_LINK_HIBERN8_STATE) ||
+			((req_link_state == UIC_LINK_ACTIVE_STATE) &&
+			ufshcd_is_auto_hibern8_enabled(hba))) &&
+			ufshcd_wb_need_flush(hba));
+	}
+
+	flush_work(&hba->eeh_work);
+
+	if (req_dev_pwr_mode != hba->curr_dev_pwr_mode) {
+		if (!ufshcd_is_runtime_pm(pm_op))
+			/* ensure that bkops is disabled */
+			ufshcd_disable_auto_bkops(hba);
+
+		if (!hba->dev_info.b_rpm_dev_flush_capable) {
+			ret = ufshcd_set_dev_pwr_mode(hba, req_dev_pwr_mode);
+			if (!ret)
+				goto out;
+		}
+	}
+enable_scaling:
+	if (ufshcd_is_clkscaling_supported(hba))
+		ufshcd_clk_scaling_suspend(hba, false);
+
+	hba->dev_info.b_rpm_dev_flush_capable = false;
+out:
+	if (hba->dev_info.b_rpm_dev_flush_capable) {
+		schedule_delayed_work(&hba->rpm_dev_flush_recheck_work,
+			msecs_to_jiffies(RPM_DEV_FLUSH_RECHECK_WORK_DELAY_MS));
+	}
+	if (ret)
+		ufshcd_update_evt_hist(hba, UFS_EVT_WL_SUSP_ERR, (u32)ret);
+	ufshcd_release(hba);
+	hba->pm_op_in_progress = false;
+	return ret;
+}
+
+static int __ufshcd_wl_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
+{
+	int ret = 0;
+
+	if (!hba->init_done)
+		return 0;
+
+	hba->pm_op_in_progress = true;
+	ufshcd_hold(hba, false);
+	if (ufshcd_is_ufs_dev_deepsleep(hba)) {
+		/* The device is in DeepSleep but hba was not suspended */
+		ret = ufshcd_reset_and_restore(hba);
+		if (ret)
+			goto out;
+	}
+
+	if (!ufshcd_is_ufs_dev_active(hba)) {
+		ret = ufshcd_set_dev_pwr_mode(hba, UFS_ACTIVE_PWR_MODE);
+		if (ret)
+			goto out;
+	}
+
+	if (ufshcd_keep_autobkops_enabled_except_suspend(hba))
+		ufshcd_enable_auto_bkops(hba);
+	else
+		/*
+		 * If BKOPs operations are urgently needed at this moment then
+		 * keep auto-bkops enabled or else disable it.
+		 */
+		ufshcd_urgent_bkops(hba);
+
+	if (hba->clk_scaling.is_allowed)
+		ufshcd_resume_clkscaling(hba);
+
+	if (hba->dev_info.b_rpm_dev_flush_capable) {
+		hba->dev_info.b_rpm_dev_flush_capable = false;
+		cancel_delayed_work(&hba->rpm_dev_flush_recheck_work);
+	}
+
+out:
+	if (ret)
+		ufshcd_update_evt_hist(hba, UFS_EVT_WL_RES_ERR, (u32)ret);
+	ufshcd_release(hba);
+	hba->pm_op_in_progress = false;
+	return ret;
+}
+
+static int ufshcd_wl_runtime_suspend(struct device *dev)
+{
+	struct scsi_device *sdev = to_scsi_device(dev);
+	struct ufs_hba *hba;
+	int ret;
+	ktime_t start = ktime_get();
+
+	hba = shost_priv(sdev->host);
+
+	ret = __ufshcd_wl_suspend(hba, UFS_RUNTIME_PM);
+	if (ret)
+		dev_err(&sdev->sdev_gendev, "%s failed: %d\n", __func__, ret);
+
+	trace_ufshcd_wl_runtime_suspend(dev_name(dev), ret,
+		ktime_to_us(ktime_sub(ktime_get(), start)),
+		hba->curr_dev_pwr_mode, hba->uic_link_state);
+
+	return ret;
+}
+
+static int ufshcd_wl_runtime_resume(struct device *dev)
+{
+	struct scsi_device *sdev = to_scsi_device(dev);
+	struct ufs_hba *hba;
+	int ret = 0;
+	ktime_t start = ktime_get();
+
+	hba = shost_priv(sdev->host);
+
+	ret = __ufshcd_wl_resume(hba, UFS_RUNTIME_PM);
+	if (ret)
+		dev_err(&sdev->sdev_gendev, "%s failed: %d\n", __func__, ret);
+
+	trace_ufshcd_wl_runtime_resume(dev_name(dev), ret,
+		ktime_to_us(ktime_sub(ktime_get(), start)),
+		hba->curr_dev_pwr_mode, hba->uic_link_state);
+
+	return ret;
+}
+
+#ifdef CONFIG_PM_SLEEP
+static int ufshcd_wl_suspend(struct device *dev)
+{
+	struct scsi_device *sdev = to_scsi_device(dev);
+	struct ufs_hba *hba;
+	int ret;
+	ktime_t start = ktime_get();
+
+	hba = shost_priv(sdev->host);
+	ret = __ufshcd_wl_suspend(hba, UFS_SYSTEM_PM);
+	if (ret)
+		dev_err(&sdev->sdev_gendev, "%s failed: %d\n", __func__,  ret);
+
+	trace_ufshcd_wl_suspend(dev_name(dev), ret,
+		ktime_to_us(ktime_sub(ktime_get(), start)),
+		hba->curr_dev_pwr_mode, hba->uic_link_state);
+
+	return ret;
+}
+
+static int ufshcd_wl_resume(struct device *dev)
+{
+	struct scsi_device *sdev = to_scsi_device(dev);
+	struct ufs_hba *hba;
+	int ret = 0;
+	ktime_t start = ktime_get();
+
+	if (pm_runtime_suspended(dev))
+		return 0;
+	hba = shost_priv(sdev->host);
+
+	ret = __ufshcd_wl_resume(hba, UFS_SYSTEM_PM);
+	if (ret)
+		dev_err(&sdev->sdev_gendev, "%s failed: %d\n", __func__, ret);
+
+	trace_ufshcd_wl_resume(dev_name(dev), ret,
+		ktime_to_us(ktime_sub(ktime_get(), start)),
+		hba->curr_dev_pwr_mode, hba->uic_link_state);
+
+	return ret;
+}
+#endif
+
+static void ufshcd_wl_shutdown(struct device *dev)
+{
+	struct scsi_device *sdev = to_scsi_device(dev);
+	struct ufs_hba *hba;
+
+	hba = shost_priv(sdev->host);
+	/* Turn on everything while shutting down */
+	scsi_autopm_get_device(sdev);
+	scsi_device_quiesce(sdev);
+	shost_for_each_device(sdev, hba->host) {
+		if (sdev == hba->sdev_ufs_device)
+			continue;
+		scsi_device_quiesce(sdev);
+	}
+	__ufshcd_wl_suspend(hba, UFS_SHUTDOWN_PM);
+}
+
 /**
  * ufshcd_suspend - helper function for suspend operations
  * @hba: per adapter instance
  * @pm_op: desired low power operation type
  *
- * This function will try to put the UFS device and link into low power
+ * This function will try to put the UFS link into low power
  * mode based on the "rpm_lvl" (Runtime PM level) or "spm_lvl"
  * (System PM level).
  *
  * If this function is called during shutdown, it will make sure that
- * both UFS device and UFS link is powered off.
- *
- * NOTE: UFS device & link must be active before we enter in this function.
+ * link is powered off.
  *
  * Returns 0 for success and non-zero for failure
  */
@@ -8694,65 +8994,6 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	ufshcd_hold(hba, false);
 	hba->clk_gating.is_suspended = true;
 
-	if (ufshcd_is_clkscaling_supported(hba))
-		ufshcd_clk_scaling_suspend(hba, true);
-
-	if (req_dev_pwr_mode == UFS_ACTIVE_PWR_MODE &&
-			req_link_state == UIC_LINK_ACTIVE_STATE) {
-		goto disable_clks;
-	}
-
-	if ((req_dev_pwr_mode == hba->curr_dev_pwr_mode) &&
-	    (req_link_state == hba->uic_link_state))
-		goto enable_gating;
-
-	/* UFS device & link must be active before we enter in this function */
-	if (!ufshcd_is_ufs_dev_active(hba) || !ufshcd_is_link_active(hba)) {
-		ret = -EINVAL;
-		goto enable_gating;
-	}
-
-	if (ufshcd_is_runtime_pm(pm_op)) {
-		if (ufshcd_can_autobkops_during_suspend(hba)) {
-			/*
-			 * The device is idle with no requests in the queue,
-			 * allow background operations if bkops status shows
-			 * that performance might be impacted.
-			 */
-			ret = ufshcd_urgent_bkops(hba);
-			if (ret)
-				goto enable_gating;
-		} else {
-			/* make sure that auto bkops is disabled */
-			ufshcd_disable_auto_bkops(hba);
-		}
-		/*
-		 * If device needs to do BKOP or WB buffer flush during
-		 * Hibern8, keep device power mode as "active power mode"
-		 * and VCC supply.
-		 */
-		hba->dev_info.b_rpm_dev_flush_capable =
-			hba->auto_bkops_enabled ||
-			(((req_link_state == UIC_LINK_HIBERN8_STATE) ||
-			((req_link_state == UIC_LINK_ACTIVE_STATE) &&
-			ufshcd_is_auto_hibern8_enabled(hba))) &&
-			ufshcd_wb_need_flush(hba));
-	}
-
-	flush_work(&hba->eeh_work);
-
-	if (req_dev_pwr_mode != hba->curr_dev_pwr_mode) {
-		if (!ufshcd_is_runtime_pm(pm_op))
-			/* ensure that bkops is disabled */
-			ufshcd_disable_auto_bkops(hba);
-
-		if (!hba->dev_info.b_rpm_dev_flush_capable) {
-			ret = ufshcd_set_dev_pwr_mode(hba, req_dev_pwr_mode);
-			if (ret)
-				goto enable_gating;
-		}
-	}
-
 	/*
 	 * In the case of DeepSleep, the device is expected to remain powered
 	 * with the link off, so do not check for bkops.
@@ -8760,9 +9001,8 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	check_for_bkops = !ufshcd_is_ufs_dev_deepsleep(hba);
 	ret = ufshcd_link_state_transition(hba, req_link_state, check_for_bkops);
 	if (ret)
-		goto set_dev_active;
+		goto enable_gating;
 
-disable_clks:
 	/*
 	 * Call vendor specific suspend callback. As these callbacks may access
 	 * vendor specific host controller register space call them before the
@@ -8792,7 +9032,6 @@ disable_clks:
 	goto out;
 
 set_link_active:
-	ufshcd_vreg_set_hpm(hba);
 	/*
 	 * Device hardware reset is required to exit DeepSleep. Also, for
 	 * DeepSleep, the link is off so host reset and restore will be done
@@ -8806,28 +9045,15 @@ set_link_active:
 		ufshcd_set_link_active(hba);
 	else if (ufshcd_is_link_off(hba))
 		ufshcd_host_reset_and_restore(hba);
-set_dev_active:
 	/* Can also get here needing to exit DeepSleep */
 	if (ufshcd_is_ufs_dev_deepsleep(hba)) {
 		ufshcd_device_reset(hba);
 		ufshcd_host_reset_and_restore(hba);
 	}
-	if (!ufshcd_set_dev_pwr_mode(hba, UFS_ACTIVE_PWR_MODE))
-		ufshcd_disable_auto_bkops(hba);
 enable_gating:
-	if (ufshcd_is_clkscaling_supported(hba))
-		ufshcd_clk_scaling_suspend(hba, false);
-
 	hba->clk_gating.is_suspended = false;
-	hba->dev_info.b_rpm_dev_flush_capable = false;
-	ufshcd_clear_ua_wluns(hba);
 	ufshcd_release(hba);
 out:
-	if (hba->dev_info.b_rpm_dev_flush_capable) {
-		schedule_delayed_work(&hba->rpm_dev_flush_recheck_work,
-			msecs_to_jiffies(RPM_DEV_FLUSH_RECHECK_WORK_DELAY_MS));
-	}
-
 	hba->pm_op_in_progress = 0;
 
 	if (ret)
@@ -8848,10 +9074,8 @@ out:
 static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	int ret;
-	enum uic_link_state old_link_state;
 
 	hba->pm_op_in_progress = 1;
-	old_link_state = hba->uic_link_state;
 
 	ufshcd_hba_vreg_set_hpm(hba);
 	ret = ufshcd_vreg_set_hpm(hba);
@@ -8903,43 +9127,14 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 			goto vendor_suspend;
 	}
 
-	if (!ufshcd_is_ufs_dev_active(hba)) {
-		ret = ufshcd_set_dev_pwr_mode(hba, UFS_ACTIVE_PWR_MODE);
-		if (ret)
-			goto set_old_link_state;
-	}
-
-	if (ufshcd_keep_autobkops_enabled_except_suspend(hba))
-		ufshcd_enable_auto_bkops(hba);
-	else
-		/*
-		 * If BKOPs operations are urgently needed at this moment then
-		 * keep auto-bkops enabled or else disable it.
-		 */
-		ufshcd_urgent_bkops(hba);
-
-	hba->clk_gating.is_suspended = false;
-
-	if (ufshcd_is_clkscaling_supported(hba))
-		ufshcd_clk_scaling_suspend(hba, false);
-
 	/* Enable Auto-Hibernate if configured */
 	ufshcd_auto_hibern8_enable(hba);
-
-	if (hba->dev_info.b_rpm_dev_flush_capable) {
-		hba->dev_info.b_rpm_dev_flush_capable = false;
-		cancel_delayed_work(&hba->rpm_dev_flush_recheck_work);
-	}
-
-	ufshcd_clear_ua_wluns(hba);
 
 	/* Schedule clock gating in case of no access to UFS device yet */
 	ufshcd_release(hba);
 
 	goto out;
 
-set_old_link_state:
-	ufshcd_link_state_transition(hba, old_link_state, 0);
 vendor_suspend:
 	ufshcd_vops_suspend(hba, pm_op);
 disable_irq_and_vops_clks:
@@ -9478,15 +9673,164 @@ out_error:
 }
 EXPORT_SYMBOL_GPL(ufshcd_init);
 
+void ufshcd_resume_complete(struct device *dev)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+
+	pm_runtime_put_noidle(&hba->sdev_ufs_device->sdev_gendev);
+}
+EXPORT_SYMBOL_GPL(ufshcd_resume_complete);
+
+int ufshcd_suspend_prepare(struct device *dev)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+
+	/*
+	 * SCSI assumes that runtime-pm and system-pm for scsi drivers
+	 * are same. And it doesn't wake up the device for system-suspend
+	 * if it's runtime suspended. But ufs doesn't follow that.
+	 * The rpm-lvl and spm-lvl can be different in ufs.
+	 * Force it to honor system-suspend.
+	 */
+	scsi_autopm_get_device(hba->sdev_ufs_device);
+	/* Refer ufshcd_resume_complete() */
+	pm_runtime_get_noresume(&hba->sdev_ufs_device->sdev_gendev);
+	scsi_autopm_put_device(hba->sdev_ufs_device);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ufshcd_suspend_prepare);
+
+#ifdef CONFIG_PM_SLEEP
+static int ufshcd_wl_poweroff(struct device *dev)
+{
+	ufshcd_wl_shutdown(dev);
+	return 0;
+}
+#endif
+
+static int ufshcd_wl_probe(struct device *dev)
+{
+	return is_device_wlun(to_scsi_device(dev)) ? 0 : -ENODEV;
+}
+
+static int ufshcd_wl_remove(struct device *dev)
+{
+	return 0;
+}
+
+static const struct dev_pm_ops ufshcd_wl_pm_ops = {
+#ifdef CONFIG_PM_SLEEP
+	.suspend = ufshcd_wl_suspend,
+	.resume = ufshcd_wl_resume,
+	.freeze = ufshcd_wl_suspend,
+	.thaw = ufshcd_wl_resume,
+	.poweroff = ufshcd_wl_poweroff,
+	.restore = ufshcd_wl_resume,
+#endif
+	SET_RUNTIME_PM_OPS(ufshcd_wl_runtime_suspend, ufshcd_wl_runtime_resume, NULL)
+};
+
+/**
+ * ufs_dev_wlun_template - describes ufs device wlun
+ * ufs-device wlun - used to send pm commands
+ * All luns are consumers of ufs-device wlun.
+ *
+ * Currently, no sd driver is present for wluns.
+ * Hence the no specific pm operations are performed.
+ * With ufs design, SSU should be sent to ufs-device wlun.
+ * Hence register a scsi driver for ufs wluns only.
+ */
+static struct scsi_driver ufs_dev_wlun_template = {
+	.gendrv = {
+		.name = "ufs_device_wlun",
+		.owner = THIS_MODULE,
+		.probe = ufshcd_wl_probe,
+		.remove = ufshcd_wl_remove,
+		.pm = &ufshcd_wl_pm_ops,
+		.shutdown = ufshcd_wl_shutdown,
+	},
+};
+
+static int ufshcd_rpmb_probe(struct device *dev)
+{
+	return is_rpmb_wlun(to_scsi_device(dev)) ? 0 : -ENODEV;
+}
+
+static inline int ufshcd_clear_rpmb_uac(struct ufs_hba *hba)
+{
+	int ret = 0;
+
+	if (!hba->wlun_rpmb_clr_ua)
+		return 0;
+	ret = ufshcd_clear_ua_wlun(hba, UFS_UPIU_RPMB_WLUN);
+	if (!ret)
+		hba->wlun_rpmb_clr_ua = 0;
+	return ret;
+}
+
+static int ufshcd_rpmb_runtime_resume(struct device *dev)
+{
+	struct ufs_hba *hba = wlun_dev_to_hba(dev);
+
+	if (hba->sdev_rpmb)
+		return ufshcd_clear_rpmb_uac(hba);
+	return 0;
+}
+
+static int ufshcd_rpmb_resume(struct device *dev)
+{
+	struct ufs_hba *hba = wlun_dev_to_hba(dev);
+
+	if (hba->sdev_rpmb && !pm_runtime_suspended(dev))
+		return ufshcd_clear_rpmb_uac(hba);
+	return 0;
+}
+
+static const struct dev_pm_ops ufs_rpmb_pm_ops = {
+	SET_RUNTIME_PM_OPS(NULL, ufshcd_rpmb_runtime_resume, NULL)
+	SET_SYSTEM_SLEEP_PM_OPS(NULL, ufshcd_rpmb_resume)
+};
+
+/**
+ * Describes the ufs rpmb wlun.
+ * Used only to send uac.
+ */
+static struct scsi_driver ufs_rpmb_wlun_template = {
+	.gendrv = {
+		.name = "ufs_rpmb_wlun",
+		.owner = THIS_MODULE,
+		.probe = ufshcd_rpmb_probe,
+		.pm = &ufs_rpmb_pm_ops,
+	},
+};
+
 static int __init ufshcd_core_init(void)
 {
+	int ret;
+
 	ufs_debugfs_init();
+
+	ret = scsi_register_driver(&ufs_dev_wlun_template.gendrv);
+	if (ret) {
+		pr_err("Register device wlun driver failed: %d\n",
+			ret);
+		return ret;
+	}
+
+	ret = scsi_register_driver(&ufs_rpmb_wlun_template.gendrv);
+	if (ret) {
+		pr_err("Register rpmb wlun driver failed: %d\n",
+			ret);
+		return ret;
+	}
 	return 0;
 }
 
 static void __exit ufshcd_core_exit(void)
 {
 	ufs_debugfs_exit();
+	scsi_unregister_driver(&ufs_dev_wlun_template.gendrv);
+	scsi_unregister_driver(&ufs_rpmb_wlun_template.gendrv);
 }
 
 module_init(ufshcd_core_init);

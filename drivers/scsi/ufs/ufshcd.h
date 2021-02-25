@@ -72,6 +72,8 @@ enum ufs_event_type {
 	UFS_EVT_LINK_STARTUP_FAIL,
 	UFS_EVT_RESUME_ERR,
 	UFS_EVT_SUSPEND_ERR,
+	UFS_EVT_WL_SUSP_ERR,
+	UFS_EVT_WL_RES_ERR,
 
 	/* abnormal events */
 	UFS_EVT_DEV_RESET,
@@ -804,6 +806,7 @@ struct ufs_hba {
 	struct list_head clk_list_head;
 
 	bool wlun_dev_clr_ua;
+	bool wlun_rpmb_clr_ua;
 
 	/* Number of requests aborts */
 	int req_abort_count;
@@ -841,6 +844,8 @@ struct ufs_hba {
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_root;
 #endif
+	bool init_done;
+	u32 luns_avail;
 };
 
 /* Returns true if clocks can be gated. Otherwise false */
@@ -1100,6 +1105,8 @@ int ufshcd_exec_raw_upiu_cmd(struct ufs_hba *hba,
 			     enum query_opcode desc_op);
 
 int ufshcd_wb_ctrl(struct ufs_hba *hba, bool enable);
+int ufshcd_suspend_prepare(struct device *dev);
+void ufshcd_resume_complete(struct device *dev);
 
 /* Wrapper functions for safely calling variant operations */
 static inline const char *ufshcd_get_var_name(struct ufs_hba *hba)
