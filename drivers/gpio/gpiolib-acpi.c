@@ -93,6 +93,72 @@ static DEFINE_MUTEX(acpi_gpio_deferred_req_irqs_lock);
 static LIST_HEAD(acpi_gpio_deferred_req_irqs_list);
 static bool acpi_gpio_deferred_req_irqs_done;
 
+struct acpi_gpio_pin_fixup {
+	const char *consumer;
+	int pin_broken;
+	int pin_correct;
+};
+
+struct acpi_gpio_pin_override {
+	const struct acpi_gpio_pin_fixup *fixups;
+	int num;
+};
+
+static const struct acpi_gpio_pin_fixup lenovo_flex_5g_fixups[] = {
+	{
+		/* GpioInt of Touchpad */
+		.consumer = "\\_SB.I2C8.TCPD",
+		.pin_broken = 0x0280,
+		.pin_correct = 0x0018,
+	},
+};
+
+static const struct acpi_gpio_pin_override lenovo_flex_5g_override = {
+	.fixups = lenovo_flex_5g_fixups,
+	.num = ARRAY_SIZE(lenovo_flex_5g_fixups),
+};
+
+static const struct dmi_system_id acpi_gpio_pin_override_table[] = {
+	{
+		.ident = "Lenovo Flex 5G",
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "LENOVO"),
+			DMI_EXACT_MATCH(DMI_PRODUCT_FAMILY, "Flex 5G 14Q8CX05"),
+		},
+		.driver_data = (void *)&lenovo_flex_5g_override,
+	},
+	{ } /* terminator */
+};
+
+static int acpi_gpio_pin_override(struct acpi_device *adev, int pin)
+{
+	const struct acpi_gpio_pin_override *override;
+	const struct dmi_system_id *system_id;
+	char *fwname;
+	int ret = pin;
+	int i;
+
+	system_id = dmi_first_match(acpi_gpio_pin_override_table);
+	if (!system_id)
+		return ret;
+
+	fwname = kasprintf(GFP_KERNEL, "%pfwf", &adev->fwnode);
+	override = system_id->driver_data;
+
+	for (i = 0; i < override->num; i++) {
+		const struct acpi_gpio_pin_fixup *f = &override->fixups[i];
+
+		if (!strcmp(f->consumer, fwname) && pin == f->pin_broken) {
+			ret = f->pin_correct;
+			goto done;
+		}
+	}
+
+done:
+	kfree(fwname);
+	return ret;
+}
+
 static int acpi_gpiochip_find(struct gpio_chip *gc, void *data)
 {
 	if (!gc->parent)
@@ -103,6 +169,7 @@ static int acpi_gpiochip_find(struct gpio_chip *gc, void *data)
 
 /**
  * acpi_get_gpiod() - Translate ACPI GPIO pin to GPIO descriptor usable with GPIO API
+ * @adev:	ACPI device that consumes the GPIO
  * @path:	ACPI GPIO controller full path name, (e.g. "\\_SB.GPO1")
  * @pin:	ACPI GPIO pin number (0-based, controller-relative)
  *
@@ -111,7 +178,8 @@ static int acpi_gpiochip_find(struct gpio_chip *gc, void *data)
  * controller does not have GPIO chip registered at the moment. This is to
  * support probe deferral.
  */
-static struct gpio_desc *acpi_get_gpiod(char *path, int pin)
+static struct gpio_desc *_acpi_get_gpiod(struct acpi_device *adev,
+					char *path, int pin)
 {
 	struct gpio_chip *chip;
 	acpi_handle handle;
@@ -125,7 +193,19 @@ static struct gpio_desc *acpi_get_gpiod(char *path, int pin)
 	if (!chip)
 		return ERR_PTR(-EPROBE_DEFER);
 
+	/*
+	 * Give it a chance to correct the broken GPIO pin number in ACPI
+	 * table of particular machines.
+	 */
+	if (adev)
+		return gpiochip_get_desc(chip, acpi_gpio_pin_override(adev, pin));
+
 	return gpiochip_get_desc(chip, pin);
+}
+
+static struct gpio_desc *acpi_get_gpiod(char *path, int pin)
+{
+	return _acpi_get_gpiod(NULL, path, pin);
 }
 
 /**
@@ -746,7 +826,8 @@ static int acpi_populate_gpio_lookup(struct acpi_resource *ares, void *data)
 		if (lookup->info.quirks & ACPI_GPIO_QUIRK_ABSOLUTE_NUMBER)
 			desc = gpio_to_desc(agpio->pin_table[pin_index]);
 		else
-			desc = acpi_get_gpiod(agpio->resource_source.string_ptr,
+			desc = _acpi_get_gpiod(lookup->info.adev,
+					      agpio->resource_source.string_ptr,
 					      agpio->pin_table[pin_index]);
 		lookup->desc = desc;
 		lookup->info.pin_config = agpio->pin_config;
