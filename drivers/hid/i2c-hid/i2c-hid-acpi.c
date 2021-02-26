@@ -40,6 +40,7 @@ static const struct acpi_device_id i2c_hid_acpi_blacklist[] = {
 	 * ICN8505 controller, has a _CID of PNP0C50 but is not HID compatible.
 	 */
 	{"CHPN0001", 0 },
+	{ "ELAN901C" },
 	{ },
 };
 
