@@ -1304,7 +1304,6 @@ nfsd4_cleanup_inter_ssc(struct vfsmount *ss_mnt, struct nfsd_file *src,
 	nfs42_ssc_close(src->nf_file);
 	/* 'src' is freed by nfsd4_do_async_copy */
 	nfsd_file_put(dst);
-	mntput(ss_mnt);
 }
 
 #else /* CONFIG_NFSD_V4_2_INTER_SSC */
@@ -1470,14 +1469,12 @@ static int nfsd4_do_async_copy(void *data)
 		copy->nf_src = kzalloc(sizeof(struct nfsd_file), GFP_KERNEL);
 		if (!copy->nf_src) {
 			copy->nfserr = nfserr_serverfault;
-			nfsd4_interssc_disconnect(copy->ss_mnt);
 			goto do_callback;
 		}
 		copy->nf_src->nf_file = nfs42_ssc_open(copy->ss_mnt, &copy->c_fh,
 					      &copy->stateid);
 		if (IS_ERR(copy->nf_src->nf_file)) {
 			copy->nfserr = nfserr_offload_denied;
-			nfsd4_interssc_disconnect(copy->ss_mnt);
 			goto do_callback;
 		}
 	}
@@ -1496,8 +1493,10 @@ do_callback:
 			&nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
 	nfsd4_run_cb(&cb_copy->cp_cb);
 out:
-	if (!copy->cp_intra)
+	if (!copy->cp_intra) {
+		nfsd4_interssc_disconnect(copy->ss_mnt);
 		kfree(copy->nf_src);
+	}
 	cleanup_async_copy(copy);
 	return 0;
 }
