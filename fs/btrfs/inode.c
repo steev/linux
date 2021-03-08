@@ -1516,7 +1516,7 @@ static int fallback_to_cow(struct btrfs_inode *inode, struct page *locked_page,
 static noinline int run_delalloc_nocow(struct btrfs_inode *inode,
 				       struct page *locked_page,
 				       const u64 start, const u64 end,
-				       int *page_started, int force,
+				       int *page_started,
 				       unsigned long *nr_written)
 {
 	struct btrfs_fs_info *fs_info = inode->root->fs_info;
@@ -1530,6 +1530,7 @@ static noinline int run_delalloc_nocow(struct btrfs_inode *inode,
 	u64 ino = btrfs_ino(inode);
 	bool nocow = false;
 	u64 disk_bytenr = 0;
+	const bool force = inode->flags & BTRFS_INODE_NODATACOW;
 
 	path = btrfs_alloc_path();
 	if (!path) {
@@ -1863,23 +1864,16 @@ error:
 	return ret;
 }
 
-static inline int need_force_cow(struct btrfs_inode *inode, u64 start, u64 end)
+static bool should_nocow(struct btrfs_inode *inode, u64 start, u64 end)
 {
-
-	if (!(inode->flags & BTRFS_INODE_NODATACOW) &&
-	    !(inode->flags & BTRFS_INODE_PREALLOC))
-		return 0;
-
-	/*
-	 * @defrag_bytes is a hint value, no spinlock held here,
-	 * if is not zero, it means the file is defragging.
-	 * Force cow if given extent needs to be defragged.
-	 */
-	if (inode->defrag_bytes &&
-	    test_range_bit(&inode->io_tree, start, end, EXTENT_DEFRAG, 0, NULL))
-		return 1;
-
-	return 0;
+	if (inode->flags & (BTRFS_INODE_NODATACOW | BTRFS_INODE_PREALLOC)) {
+		if (inode->defrag_bytes &&
+		    test_range_bit(&inode->io_tree, start, end, EXTENT_DEFRAG,
+				   0, NULL))
+			return false;
+		return true;
+	}
+	return false;
 }
 
 /*
@@ -1891,17 +1885,12 @@ int btrfs_run_delalloc_range(struct btrfs_inode *inode, struct page *locked_page
 		struct writeback_control *wbc)
 {
 	int ret;
-	int force_cow = need_force_cow(inode, start, end);
 	const bool zoned = btrfs_is_zoned(inode->root->fs_info);
 
-	if (inode->flags & BTRFS_INODE_NODATACOW && !force_cow) {
+	if (should_nocow(inode, start, end)) {
 		ASSERT(!zoned);
 		ret = run_delalloc_nocow(inode, locked_page, start, end,
-					 page_started, 1, nr_written);
-	} else if (inode->flags & BTRFS_INODE_PREALLOC && !force_cow) {
-		ASSERT(!zoned);
-		ret = run_delalloc_nocow(inode, locked_page, start, end,
-					 page_started, 0, nr_written);
+					 page_started, nr_written);
 	} else if (!inode_can_compress(inode) ||
 		   !inode_need_compress(inode, start, end)) {
 		if (zoned)
@@ -3149,10 +3138,9 @@ zeroit:
  * @bio_offset:	offset to the beginning of the bio (in bytes)
  * @start:	file offset of the range start
  * @end:	file offset of the range end (inclusive)
- * @mirror:	mirror number
  */
 int btrfs_verify_data_csum(struct btrfs_io_bio *io_bio, u32 bio_offset,
-			   struct page *page, u64 start, u64 end, int mirror)
+			   struct page *page, u64 start, u64 end)
 {
 	struct inode *inode = page->mapping->host;
 	struct extent_io_tree *io_tree = &BTRFS_I(inode)->io_tree;
@@ -7259,6 +7247,19 @@ static struct extent_map *btrfs_new_extent_direct(struct btrfs_inode *inode,
 	return em;
 }
 
+static bool btrfs_extent_readonly(struct btrfs_fs_info *fs_info, u64 bytenr)
+{
+	struct btrfs_block_group *block_group;
+	bool readonly = false;
+
+	block_group = btrfs_lookup_block_group(fs_info, bytenr);
+	if (!block_group || block_group->ro)
+		readonly = true;
+	if (block_group)
+		btrfs_put_block_group(block_group);
+	return readonly;
+}
+
 /*
  * Check if we can do nocow write into the range [@offset, @offset + @len)
  *
@@ -9916,7 +9917,7 @@ static struct btrfs_trans_handle *insert_prealloc_file_extent(
 	if (!path)
 		return ERR_PTR(-ENOMEM);
 
-	ret = btrfs_replace_file_extents(&inode->vfs_inode, path, file_offset,
+	ret = btrfs_replace_file_extents(inode, path, file_offset,
 				     file_offset + len - 1, &extent_info,
 				     &trans);
 	btrfs_free_path(path);
