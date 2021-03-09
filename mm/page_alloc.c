@@ -6315,7 +6315,7 @@ void __meminit __weak memmap_init_zone(struct zone *zone)
 	unsigned long zone_start_pfn = zone->zone_start_pfn;
 	unsigned long zone_end_pfn = zone_start_pfn + zone->spanned_pages;
 	int i, nid = zone_to_nid(zone), zone_id = zone_idx(zone);
-	static unsigned long hole_pfn = 0;
+	static unsigned long hole_pfn;
 	unsigned long start_pfn, end_pfn;
 	u64 pgcnt = 0;
 
@@ -6348,7 +6348,7 @@ void __meminit __weak memmap_init_zone(struct zone *zone)
 #endif
 
 	if (pgcnt)
-		pr_info("  %s zone: %lld pages in unavailable ranges\n",
+		pr_info("  %s zone: %llu pages in unavailable ranges\n",
 			zone->name, pgcnt);
 }
 
