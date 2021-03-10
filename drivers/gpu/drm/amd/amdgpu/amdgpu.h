@@ -1029,9 +1029,8 @@ struct amdgpu_device {
 	bool has_hw_reset;
 	u8				reset_magic[AMDGPU_RESET_MAGIC_NUM];
 
-	/* s3/s4 mask */
+	/* suspend mask */
 	bool                            in_suspend;
-	bool				in_hibernate;
 
 	/*
 	 * The combination flag in_poweroff_reboot_com used to identify the poweroff
