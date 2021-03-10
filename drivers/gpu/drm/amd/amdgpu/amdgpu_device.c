@@ -2741,10 +2741,8 @@ static int amdgpu_device_ip_suspend_phase2(struct amdgpu_device *adev)
 	bool s0ix_suspend = amdgpu_acpi_is_s0ix_supported(adev) &&
 		(adev->ddev.dev->power.power_state.event == PM_EVENT_SUSPEND);
 
-	if (s0ix_suspend) {
+	if (s0ix_suspend)
 		amdgpu_gfx_state_change_set(adev, sGpuChangeState_D3Entry);
-		return 0;
-	}
 
 	for (i = adev->num_ip_blocks - 1; i >= 0; i--) {
 		if (!adev->ip_blocks[i].status.valid)
@@ -2768,6 +2766,22 @@ static int amdgpu_device_ip_suspend_phase2(struct amdgpu_device *adev)
 			adev->ip_blocks[i].status.hw = false;
 			continue;
 		}
+#if 0
+		/* test which blocks are causing problems */
+		if (s0ix_suspend &&
+		    (adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_COMMON ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_GMC ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_IH ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_SMC ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_PSP ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_GFX ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_SDMA ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_VCN ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_JPEG)) {
+			continue;
+		}
+#endif
+
 		/* XXX handle errors */
 		r = adev->ip_blocks[i].version->funcs->suspend(adev);
 		/* XXX handle errors */
