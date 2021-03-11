@@ -77,6 +77,7 @@ Hardware Monitoring Kernel Drivers
    intel-m10-bmc-hwmon
    ir35221
    ir38064
+   ir36021
    isl68137
    it87
    jc42
@@ -168,6 +169,7 @@ Hardware Monitoring Kernel Drivers
    smsc47m192
    smsc47m1
    sparx5-temp
+   stpddc60
    tc654
    tc74
    thmc50
