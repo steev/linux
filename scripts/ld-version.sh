@@ -6,11 +6,6 @@
 
 set -e
 
-# When you raise the minimum linker version, please update
-# Documentation/process/changes.rst as well.
-bfd_min_version=2.23.0
-lld_min_version=10.0.1
-
 # Convert the version string x.y.z to a canonical 5 or 6-digit form.
 get_canonical_version()
 {
@@ -35,23 +30,31 @@ set -- $("$@" --version)
 IFS=' '
 set -- $1
 
+min_tool_version=$(dirname $0)/min-tool-version.sh
+
 if [ "$1" = GNU -a "$2" = ld ]; then
 	shift $(($# - 1))
 	version=$1
-	min_version=$bfd_min_version
+	min_version=$($min_tool_version binutils)
 	name=BFD
 	disp_name="GNU ld"
 elif [ "$1" = GNU -a "$2" = gold ]; then
 	echo "gold linker is not supported as it is not capable of linking the kernel proper." >&2
 	exit 1
-elif [ "$1" = LLD ]; then
-	version=$2
-	min_version=$lld_min_version
-	name=LLD
-	disp_name=LLD
 else
-	echo "$orig_args: unknown linker" >&2
-	exit 1
+	while [ $# -gt 1 -a "$1" != "LLD" ]; do
+		shift
+	done
+
+	if [ "$1" = LLD ]; then
+		version=$2
+		min_version=$($min_tool_version llvm)
+		name=LLD
+		disp_name=LLD
+	else
+		echo "$orig_args: unknown linker" >&2
+		exit 1
+	fi
 fi
 
 # Some distributions append a package release number, as in 2.34-4.fc32
