@@ -572,6 +572,12 @@ enum {
 
 	/* Indicate that we can't trust the free space tree for caching yet */
 	BTRFS_FS_FREE_SPACE_TREE_UNTRUSTED,
+
+#if BITS_PER_LONG == 32
+	/* Indicate if we have error/warn message printed for 32bit system */
+	BTRFS_FS_32BIT_ERROR,
+	BTRFS_FS_32BIT_WARN,
+#endif
 };
 
 /*
@@ -2691,7 +2697,6 @@ int btrfs_finish_extent_commit(struct btrfs_trans_handle *trans);
 int btrfs_inc_extent_ref(struct btrfs_trans_handle *trans,
 			 struct btrfs_ref *generic_ref);
 
-int btrfs_extent_readonly(struct btrfs_fs_info *fs_info, u64 bytenr);
 void btrfs_clear_space_info_full(struct btrfs_fs_info *info);
 
 /*
@@ -3084,7 +3089,7 @@ u64 btrfs_file_extent_end(const struct btrfs_path *path);
 blk_status_t btrfs_submit_data_bio(struct inode *inode, struct bio *bio,
 				   int mirror_num, unsigned long bio_flags);
 int btrfs_verify_data_csum(struct btrfs_io_bio *io_bio, u32 bio_offset,
-			   struct page *page, u64 start, u64 end, int mirror);
+			   struct page *page, u64 start, u64 end);
 struct extent_map *btrfs_get_extent_fiemap(struct btrfs_inode *inode,
 					   u64 start, u64 len);
 noinline int can_nocow_extent(struct inode *inode, u64 offset, u64 *len,
@@ -3179,6 +3184,7 @@ extern const struct iomap_dio_ops btrfs_dio_ops;
 /* Inode locking type flags, by default the exclusive lock is taken */
 #define BTRFS_ILOCK_SHARED	(1U << 0)
 #define BTRFS_ILOCK_TRY 	(1U << 1)
+#define BTRFS_ILOCK_MMAP	(1U << 2)
 
 int btrfs_inode_lock(struct inode *inode, unsigned int ilock_flags);
 void btrfs_inode_unlock(struct inode *inode, unsigned int ilock_flags);
@@ -3217,8 +3223,9 @@ extern const struct file_operations btrfs_file_operations;
 int btrfs_drop_extents(struct btrfs_trans_handle *trans,
 		       struct btrfs_root *root, struct btrfs_inode *inode,
 		       struct btrfs_drop_extents_args *args);
-int btrfs_replace_file_extents(struct inode *inode, struct btrfs_path *path,
-			   const u64 start, const u64 end,
+int btrfs_replace_file_extents(struct btrfs_inode *inode,
+			   struct btrfs_path *path, const u64 start,
+			   const u64 end,
 			   struct btrfs_replace_extent_info *extent_info,
 			   struct btrfs_trans_handle **trans_out);
 int btrfs_mark_extent_written(struct btrfs_trans_handle *trans,
@@ -3403,6 +3410,18 @@ static inline void assertfail(const char *expr, const char *file, int line)
 #else
 static inline void assertfail(const char *expr, const char* file, int line) { }
 #define ASSERT(expr)	(void)(expr)
+#endif
+
+#if BITS_PER_LONG == 32
+#define BTRFS_32BIT_MAX_FILE_SIZE (((u64)ULONG_MAX + 1) << PAGE_SHIFT)
+/*
+ * The warning threshold is 5/8 of the max file size.
+ *
+ * For 4K page size it should be 10T, for 64K it would 160T.
+ */
+#define BTRFS_32BIT_EARLY_WARN_THRESHOLD (BTRFS_32BIT_MAX_FILE_SIZE * 5 / 8)
+void btrfs_warn_32bit_limit(struct btrfs_fs_info *fs_info);
+void btrfs_err_32bit_limit(struct btrfs_fs_info *fs_info);
 #endif
 
 /*
