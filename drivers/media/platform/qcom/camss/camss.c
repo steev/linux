@@ -548,6 +548,29 @@ struct media_entity *camss_find_sensor(struct media_entity *entity)
 	}
 }
 
+/**
+ * camss_get_link_freq - Get link frequency from sensor
+ * @entity: Media entity in the current pipeline
+ * @bpp: Number of bits per pixel for the current format
+ * @lanes: Number of lanes in the link to the sensor
+ *
+ * Return link frequency on success or a negative error code otherwise
+ */
+s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
+			unsigned int lanes)
+{
+	struct media_entity *sensor;
+	struct v4l2_subdev *subdev;
+
+	sensor = camss_find_sensor(entity);
+	if (!sensor)
+		return -ENODEV;
+
+	subdev = media_entity_to_v4l2_subdev(sensor);
+
+	return v4l2_get_link_freq(subdev->ctrl_handler, bpp, 2 * lanes);
+}
+
 /*
  * camss_get_pixel_clock - Get pixel clock rate from sensor
  * @entity: Media entity in the current pipeline
@@ -555,7 +578,7 @@ struct media_entity *camss_find_sensor(struct media_entity *entity)
  *
  * Return 0 on success or a negative error code otherwise
  */
-int camss_get_pixel_clock(struct media_entity *entity, u32 *pixel_clock)
+int camss_get_pixel_clock(struct media_entity *entity, u64 *pixel_clock)
 {
 	struct media_entity *sensor;
 	struct v4l2_subdev *subdev;
