@@ -642,7 +642,9 @@ void amdgpu_amdkfd_set_compute_idle(struct kgd_dev *kgd, bool idle)
 	/* Temp workaround to fix the soft hang observed in certain compute
 	 * applications if GFXOFF is enabled.
 	 */
-	if (adev->asic_type == CHIP_SIENNA_CICHLID) {
+	if ((adev->asic_type == CHIP_SIENNA_CICHLID) ||
+	    ((adev->asic_type == CHIP_RAVEN) &&
+	     (adev->apu_flags &AMD_APU_IS_RAVEN))) {
 		pr_debug("GFXOFF is %s\n", idle ? "enabled" : "disabled");
 		amdgpu_gfx_off_ctrl(adev, idle);
 	}
