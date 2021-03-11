@@ -107,8 +107,6 @@
 #include "xprt_rdma.h"
 #include <trace/events/rpcrdma.h>
 
-#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
-
 static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc);
 
 static inline struct svc_rdma_recv_ctxt *
@@ -362,8 +360,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
 flushed:
 	svc_rdma_recv_ctxt_put(rdma, ctxt);
 post_err:
-	set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
-	svc_xprt_enqueue(&rdma->sc_xprt);
+	svc_xprt_deferred_close(&rdma->sc_xprt);
 }
 
 /**
