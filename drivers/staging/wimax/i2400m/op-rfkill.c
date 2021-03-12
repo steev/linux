@@ -86,7 +86,7 @@ int i2400m_op_rfkill_sw_toggle(struct wimax_dev *wimax_dev,
 	if (cmd == NULL)
 		goto error_alloc;
 	cmd->hdr.type = cpu_to_le16(I2400M_MT_CMD_RF_CONTROL);
-	cmd->hdr.length = sizeof(cmd->sw_rf);
+	cmd->hdr.length = cpu_to_le16(sizeof(cmd->sw_rf));
 	cmd->hdr.version = cpu_to_le16(I2400M_L3L4_VERSION);
 	cmd->sw_rf.hdr.type = cpu_to_le16(I2400M_TLV_RF_OPERATION);
 	cmd->sw_rf.hdr.length = cpu_to_le16(sizeof(cmd->sw_rf.status));
@@ -156,8 +156,8 @@ void i2400m_report_tlv_rf_switches_status(
 	enum i2400m_rf_switch_status hw, sw;
 	enum wimax_st wimax_state;
 
-	sw = le32_to_cpu(rfss->sw_rf_switch);
-	hw = le32_to_cpu(rfss->hw_rf_switch);
+	sw = rfss->sw_rf_switch;
+	hw = rfss->hw_rf_switch;
 
 	d_fnstart(3, dev, "(i2400m %p rfss %p [hw %u sw %u])\n",
 		  i2400m, rfss, hw, sw);
