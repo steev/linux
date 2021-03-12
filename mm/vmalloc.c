@@ -2739,7 +2739,7 @@ EXPORT_SYMBOL(vzalloc_node);
  * 64b systems should always have either DMA or DMA32 zones. For others
  * GFP_DMA32 should do the right thing and use the normal zone.
  */
-#define GFP_VMALLOC32 GFP_DMA32 | GFP_KERNEL
+#define GFP_VMALLOC32 (GFP_DMA32 | GFP_KERNEL)
 #endif
 
 /**
@@ -2894,7 +2894,10 @@ long vread(char *buf, char *addr, unsigned long count)
 		count = -(unsigned long) addr;
 
 	spin_lock(&vmap_area_lock);
-	list_for_each_entry(va, &vmap_area_list, list) {
+	va = __find_vmap_area((unsigned long)addr);
+	if (!va)
+		goto finished;
+	list_for_each_entry_from(va, &vmap_area_list, list) {
 		if (!count)
 			break;
 
@@ -3072,7 +3075,6 @@ int remap_vmalloc_range_partial(struct vm_area_struct *vma, unsigned long uaddr,
 
 	return 0;
 }
-EXPORT_SYMBOL(remap_vmalloc_range_partial);
 
 /**
  * remap_vmalloc_range - map vmalloc pages to userspace

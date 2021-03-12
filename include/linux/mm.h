@@ -362,6 +362,13 @@ extern unsigned int kobjsize(const void *objp);
 # define VM_GROWSUP	VM_NONE
 #endif
 
+#ifdef CONFIG_HAVE_ARCH_USERFAULTFD_MINOR
+# define VM_UFFD_MINOR_BIT	37
+# define VM_UFFD_MINOR		BIT(VM_UFFD_MINOR_BIT)	/* UFFD minor faults */
+#else /* !CONFIG_HAVE_ARCH_USERFAULTFD_MINOR */
+# define VM_UFFD_MINOR		VM_NONE
+#endif /* CONFIG_HAVE_ARCH_USERFAULTFD_MINOR */
+
 /* Bits set in the VMA until the stack is in its final location */
 #define VM_STACK_INCOMPLETE_SETUP	(VM_RAND_READ | VM_SEQ_READ)
 
@@ -1122,6 +1129,11 @@ static inline bool is_zone_device_page(const struct page *page)
 }
 #endif
 
+static inline bool is_zone_movable_page(const struct page *page)
+{
+	return page_zonenum(page) == ZONE_MOVABLE;
+}
+
 #ifdef CONFIG_DEV_PAGEMAP_OPS
 void free_devmap_managed_page(struct page *page);
 DECLARE_STATIC_KEY_FALSE(devmap_managed_key);
@@ -1298,6 +1310,27 @@ static inline bool page_maybe_dma_pinned(struct page *page)
 	 */
 	return ((unsigned int)page_ref_count(compound_head(page))) >=
 		GUP_PIN_COUNTING_BIAS;
+}
+
+static inline bool is_cow_mapping(vm_flags_t flags)
+{
+	return (flags & (VM_SHARED | VM_MAYWRITE)) == VM_MAYWRITE;
+}
+
+/*
+ * This should most likely only be called during fork() to see whether we
+ * should break the cow immediately for a page on the src mm.
+ */
+static inline bool page_needs_cow_for_dma(struct vm_area_struct *vma,
+					  struct page *page)
+{
+	if (!is_cow_mapping(vma->vm_flags))
+		return false;
+
+	if (!atomic_read(&vma->vm_mm->has_pinned))
+		return false;
+
+	return page_maybe_dma_pinned(page);
 }
 
 #if defined(CONFIG_SPARSEMEM) && !defined(CONFIG_SPARSEMEM_VMEMMAP)
@@ -1493,6 +1526,20 @@ static inline void set_page_section(struct page *page, unsigned long section)
 static inline unsigned long page_to_section(const struct page *page)
 {
 	return (page->flags >> SECTIONS_PGSHIFT) & SECTIONS_MASK;
+}
+#endif
+
+/* MIGRATE_CMA and ZONE_MOVABLE do not allow pin pages */
+#ifdef CONFIG_MIGRATION
+static inline bool is_pinnable_page(struct page *page)
+{
+	return !(is_zone_movable_page(page) || is_migrate_cma_page(page)) ||
+		is_zero_pfn(page_to_pfn(page));
+}
+#else
+static inline bool is_pinnable_page(struct page *page)
+{
+	return true;
 }
 #endif
 
@@ -2970,6 +3017,11 @@ static inline void print_vma_addr(char *prefix, unsigned long rip)
 {
 }
 #endif
+
+void vmemmap_remap_free(unsigned long start, unsigned long end,
+			unsigned long reuse);
+int vmemmap_remap_alloc(unsigned long start, unsigned long end,
+			unsigned long reuse, gfp_t gfp_mask);
 
 void *sparse_buffer_alloc(unsigned long size);
 struct page * __populate_section_memmap(unsigned long pfn,

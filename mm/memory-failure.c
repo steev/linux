@@ -834,7 +834,6 @@ static int me_huge_page(struct page *p, unsigned long pfn)
 			page_ref_inc(p);
 			res = MF_RECOVERED;
 		}
-		lock_page(hpage);
 	}
 
 	return res;
@@ -959,20 +958,6 @@ static int page_action(struct page_state *ps, struct page *p,
 static int __get_hwpoison_page(struct page *page)
 {
 	struct page *head = compound_head(page);
-
-	if (!PageHuge(head) && PageTransHuge(head)) {
-		/*
-		 * Non anonymous thp exists only in allocation/free time. We
-		 * can't handle such a case correctly, so let's give it up.
-		 * This should be better than triggering BUG_ON when kernel
-		 * tries to touch the "partially handled" page.
-		 */
-		if (!PageAnon(head)) {
-			pr_err("Memory failure: %#lx: non anonymous thp\n",
-				page_to_pfn(page));
-			return 0;
-		}
-	}
 
 	if (get_page_unless_zero(head)) {
 		if (head == compound_head(page))
@@ -1201,21 +1186,19 @@ static int identify_page_state(unsigned long pfn, struct page *p,
 
 static int try_to_split_thp_page(struct page *page, const char *msg)
 {
+	struct page *head;
+
 	lock_page(page);
-	if (!PageAnon(page) || unlikely(split_huge_page(page))) {
-		unsigned long pfn = page_to_pfn(page);
-
+	head = compound_head(page);
+	if (PageTransHuge(head) && can_split_huge_page(head, NULL) &&
+	    !split_huge_page(page)) {
 		unlock_page(page);
-		if (!PageAnon(page))
-			pr_info("%s: %#lx: non anonymous thp\n", msg, pfn);
-		else
-			pr_info("%s: %#lx: thp split failed\n", msg, pfn);
-		put_page(page);
-		return -EBUSY;
+		return 0;
 	}
+	pr_info("%s: %#lx: thp split failed\n", msg, page_to_pfn(page));
 	unlock_page(page);
-
-	return 0;
+	put_page(page);
+	return -EBUSY;
 }
 
 static int memory_failure_hugetlb(unsigned long pfn, int flags)
@@ -1290,7 +1273,8 @@ static int memory_failure_hugetlb(unsigned long pfn, int flags)
 
 	res = identify_page_state(pfn, p, page_flags);
 out:
-	unlock_page(head);
+	if (PageLocked(head))
+		unlock_page(head);
 	return res;
 }
 

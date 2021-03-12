@@ -126,10 +126,10 @@ extern pmd_t *mm_find_pmd(struct mm_struct *mm, unsigned long address);
  * family of functions.
  *
  * nodemask, migratetype and highest_zoneidx are initialized only once in
- * __alloc_pages_nodemask() and then never change.
+ * __alloc_pages() and then never change.
  *
  * zonelist, preferred_zone and highest_zoneidx are set first in
- * __alloc_pages_nodemask() for the fast path, and might be later changed
+ * __alloc_pages() for the fast path, and might be later changed
  * in __alloc_pages_slowpath(). All other functions pass the whole structure
  * by a const pointer.
  */
@@ -295,11 +295,6 @@ static inline unsigned int buddy_order(struct page *page)
  * use of the result.
  */
 #define buddy_order_unsafe(page)	READ_ONCE(page_private(page))
-
-static inline bool is_cow_mapping(vm_flags_t flags)
-{
-	return (flags & (VM_SHARED | VM_MAYWRITE)) == VM_MAYWRITE;
-}
 
 /*
  * These three helpers classifies VMAs for virtual memory accounting.
