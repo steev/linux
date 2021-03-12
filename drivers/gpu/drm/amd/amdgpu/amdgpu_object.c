@@ -1028,13 +1028,12 @@ int amdgpu_bo_evict_vram(struct amdgpu_device *adev)
 {
 	struct ttm_resource_manager *man;
 
-	/* late 2.6.33 fix IGP hibernate - we need pm ops to do this correct */
-#ifndef CONFIG_HIBERNATION
-	if (adev->flags & AMD_IS_APU) {
-		/* Useless to evict on IGP chips */
-		return 0;
+	if (adev->ddev.dev->power.power_state.event == PM_EVENT_SUSPEND) {
+		if (adev->flags & AMD_IS_APU) {
+			/* No need to evict vram on APUs for suspend to ram */
+			return 0;
+		}
 	}
-#endif
 
 	man = ttm_manager_type(&adev->mman.bdev, TTM_PL_VRAM);
 	return ttm_resource_manager_evict_all(&adev->mman.bdev, man);
@@ -1065,13 +1064,17 @@ static const char *amdgpu_vram_names[] = {
  */
 int amdgpu_bo_init(struct amdgpu_device *adev)
 {
-	/* reserve PAT memory space to WC for VRAM */
-	arch_io_reserve_memtype_wc(adev->gmc.aper_base,
-				   adev->gmc.aper_size);
+	/* On A+A platform, VRAM can be mapped as WB */
+	if (!adev->gmc.xgmi.connected_to_cpu) {
+		/* reserve PAT memory space to WC for VRAM */
+		arch_io_reserve_memtype_wc(adev->gmc.aper_base,
+				adev->gmc.aper_size);
 
-	/* Add an MTRR for the VRAM */
-	adev->gmc.vram_mtrr = arch_phys_wc_add(adev->gmc.aper_base,
-					      adev->gmc.aper_size);
+		/* Add an MTRR for the VRAM */
+		adev->gmc.vram_mtrr = arch_phys_wc_add(adev->gmc.aper_base,
+				adev->gmc.aper_size);
+	}
+
 	DRM_INFO("Detected VRAM RAM=%lluM, BAR=%lluM\n",
 		 adev->gmc.mc_vram_size >> 20,
 		 (unsigned long long)adev->gmc.aper_size >> 20);
@@ -1089,8 +1092,10 @@ int amdgpu_bo_init(struct amdgpu_device *adev)
 void amdgpu_bo_fini(struct amdgpu_device *adev)
 {
 	amdgpu_ttm_fini(adev);
-	arch_phys_wc_del(adev->gmc.vram_mtrr);
-	arch_io_free_memtype_wc(adev->gmc.aper_base, adev->gmc.aper_size);
+	if (!adev->gmc.xgmi.connected_to_cpu) {
+		arch_phys_wc_del(adev->gmc.vram_mtrr);
+		arch_io_free_memtype_wc(adev->gmc.aper_base, adev->gmc.aper_size);
+	}
 }
 
 /**

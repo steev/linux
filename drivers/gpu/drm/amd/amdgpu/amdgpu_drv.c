@@ -36,6 +36,7 @@
 #include <linux/vga_switcheroo.h>
 #include <drm/drm_probe_helper.h>
 #include <linux/mmu_notifier.h>
+#include <linux/suspend.h>
 
 #include "amdgpu.h"
 #include "amdgpu_irq.h"
@@ -45,6 +46,7 @@
 #include "amdgpu_amdkfd.h"
 
 #include "amdgpu_ras.h"
+#include "amdgpu_xgmi.h"
 
 /*
  * KMS wrapper.
@@ -90,9 +92,10 @@
  * - 3.38.0 - Add AMDGPU_IB_FLAG_EMIT_MEM_SYNC
  * - 3.39.0 - DMABUF implicit sync does a full pipeline sync
  * - 3.40.0 - Add AMDGPU_IDS_FLAGS_TMZ
+ * - 3.41.0 - Add video codec query
  */
 #define KMS_DRIVER_MAJOR	3
-#define KMS_DRIVER_MINOR	40
+#define KMS_DRIVER_MINOR	41
 #define KMS_DRIVER_PATCHLEVEL	0
 
 int amdgpu_vram_limit;
@@ -145,6 +148,7 @@ int amdgpu_compute_multipipe = -1;
 int amdgpu_gpu_recovery = -1; /* auto */
 int amdgpu_emu_mode;
 uint amdgpu_smu_memory_pool_size;
+int amdgpu_smu_pptable_id = -1;
 /*
  * FBC (bit 0) disabled by default
  * MULTI_MON_PP_MCLK_SWITCH (bit 1) enabled by default
@@ -162,16 +166,25 @@ int amdgpu_discovery = -1;
 int amdgpu_mes;
 int amdgpu_noretry = -1;
 int amdgpu_force_asic_type = -1;
-int amdgpu_tmz;
+int amdgpu_tmz = -1; /* auto */
 int amdgpu_reset_method = -1; /* auto */
 int amdgpu_num_kcq = -1;
 
+static void amdgpu_drv_delayed_reset_work_handler(struct work_struct *work);
+
 struct amdgpu_mgpu_info mgpu_info = {
 	.mutex = __MUTEX_INITIALIZER(mgpu_info.mutex),
+	.delayed_reset_work = __DELAYED_WORK_INITIALIZER(
+			mgpu_info.delayed_reset_work,
+			amdgpu_drv_delayed_reset_work_handler, 0),
 };
 int amdgpu_ras_enable = -1;
 uint amdgpu_ras_mask = 0xffffffff;
-int amdgpu_bad_page_threshold = -1;
+int amdgpu_bad_page_threshold = 100;
+struct amdgpu_watchdog_timer amdgpu_watchdog_timer = {
+	.timeout_fatal_disable = false,
+	.period = 0x23, /* default to max. timeout = 1 << 0x23 cycles */
+};
 
 /**
  * DOC: vramlimit (int)
@@ -528,6 +541,20 @@ MODULE_PARM_DESC(ras_mask, "Mask of RAS features to enable (default 0xffffffff),
 module_param_named(ras_mask, amdgpu_ras_mask, uint, 0444);
 
 /**
+ * DOC: timeout_fatal_disable (bool)
+ * Disable Watchdog timeout fatal error event
+ */
+MODULE_PARM_DESC(timeout_fatal_disable, "disable watchdog timeout fatal error (false = default)");
+module_param_named(timeout_fatal_disable, amdgpu_watchdog_timer.timeout_fatal_disable, bool, 0644);
+
+/**
+ * DOC: timeout_period (uint)
+ * Modify the watchdog timeout max_cycles as (1 << period)
+ */
+MODULE_PARM_DESC(timeout_period, "watchdog timeout period (1 to 0x23(default), timeout maxCycles = (1 << period)");
+module_param_named(timeout_period, amdgpu_watchdog_timer.period, uint, 0644);
+
+/**
  * DOC: si_support (int)
  * Set SI support driver. This parameter works after set config CONFIG_DRM_AMDGPU_SI. For SI asic, when radeon driver is enabled,
  * set value 0 to use radeon driver, while set value 1 to use amdgpu driver. The default is using radeon driver when it available,
@@ -748,6 +775,13 @@ bool no_system_mem_limit;
 module_param(no_system_mem_limit, bool, 0644);
 MODULE_PARM_DESC(no_system_mem_limit, "disable system memory limit (false = default)");
 
+/**
+ * DOC: no_queue_eviction_on_vm_fault (int)
+ * If set, process queues will not be evicted on gpuvm fault. This is to keep the wavefront context for debugging (0 = queue eviction, 1 = no queue eviction). The default is 0 (queue eviction).
+ */
+int amdgpu_no_queue_eviction_on_vm_fault = 0;
+MODULE_PARM_DESC(no_queue_eviction_on_vm_fault, "No queue eviction on VM fault (0 = queue eviction, 1 = no queue eviction)");
+module_param_named(no_queue_eviction_on_vm_fault, amdgpu_no_queue_eviction_on_vm_fault, int, 0444);
 #endif
 
 /**
@@ -781,6 +815,10 @@ uint amdgpu_dm_abm_level;
 MODULE_PARM_DESC(abmlevel, "ABM level (0 = off (default), 1-4 = backlight reduction level) ");
 module_param_named(abmlevel, amdgpu_dm_abm_level, uint, 0444);
 
+int amdgpu_backlight = -1;
+MODULE_PARM_DESC(backlight, "Backlight control (0 = pwm, 1 = aux, -1 auto (default))");
+module_param_named(backlight, amdgpu_backlight, bint, 0444);
+
 /**
  * DOC: tmz (int)
  * Trusted Memory Zone (TMZ) is a method to protect data being written
@@ -788,7 +826,7 @@ module_param_named(abmlevel, amdgpu_dm_abm_level, uint, 0444);
  *
  * The default value: 0 (off).  TODO: change to auto till it is completed.
  */
-MODULE_PARM_DESC(tmz, "Enable TMZ feature (-1 = auto, 0 = off (default), 1 = on)");
+MODULE_PARM_DESC(tmz, "Enable TMZ feature (-1 = auto (default), 0 = off, 1 = on)");
 module_param_named(tmz, amdgpu_tmz, int, 0444);
 
 /**
@@ -805,11 +843,20 @@ module_param_named(reset_method, amdgpu_reset_method, int, 0444);
  * faulty pages by ECC exceed threshold value and leave it for user's further
  * check.
  */
-MODULE_PARM_DESC(bad_page_threshold, "Bad page threshold(-1 = auto(default value), 0 = disable bad page retirement)");
+MODULE_PARM_DESC(bad_page_threshold, "Bad page threshold(-1 = auto, 0 = disable bad page retirement, 100 = default value");
 module_param_named(bad_page_threshold, amdgpu_bad_page_threshold, int, 0444);
 
 MODULE_PARM_DESC(num_kcq, "number of kernel compute queue user want to setup (8 if set to greater than 8 or less than 0, only affect gfx 8+)");
 module_param_named(num_kcq, amdgpu_num_kcq, int, 0444);
+
+/**
+ * DOC: smu_pptable_id (int)
+ * Used to override pptable id. id = 0 use VBIOS pptable.
+ * id > 0 use the soft pptable with specicfied id.
+ */
+MODULE_PARM_DESC(smu_pptable_id,
+	"specify pptable id to be used (-1 = auto(default) value, 0 = use pptable from vbios, > 0 = soft pptable id)");
+module_param_named(smu_pptable_id, amdgpu_smu_pptable_id, int, 0444);
 
 static const struct pci_device_id pciidlist[] = {
 #ifdef  CONFIG_DRM_AMDGPU_SI
@@ -1120,6 +1167,11 @@ static const struct pci_device_id pciidlist[] = {
 	{0x1002, 0x73E2, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_DIMGREY_CAVEFISH},
 	{0x1002, 0x73FF, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_DIMGREY_CAVEFISH},
 
+	/* Aldebaran */
+	{0x1002, 0x7408, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_ALDEBARAN},
+	{0x1002, 0x740C, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_ALDEBARAN},
+	{0x1002, 0x740F, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_ALDEBARAN},
+
 	{0, 0, 0}
 };
 
@@ -1276,6 +1328,88 @@ amdgpu_pci_shutdown(struct pci_dev *pdev)
 	adev->mp1_state = PP_MP1_STATE_NONE;
 }
 
+/**
+ * amdgpu_drv_delayed_reset_work_handler - work handler for reset
+ *
+ * @work: work_struct.
+ */
+static void amdgpu_drv_delayed_reset_work_handler(struct work_struct *work)
+{
+	struct list_head device_list;
+	struct amdgpu_device *adev;
+	int i, r;
+	bool need_full_reset = true;
+
+	mutex_lock(&mgpu_info.mutex);
+	if (mgpu_info.pending_reset == true) {
+		mutex_unlock(&mgpu_info.mutex);
+		return;
+	}
+	mgpu_info.pending_reset = true;
+	mutex_unlock(&mgpu_info.mutex);
+
+	for (i = 0; i < mgpu_info.num_dgpu; i++) {
+		adev = mgpu_info.gpu_ins[i].adev;
+		r = amdgpu_device_pre_asic_reset(adev, NULL, &need_full_reset);
+		if (r) {
+			dev_err(adev->dev, "GPU pre asic reset failed with err, %d for drm dev, %s ",
+				r, adev_to_drm(adev)->unique);
+		}
+		if (!queue_work(system_unbound_wq, &adev->xgmi_reset_work))
+			r = -EALREADY;
+	}
+	for (i = 0; i < mgpu_info.num_dgpu; i++) {
+		adev = mgpu_info.gpu_ins[i].adev;
+		adev->gmc.xgmi.pending_reset = false;
+		flush_work(&adev->xgmi_reset_work);
+	}
+
+	/* reset function will rebuild the xgmi hive info , clear it now */
+	for (i = 0; i < mgpu_info.num_dgpu; i++)
+		amdgpu_xgmi_remove_device(mgpu_info.gpu_ins[i].adev);
+
+	INIT_LIST_HEAD(&device_list);
+
+	for (i = 0; i < mgpu_info.num_dgpu; i++)
+		list_add_tail(&mgpu_info.gpu_ins[i].adev->reset_list, &device_list);
+
+	/* unregister the GPU first, reset function will add them back */
+	list_for_each_entry(adev, &device_list, reset_list)
+		amdgpu_unregister_gpu_instance(adev);
+
+	r = amdgpu_do_asic_reset(NULL, &device_list, &need_full_reset, true);
+	if (r) {
+		DRM_ERROR("reinit gpus failure");
+		return;
+	}
+	for (i = 0; i < mgpu_info.num_dgpu; i++) {
+		adev = mgpu_info.gpu_ins[i].adev;
+		if (!adev->kfd.init_complete)
+			amdgpu_amdkfd_device_init(adev);
+		amdgpu_ttm_set_buffer_funcs_status(adev, true);
+	}
+	return;
+}
+
+static int amdgpu_pmops_prepare(struct device *dev)
+{
+	struct drm_device *drm_dev = dev_get_drvdata(dev);
+
+	/* Return a positive number here so
+	 * DPM_FLAG_SMART_SUSPEND works properly
+	 */
+	if (amdgpu_device_supports_boco(drm_dev))
+		return pm_runtime_suspended(dev) &&
+			pm_suspend_via_firmware();
+
+	return 0;
+}
+
+static void amdgpu_pmops_complete(struct device *dev)
+{
+	/* nothing to do */
+}
+
 static int amdgpu_pmops_suspend(struct device *dev)
 {
 	struct drm_device *drm_dev = dev_get_drvdata(dev);
@@ -1296,9 +1430,7 @@ static int amdgpu_pmops_freeze(struct device *dev)
 	struct amdgpu_device *adev = drm_to_adev(drm_dev);
 	int r;
 
-	adev->in_hibernate = true;
 	r = amdgpu_device_suspend(drm_dev, true);
-	adev->in_hibernate = false;
 	if (r)
 		return r;
 	return amdgpu_asic_reset(adev);
@@ -1353,7 +1485,7 @@ static int amdgpu_pmops_runtime_suspend(struct device *dev)
 	}
 
 	adev->in_runpm = true;
-	if (amdgpu_device_supports_atpx(drm_dev))
+	if (amdgpu_device_supports_px(drm_dev))
 		drm_dev->switch_power_state = DRM_SWITCH_POWER_CHANGING;
 
 	ret = amdgpu_device_suspend(drm_dev, false);
@@ -1362,16 +1494,14 @@ static int amdgpu_pmops_runtime_suspend(struct device *dev)
 		return ret;
 	}
 
-	if (amdgpu_device_supports_atpx(drm_dev)) {
+	if (amdgpu_device_supports_px(drm_dev)) {
 		/* Only need to handle PCI state in the driver for ATPX
 		 * PCI core handles it for _PR3.
 		 */
-		if (!amdgpu_is_atpx_hybrid()) {
-			amdgpu_device_cache_pci_state(pdev);
-			pci_disable_device(pdev);
-			pci_ignore_hotplug(pdev);
-			pci_set_power_state(pdev, PCI_D3cold);
-		}
+		amdgpu_device_cache_pci_state(pdev);
+		pci_disable_device(pdev);
+		pci_ignore_hotplug(pdev);
+		pci_set_power_state(pdev, PCI_D3cold);
 		drm_dev->switch_power_state = DRM_SWITCH_POWER_DYNAMIC_OFF;
 	} else if (amdgpu_device_supports_baco(drm_dev)) {
 		amdgpu_device_baco_enter(drm_dev);
@@ -1390,19 +1520,17 @@ static int amdgpu_pmops_runtime_resume(struct device *dev)
 	if (!adev->runpm)
 		return -EINVAL;
 
-	if (amdgpu_device_supports_atpx(drm_dev)) {
+	if (amdgpu_device_supports_px(drm_dev)) {
 		drm_dev->switch_power_state = DRM_SWITCH_POWER_CHANGING;
 
 		/* Only need to handle PCI state in the driver for ATPX
 		 * PCI core handles it for _PR3.
 		 */
-		if (!amdgpu_is_atpx_hybrid()) {
-			pci_set_power_state(pdev, PCI_D0);
-			amdgpu_device_load_pci_state(pdev);
-			ret = pci_enable_device(pdev);
-			if (ret)
-				return ret;
-		}
+		pci_set_power_state(pdev, PCI_D0);
+		amdgpu_device_load_pci_state(pdev);
+		ret = pci_enable_device(pdev);
+		if (ret)
+			return ret;
 		pci_set_master(pdev);
 	} else if (amdgpu_device_supports_boco(drm_dev)) {
 		/* Only need to handle PCI state in the driver for ATPX
@@ -1413,7 +1541,7 @@ static int amdgpu_pmops_runtime_resume(struct device *dev)
 		amdgpu_device_baco_exit(drm_dev);
 	}
 	ret = amdgpu_device_resume(drm_dev, false);
-	if (amdgpu_device_supports_atpx(drm_dev))
+	if (amdgpu_device_supports_px(drm_dev))
 		drm_dev->switch_power_state = DRM_SWITCH_POWER_ON;
 	adev->in_runpm = false;
 	return 0;
@@ -1494,6 +1622,8 @@ out:
 }
 
 static const struct dev_pm_ops amdgpu_pm_ops = {
+	.prepare = amdgpu_pmops_prepare,
+	.complete = amdgpu_pmops_complete,
 	.suspend = amdgpu_pmops_suspend,
 	.resume = amdgpu_pmops_resume,
 	.freeze = amdgpu_pmops_freeze,
