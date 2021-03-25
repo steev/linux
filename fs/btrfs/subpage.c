@@ -1,5 +1,59 @@
 // SPDX-License-Identifier: GPL-2.0
 
+/*
+ * Subpage (sectorsize < PAGE_SIZE) support for btrfs overview:
+ *
+ * Limitation:
+ * - Only support 64K page size yet
+ *   This is to make metadata handling easier, as 64K page would ensure
+ *   all nodesize would fit inside one page, thus we don't need to handle
+ *   cases where a tree block crosses several pages.
+ *
+ * - Only metadata read-write yet
+ *   The data read-write part is under heavy tests, while still have several
+ *   bugs remaining.
+ *
+ * - Metadata can't cross 64K page boundary
+ *   btrfs-progs and kernel has done such behavior for a while, thus only
+ *   ancient btrfs could have such problem.
+ *   For such case, btrfs will do a graceful rejection.
+ *
+ * Special behaviors:
+ * - Metadata
+ *   Metadata read is fully subpage.
+ *   Meaning when reading one tree block will only trigger the read for the
+ *   needed range, other unrelated range in the same page will not be touched.
+ *
+ *   Metadata write is partial subpage.
+ *   The writeback is still for the full page, but btrfs will only submit
+ *   the dirty extent buffers in the page.
+ *
+ *   This means, if we have a metadata page like this:
+ *   Page offset
+ *   0         16K         32K         48K        64K
+ *   |/////////|           |///////////|
+ *        \- Tree block A        \- Tree block B
+ *
+ *   Even if we just want to writeback tree block A, we will also writeback
+ *   tree block B if it's also dirty.
+ *
+ *   This may cause extra metadata writeback which results more COW.
+ *
+ * Implementation:
+ * - Common
+ *   Both metadata and data will use an new structure, btrfs_subpage, to
+ *   record the status of each sector inside a page.
+ *   This provides the extra granularity needed.
+ *
+ * - Metadata
+ *   Since we have multiple tree blocks inside one page, we can't rely on page
+ *   locking anymore, or we will have greatly reduced concurrency or even
+ *   deadlock (hold one tree lock while try to lock another tree lock in the
+ *   same page).
+ *
+ *   Thus for metadata locking, subpage support relies on io_tree locking only.
+ *   This means a slightly more tree locking latency.
+ */
 #include <linux/slab.h>
 #include "ctree.h"
 #include "subpage.h"
