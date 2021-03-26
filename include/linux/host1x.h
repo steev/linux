@@ -31,8 +31,10 @@ u64 host1x_get_dma_mask(struct host1x *host1x);
  * @resume: host1x client resume code
  */
 struct host1x_client_ops {
+	int (*early_init)(struct host1x_client *client);
 	int (*init)(struct host1x_client *client);
 	int (*exit)(struct host1x_client *client);
+	int (*late_exit)(struct host1x_client *client);
 	int (*suspend)(struct host1x_client *client);
 	int (*resume)(struct host1x_client *client);
 };
