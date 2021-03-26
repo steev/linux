@@ -632,6 +632,7 @@ EXPORT_SYMBOL(close_fd); /* for ksys_close() */
 static inline void __range_cloexec(struct files_struct *cur_fds,
 				   unsigned int fd, unsigned int max_fd)
 {
+	unsigned int cur_max;
 	struct fdtable *fdt;
 
 	if (fd > max_fd)
@@ -639,7 +640,12 @@ static inline void __range_cloexec(struct files_struct *cur_fds,
 
 	spin_lock(&cur_fds->file_lock);
 	fdt = files_fdtable(cur_fds);
-	bitmap_set(fdt->close_on_exec, fd, max_fd - fd + 1);
+	/* make very sure we're using the correct maximum value */
+	cur_max = fdt->max_fds;
+	cur_max--;
+	cur_max = min(max_fd, cur_max);
+	if (fd <= cur_max)
+		bitmap_set(fdt->close_on_exec, fd, cur_max - fd + 1);
 	spin_unlock(&cur_fds->file_lock);
 }
 
