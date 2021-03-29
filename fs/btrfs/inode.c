@@ -8363,17 +8363,72 @@ static int btrfs_migratepage(struct address_space *mapping,
 }
 #endif
 
+/*
+ * Helper to finish/dec one ordered extent for btrfs_invalidatepage().
+ *
+ * Return true if the ordered extent is finished.
+ * Return false otherwise
+ */
+static bool invalidate_ordered_extent(struct btrfs_inode *inode,
+				      struct btrfs_ordered_extent *ordered,
+				      struct page *page,
+				      struct extent_state **cached_state,
+				      bool inode_evicting)
+{
+	u64 start = page_offset(page);
+	u64 end = page_offset(page) + PAGE_SIZE - 1;
+	u32 len = PAGE_SIZE;
+	bool completed_ordered = false;
+
+	/*
+	 * For regular sectorsize == PAGE_SIZE, if the ordered extent covers
+	 * the page, then it must cover the full page.
+	 */
+	ASSERT(ordered->file_offset <= start &&
+	       ordered->file_offset + ordered->num_bytes > end);
+	/*
+	 * IO on this page will never be started, so we need to account
+	 * for any ordered extents now. Don't clear EXTENT_DELALLOC_NEW
+	 * here, must leave that up for the ordered extent completion.
+	 */
+	if (!inode_evicting)
+		clear_extent_bit(&inode->io_tree, start, end,
+				 EXTENT_DELALLOC | EXTENT_LOCKED |
+				 EXTENT_DO_ACCOUNTING | EXTENT_DEFRAG, 1, 0,
+				 cached_state);
+	/*
+	 * Whoever cleared the private bit is responsible for the
+	 * finish_ordered_io
+	 */
+	if (TestClearPagePrivate2(page)) {
+		spin_lock_irq(&inode->ordered_tree.lock);
+		set_bit(BTRFS_ORDERED_TRUNCATED, &ordered->flags);
+		ordered->truncated_len = min(ordered->truncated_len,
+					     start - ordered->file_offset);
+		spin_unlock_irq(&inode->ordered_tree.lock);
+
+		if (btrfs_dec_test_ordered_pending(inode, &ordered, start, len, 1)) {
+			btrfs_finish_ordered_io(ordered);
+			completed_ordered = true;
+		}
+	}
+	btrfs_put_ordered_extent(ordered);
+	if (!inode_evicting) {
+		*cached_state = NULL;
+		lock_extent_bits(&inode->io_tree, start, end, cached_state);
+	}
+	return completed_ordered;
+}
+
 static void btrfs_invalidatepage(struct page *page, unsigned int offset,
 				 unsigned int length)
 {
 	struct btrfs_inode *inode = BTRFS_I(page->mapping->host);
 	struct extent_io_tree *tree = &inode->io_tree;
-	struct btrfs_ordered_extent *ordered;
 	struct extent_state *cached_state = NULL;
 	u64 page_start = page_offset(page);
 	u64 page_end = page_start + PAGE_SIZE - 1;
-	u64 start;
-	u64 end;
+	u64 cur;
 	int inode_evicting = inode->vfs_inode.i_state & I_FREEING;
 	bool found_ordered = false;
 	bool completed_ordered = false;
@@ -8395,57 +8450,24 @@ static void btrfs_invalidatepage(struct page *page, unsigned int offset,
 	if (!inode_evicting)
 		lock_extent_bits(tree, page_start, page_end, &cached_state);
 
-	start = page_start;
-again:
-	ordered = btrfs_lookup_ordered_range(inode, start, page_end - start + 1);
-	if (ordered) {
-		found_ordered = true;
-		end = min(page_end,
-			  ordered->file_offset + ordered->num_bytes - 1);
-		/*
-		 * IO on this page will never be started, so we need to account
-		 * for any ordered extents now. Don't clear EXTENT_DELALLOC_NEW
-		 * here, must leave that up for the ordered extent completion.
-		 */
-		if (!inode_evicting)
-			clear_extent_bit(tree, start, end,
-					 EXTENT_DELALLOC |
-					 EXTENT_LOCKED | EXTENT_DO_ACCOUNTING |
-					 EXTENT_DEFRAG, 1, 0, &cached_state);
-		/*
-		 * whoever cleared the private bit is responsible
-		 * for the finish_ordered_io
-		 */
-		if (TestClearPagePrivate2(page)) {
-			struct btrfs_ordered_inode_tree *tree;
-			u64 new_len;
+	cur = page_start;
+	/* Iterate through all the ordered extents covering the page */
+	while (cur < page_end) {
+		struct btrfs_ordered_extent *ordered;
 
-			tree = &inode->ordered_tree;
+		ordered = btrfs_lookup_ordered_range(inode, cur,
+				page_end - cur + 1);
+		if (ordered) {
+			cur = ordered->file_offset + ordered->num_bytes;
 
-			spin_lock_irq(&tree->lock);
-			set_bit(BTRFS_ORDERED_TRUNCATED, &ordered->flags);
-			new_len = start - ordered->file_offset;
-			if (new_len < ordered->truncated_len)
-				ordered->truncated_len = new_len;
-			spin_unlock_irq(&tree->lock);
-
-			if (btrfs_dec_test_ordered_pending(inode, &ordered,
-							   start,
-							   end - start + 1, 1)) {
-				btrfs_finish_ordered_io(ordered);
-				completed_ordered = true;
-			}
+			found_ordered = true;
+			completed_ordered = invalidate_ordered_extent(inode,
+					ordered, page, &cached_state,
+					inode_evicting);
+		} else {
+			/* Exhausted all ordered extents */
+			break;
 		}
-		btrfs_put_ordered_extent(ordered);
-		if (!inode_evicting) {
-			cached_state = NULL;
-			lock_extent_bits(tree, start, end,
-					 &cached_state);
-		}
-
-		start = end + 1;
-		if (start < page_end)
-			goto again;
 	}
 
 	/*
