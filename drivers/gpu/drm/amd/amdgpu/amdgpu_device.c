@@ -2576,8 +2576,10 @@ static int amdgpu_device_ip_fini(struct amdgpu_device *adev)
 	if (adev->gmc.xgmi.num_physical_nodes > 1)
 		amdgpu_xgmi_remove_device(adev);
 
-	amdgpu_device_set_pg_state(adev, AMD_PG_STATE_UNGATE);
-	amdgpu_device_set_cg_state(adev, AMD_CG_STATE_UNGATE);
+	if (!pm_runtime_status_suspended(adev_to_drm(adev)->dev)) {
+		amdgpu_device_set_pg_state(adev, AMD_PG_STATE_UNGATE);
+		amdgpu_device_set_cg_state(adev, AMD_CG_STATE_UNGATE);
+	}
 
 	amdgpu_amdkfd_device_fini(adev);
 
@@ -2586,11 +2588,13 @@ static int amdgpu_device_ip_fini(struct amdgpu_device *adev)
 		if (!adev->ip_blocks[i].status.hw)
 			continue;
 		if (adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_SMC) {
-			r = adev->ip_blocks[i].version->funcs->hw_fini((void *)adev);
-			/* XXX handle errors */
-			if (r) {
-				DRM_DEBUG("hw_fini of IP block <%s> failed %d\n",
-					  adev->ip_blocks[i].version->funcs->name, r);
+			if (!pm_runtime_status_suspended(adev_to_drm(adev)->dev)) {
+				r = adev->ip_blocks[i].version->funcs->hw_fini((void *)adev);
+				/* XXX handle errors */
+				if (r) {
+					DRM_DEBUG("hw_fini of IP block <%s> failed %d\n",
+						  adev->ip_blocks[i].version->funcs->name, r);
+				}
 			}
 			adev->ip_blocks[i].status.hw = false;
 			break;
@@ -2601,11 +2605,13 @@ static int amdgpu_device_ip_fini(struct amdgpu_device *adev)
 		if (!adev->ip_blocks[i].status.hw)
 			continue;
 
-		r = adev->ip_blocks[i].version->funcs->hw_fini((void *)adev);
-		/* XXX handle errors */
-		if (r) {
-			DRM_DEBUG("hw_fini of IP block <%s> failed %d\n",
-				  adev->ip_blocks[i].version->funcs->name, r);
+		if (!pm_runtime_status_suspended(adev_to_drm(adev)->dev)) {
+			r = adev->ip_blocks[i].version->funcs->hw_fini((void *)adev);
+			/* XXX handle errors */
+			if (r) {
+				DRM_DEBUG("hw_fini of IP block <%s> failed %d\n",
+					  adev->ip_blocks[i].version->funcs->name, r);
+			}
 		}
 
 		adev->ip_blocks[i].status.hw = false;
