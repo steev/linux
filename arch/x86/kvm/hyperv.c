@@ -1070,10 +1070,13 @@ static bool compute_tsc_page_parameters(struct pvclock_vcpu_time_info *hv_clock,
 				hv_clock->tsc_to_system_mul,
 				100);
 
-	tsc_ref->tsc_offset = hv_clock->system_time;
-	do_div(tsc_ref->tsc_offset, 100);
-	tsc_ref->tsc_offset -=
+	/*
+	 * Note: 'hv_clock->system_time' despite being 'u64' can hold a negative
+	 * value here, thus div_s64().
+	 */
+	tsc_ref->tsc_offset = div_s64(hv_clock->system_time, 100) -
 		mul_u64_u64_shr(hv_clock->tsc_timestamp, tsc_ref->tsc_scale, 64);
+
 	return true;
 }
 
