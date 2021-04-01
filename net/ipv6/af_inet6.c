@@ -222,7 +222,7 @@ lookup_protocol:
 	inet->mc_loop	= 1;
 	inet->mc_ttl	= 1;
 	inet->mc_index	= 0;
-	inet->mc_list	= NULL;
+	RCU_INIT_POINTER(inet->mc_list, NULL);
 	inet->rcv_tos	= 0;
 
 	if (net->ipv4.sysctl_ip_no_pmtu_disc)
@@ -1032,6 +1032,7 @@ static const struct ipv6_stub ipv6_stub_impl = {
 #endif
 	.nd_tbl	= &nd_tbl,
 	.ipv6_fragment = ip6_fragment,
+	.ipv6_dev_find = ipv6_dev_find,
 };
 
 static const struct ipv6_bpf_stub ipv6_bpf_stub_impl = {
