@@ -491,7 +491,7 @@ qla2x00_start_iocbs(struct scsi_qla_host *vha, struct req_que *req)
 }
 
 /**
- * qla2x00_marker() - Send a marker IOCB to the firmware.
+ * __qla2x00_marker() - Send a marker IOCB to the firmware.
  * @vha: HA context
  * @qpair: queue pair pointer
  * @loop_id: loop ID
@@ -2379,7 +2379,8 @@ qla24xx_prli_iocb(srb_t *sp, struct logio_entry_24xx *logio)
 				cpu_to_le32(NVME_PRLI_SP_FIRST_BURST);
 		if (sp->vha->flags.nvme2_enabled) {
 			/* Set service parameter BIT_7 for NVME CONF support */
-			logio->io_parameter[0] |= NVME_PRLI_SP_CONF;
+			logio->io_parameter[0] |=
+				cpu_to_le32(NVME_PRLI_SP_CONF);
 			/* Set service parameter BIT_8 for SLER support */
 			logio->io_parameter[0] |=
 				cpu_to_le32(NVME_PRLI_SP_SLER);
