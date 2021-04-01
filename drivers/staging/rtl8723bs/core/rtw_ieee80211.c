@@ -120,7 +120,7 @@ u8 *rtw_set_fixed_ie(unsigned char *pbuf, unsigned int len, unsigned char *sourc
 
 /*  rtw_set_ie will update frame length */
 u8 *rtw_set_ie(u8 *pbuf,
-	       sint index,
+	       signed int index,
 	       uint len,
 	       u8 *source,
 	       uint *frlen) /* frame length */
@@ -140,9 +140,9 @@ u8 *rtw_set_ie(u8 *pbuf,
 /*----------------------------------------------------------------------------
 index: the information element id index, limit is the limit for search
 -----------------------------------------------------------------------------*/
-u8 *rtw_get_ie(u8 *pbuf, sint index, sint *len, sint limit)
+u8 *rtw_get_ie(u8 *pbuf, signed int index, signed int *len, signed int limit)
 {
-	sint tmp, i;
+	signed int tmp, i;
 	u8 *p;
 
 	if (limit < 1)
@@ -958,7 +958,7 @@ static int rtw_ieee802_11_parse_vendor_specific(u8 *pos, uint elen,
  * @show_errors: Whether to show parsing errors in debug log
  * Returns: Parsing result
  */
-ParseRes rtw_ieee802_11_parse_elems(u8 *start, uint len,
+enum ParseRes rtw_ieee802_11_parse_elems(u8 *start, uint len,
 				struct rtw_ieee802_11_elems *elems,
 				int show_errors)
 {
@@ -1115,8 +1115,9 @@ void rtw_macaddr_cfg(struct device *dev, u8 *mac_addr)
 	}
 
 	if (is_broadcast_ether_addr(mac) || is_zero_ether_addr(mac)) {
-		if ((addr = of_get_property(np, "local-mac-address", &len)) &&
-		    len == ETH_ALEN) {
+		addr = of_get_property(np, "local-mac-address", &len);
+
+		if (addr && len == ETH_ALEN) {
 			ether_addr_copy(mac_addr, addr);
 		} else {
 			eth_random_addr(mac_addr);
