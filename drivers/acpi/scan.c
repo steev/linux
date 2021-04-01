@@ -560,7 +560,7 @@ static void acpi_scan_drop_device(acpi_handle handle, void *context)
 	 * prevents attempts to register device objects identical to those being
 	 * deleted from happening concurrently (such attempts result from
 	 * hotplug events handled via the ACPI hotplug workqueue).  It also will
-	 * run after all of the work items submitted previosuly, which helps
+	 * run after all of the work items submitted previously, which helps
 	 * those work items to ensure that they are not accessing stale device
 	 * objects.
 	 */
@@ -1670,6 +1670,8 @@ void acpi_init_device_object(struct acpi_device *device, acpi_handle handle,
 	device_initialize(&device->dev);
 	dev_set_uevent_suppress(&device->dev, true);
 	acpi_init_coherency(device);
+	/* Assume there are unmet deps to start with. */
+	device->dep_unmet = 1;
 }
 
 void acpi_device_add_finalize(struct acpi_device *device)
@@ -1933,6 +1935,8 @@ static void acpi_scan_dep_init(struct acpi_device *adev)
 {
 	struct acpi_dep_data *dep;
 
+	adev->dep_unmet = 0;
+
 	mutex_lock(&acpi_dep_list_lock);
 
 	list_for_each_entry(dep, &acpi_dep_list, node) {
@@ -1980,7 +1984,13 @@ static acpi_status acpi_bus_check_add(acpi_handle handle, bool check_dep,
 		return AE_CTRL_DEPTH;
 
 	acpi_scan_init_hotplug(device);
-	if (!check_dep)
+	/*
+	 * If check_dep is true at this point, the device has no dependencies,
+	 * or the creation of the device object would have been postponed above.
+	 */
+	if (check_dep)
+		device->dep_unmet = 0;
+	else
 		acpi_scan_dep_init(device);
 
 out:
@@ -2382,6 +2392,8 @@ int __init acpi_scan_init(void)
 			goto out;
 		}
 	}
+
+	acpi_turn_off_unused_power_resources();
 
 	acpi_scan_initialized = true;
 
