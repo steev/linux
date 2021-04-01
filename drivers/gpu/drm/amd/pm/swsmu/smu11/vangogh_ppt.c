@@ -69,7 +69,7 @@ static struct cmn2asic_msg_mapping vangogh_message_map[SMU_MSG_MAX_COUNT] = {
 	MSG_MAP(PowerUpIspByTile,               PPSMC_MSG_PowerUpIspByTile,		0),
 	MSG_MAP(PowerDownVcn,                   PPSMC_MSG_PowerDownVcn,			0),
 	MSG_MAP(PowerUpVcn,                     PPSMC_MSG_PowerUpVcn,			0),
-	MSG_MAP(RlcPowerNotify,                 PPSMC_MSG_RlcPowerNotify,		0),
+	MSG_MAP(RlcPowerDownNotify,             PPSMC_MSG_RlcPowerDownNotify,		0),
 	MSG_MAP(SetHardMinVcn,                  PPSMC_MSG_SetHardMinVcn,		0),
 	MSG_MAP(SetSoftMinGfxclk,               PPSMC_MSG_SetSoftMinGfxclk,		0),
 	MSG_MAP(ActiveProcessNotify,            PPSMC_MSG_ActiveProcessNotify,		0),
@@ -384,9 +384,14 @@ static int vangogh_dpm_set_jpeg_enable(struct smu_context *smu, bool enable)
 
 static bool vangogh_is_dpm_running(struct smu_context *smu)
 {
+	struct amdgpu_device *adev = smu->adev;
 	int ret = 0;
 	uint32_t feature_mask[2];
 	uint64_t feature_enabled;
+
+	/* we need to re-init after suspend so return false */
+	if (adev->in_suspend)
+		return false;
 
 	ret = smu_cmn_get_enabled_32_bits_mask(smu, feature_mask, 2);
 
@@ -1648,7 +1653,7 @@ static int vangogh_system_features_control(struct smu_context *smu, bool en)
 	int ret = 0;
 
 	if (adev->pm.fw_version >= 0x43f1700 && !en)
-		ret = smu_cmn_send_smc_msg_with_param(smu, SMU_MSG_RlcPowerNotify,
+		ret = smu_cmn_send_smc_msg_with_param(smu, SMU_MSG_RlcPowerDownNotify,
 						      RLC_STATUS_OFF, NULL);
 
 	bitmap_zero(feature->enabled, feature->feature_num);
