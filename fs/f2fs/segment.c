@@ -3417,9 +3417,6 @@ void f2fs_allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
 		f2fs_inode_chksum_set(sbi, page);
 	}
 
-	if (F2FS_IO_ALIGNED(sbi))
-		fio->retry = false;
-
 	if (fio) {
 		struct f2fs_bio_info *io;
 
@@ -3429,6 +3426,9 @@ void f2fs_allocate_data_block(struct f2fs_sb_info *sbi, struct page *page,
 		spin_lock(&io->io_lock);
 		list_add_tail(&fio->list, &io->io_list);
 		spin_unlock(&io->io_lock);
+
+		if (F2FS_IO_ALIGNED(sbi))
+			fio->retry = false;
 	}
 
 	mutex_unlock(&curseg->curseg_mutex);
