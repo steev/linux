@@ -3,6 +3,7 @@
  * Copyright (c) 2019, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/acpi_iort.h>
 #include <linux/adreno-smmu-priv.h>
 #include <linux/of_device.h>
 #include <linux/qcom_scm.h>
@@ -342,6 +343,14 @@ static const struct of_device_id __maybe_unused qcom_smmu_impl_of_match[] = {
 struct arm_smmu_device *qcom_smmu_impl_init(struct arm_smmu_device *smmu)
 {
 	const struct device_node *np = smmu->dev->of_node;
+
+	if (np == NULL) {
+		/* ACPI boot */
+		struct iort_smmu_pdata *pdata = dev_get_platdata(smmu->dev);
+
+		if (pdata && pdata->model == IORT_SMMU_QCOM)
+			return qcom_smmu_create(smmu, &qcom_smmu_impl);
+	}
 
 	if (of_match_node(qcom_smmu_impl_of_match, np))
 		return qcom_smmu_create(smmu, &qcom_smmu_impl);
