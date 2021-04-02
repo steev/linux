@@ -1467,6 +1467,11 @@ static struct acpi_platform_list iort_plat_info[] __initdata = {
 	/* HiSilicon Hip08 Platform */
 	{"HISI  ", "HIP08   ", 0, ACPI_SIG_IORT, greater_than_or_equal,
 	 "Erratum #162001800", IORT_SMMU_V3_PMCG_HISI_HIP08},
+	/* Qualcomm Snapdragon Platform */
+	{ "LENOVO", "CB-01   ", 0x8180, ACPI_SIG_IORT, equal,
+	  "QCOM SMMU", IORT_SMMU_QCOM },
+	{ "QCOM  ", "QCOMEDK2", 0x8180, ACPI_SIG_IORT, equal,
+	  "QCOM SMMU", IORT_SMMU_QCOM },
 	{ }
 };
 

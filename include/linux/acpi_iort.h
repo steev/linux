@@ -21,6 +21,7 @@
  */
 #define IORT_SMMU_GENERIC		0x00000000 /* Generic SMMU */
 #define IORT_SMMU_V3_PMCG_HISI_HIP08	0x00000001 /* HiSilicon HIP08 PMCG */
+#define IORT_SMMU_QCOM			0x00000002 /* QCOM SMMU */
 
 struct iort_smmu_pdata {
 	struct acpi_iort_node *node;
