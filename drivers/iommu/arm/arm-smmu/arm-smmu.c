@@ -1991,10 +1991,15 @@ static int arm_smmu_device_acpi_probe(struct platform_device *pdev,
 				      struct arm_smmu_device *smmu)
 {
 	struct device *dev = smmu->dev;
-	struct acpi_iort_node *node =
-		*(struct acpi_iort_node **)dev_get_platdata(dev);
+	struct iort_smmu_pdata *pdata = dev_get_platdata(dev);
+	struct acpi_iort_node *node;
 	struct acpi_iort_smmu *iort_smmu;
 	int ret;
+
+	if (pdata == NULL)
+		return -ENODEV;
+
+	node = pdata->node;
 
 	/* Retrieve SMMU1/2 specific data */
 	iort_smmu = (struct acpi_iort_smmu *)node->node_data;

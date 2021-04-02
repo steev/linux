@@ -15,12 +15,17 @@
 #define IORT_IRQ_TRIGGER_MASK(irq)	((irq >> 32) & 0xffffffffULL)
 
 /*
- * PMCG model identifiers for use in smmu pmu driver. Please note
+ * Model identifiers for use in SMMU drivers. Please note
  * that this is purely for the use of software and has nothing to
  * do with hardware or with IORT specification.
  */
-#define IORT_SMMU_V3_PMCG_GENERIC        0x00000000 /* Generic SMMUv3 PMCG */
-#define IORT_SMMU_V3_PMCG_HISI_HIP08     0x00000001 /* HiSilicon HIP08 PMCG */
+#define IORT_SMMU_GENERIC		0x00000000 /* Generic SMMU */
+#define IORT_SMMU_V3_PMCG_HISI_HIP08	0x00000001 /* HiSilicon HIP08 PMCG */
+
+struct iort_smmu_pdata {
+	struct acpi_iort_node *node;
+	u32 model;
+};
 
 int iort_register_domain_token(int trans_id, phys_addr_t base,
 			       struct fwnode_handle *fw_node);

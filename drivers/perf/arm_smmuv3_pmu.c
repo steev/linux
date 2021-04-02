@@ -747,17 +747,19 @@ static void smmu_pmu_reset(struct smmu_pmu *smmu_pmu)
 
 static void smmu_pmu_get_acpi_options(struct smmu_pmu *smmu_pmu)
 {
-	u32 model;
+	struct iort_smmu_pdata *pdata = dev_get_platdata(smmu_pmu->dev);
 
-	model = *(u32 *)dev_get_platdata(smmu_pmu->dev);
+	if (pdata == NULL)
+		goto done;
 
-	switch (model) {
+	switch (pdata->model) {
 	case IORT_SMMU_V3_PMCG_HISI_HIP08:
 		/* HiSilicon Erratum 162001800 */
 		smmu_pmu->options |= SMMU_PMCG_EVCNTR_RDONLY;
 		break;
 	}
 
+done:
 	dev_notice(smmu_pmu->dev, "option mask 0x%x\n", smmu_pmu->options);
 }
 

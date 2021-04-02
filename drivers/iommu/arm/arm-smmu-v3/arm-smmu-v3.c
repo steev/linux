@@ -3429,9 +3429,13 @@ static int arm_smmu_device_acpi_probe(struct platform_device *pdev,
 {
 	struct acpi_iort_smmu_v3 *iort_smmu;
 	struct device *dev = smmu->dev;
+	struct iort_smmu_pdata *pdata = dev_get_platdata(dev);
 	struct acpi_iort_node *node;
 
-	node = *(struct acpi_iort_node **)dev_get_platdata(dev);
+	if (pdata == NULL)
+		return -ENODEV;
+
+	node = pdata->node;
 
 	/* Retrieve SMMUv3 specific data */
 	iort_smmu = (struct acpi_iort_smmu_v3 *)node->node_data;
