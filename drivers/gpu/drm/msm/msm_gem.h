@@ -61,6 +61,11 @@ struct msm_gem_object {
 	bool dontneed : 1;
 
 	/**
+	 * Is object evictable (ie. counted in priv->evictable_count)?
+	 */
+	bool evictable : 1;
+
+	/**
 	 * count of active vmap'ing
 	 */
 	uint8_t vmap_count;
@@ -103,6 +108,7 @@ struct msm_gem_object {
 	char name[32]; /* Identifier to print for the debugfs files */
 
 	int active_count;
+	int pin_count;
 };
 #define to_msm_bo(x) container_of(x, struct msm_gem_object, base)
 
@@ -263,7 +269,46 @@ static inline void mark_unpurgable(struct msm_gem_object *msm_obj)
 	msm_obj->dontneed = false;
 }
 
+static inline bool is_unevictable(struct msm_gem_object *msm_obj)
+{
+	return is_unpurgable(msm_obj) || msm_obj->pin_count || msm_obj->vaddr;
+}
+
+static inline void mark_evictable(struct msm_gem_object *msm_obj)
+{
+	struct msm_drm_private *priv = msm_obj->base.dev->dev_private;
+
+	WARN_ON(!mutex_is_locked(&priv->mm_lock));
+
+	if (is_unevictable(msm_obj))
+		return;
+
+	if (WARN_ON(msm_obj->evictable))
+		return;
+
+	priv->evictable_count += msm_obj->base.size >> PAGE_SHIFT;
+	msm_obj->evictable = true;
+}
+
+static inline void mark_unevictable(struct msm_gem_object *msm_obj)
+{
+	struct msm_drm_private *priv = msm_obj->base.dev->dev_private;
+
+	WARN_ON(!mutex_is_locked(&priv->mm_lock));
+
+	if (is_unevictable(msm_obj))
+		return;
+
+	if (WARN_ON(!msm_obj->evictable))
+		return;
+
+	priv->evictable_count -= msm_obj->base.size >> PAGE_SHIFT;
+	WARN_ON(priv->evictable_count < 0);
+	msm_obj->evictable = false;
+}
+
 void msm_gem_purge(struct drm_gem_object *obj);
+void msm_gem_evict(struct drm_gem_object *obj);
 void msm_gem_vunmap(struct drm_gem_object *obj);
 
 /* Created per submit-ioctl, to track bo's and cmdstream bufs, etc,
