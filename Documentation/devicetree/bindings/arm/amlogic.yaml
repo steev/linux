@@ -58,6 +58,7 @@ properties:
               - amlogic,p201
               - friendlyarm,nanopi-k2
               - hardkernel,odroid-c2
+              - minix,neo-u1
               - nexbox,a95x
               - videostrong,kii-pro
               - wetek,hub
