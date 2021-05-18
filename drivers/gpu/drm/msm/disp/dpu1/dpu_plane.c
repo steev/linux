@@ -1669,6 +1669,13 @@ struct drm_plane *dpu_plane_init(struct drm_device *dev,
 			DRM_MODE_REFLECT_X |
 			DRM_MODE_REFLECT_Y);
 
+	drm_plane_create_alpha_property(plane);
+	drm_plane_create_blend_mode_property(plane,
+			BIT(DRM_MODE_BLEND_PIXEL_NONE) |
+			BIT(DRM_MODE_BLEND_PREMULTI) |
+			BIT(DRM_MODE_BLEND_COVERAGE));
+
+
 	drm_plane_enable_fb_damage_clips(plane);
 
 	/* success! finalize initialization */
