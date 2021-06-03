@@ -79,6 +79,8 @@ struct dp_display_private {
 	char *name;
 	int irq;
 
+	int id;
+
 	/* state variables */
 	bool core_initialized;
 	bool hpd_irq_on;
@@ -116,8 +118,19 @@ struct dp_display_private {
 	struct dp_audio *audio;
 };
 
+
+struct msm_dp_config {
+	phys_addr_t io_start[3];
+	size_t num_dp;
+};
+
+static const struct msm_dp_config sc7180_dp_cfg = {
+	.io_start = { 0x0ae90000 },
+	.num_dp = 1,
+};
+
 static const struct of_device_id dp_dt_match[] = {
-	{.compatible = "qcom,sc7180-dp"},
+	{ .compatible = "qcom,sc7180-dp", .data = &sc7180_dp_cfg },
 	{}
 };
 
@@ -217,7 +230,7 @@ static int dp_display_bind(struct device *dev, struct device *master,
 
 	dp->dp_display.drm_dev = drm;
 	priv = drm->dev_private;
-	priv->dp = &(dp->dp_display);
+	priv->dp[dp->id] = &(dp->dp_display);
 
 	rc = dp->parser->parse(dp->parser);
 	if (rc) {
@@ -239,8 +252,11 @@ static int dp_display_bind(struct device *dev, struct device *master,
 	}
 
 	rc = dp_register_audio_driver(dev, dp->audio);
-	if (rc)
+	if (rc) {
 		DRM_ERROR("Audio registration Dp failed\n");
+		goto end;
+	}
+
 
 end:
 	return rc;
@@ -260,7 +276,7 @@ static void dp_display_unbind(struct device *dev, struct device *master,
 
 	dp_power_client_deinit(dp->power);
 	dp_aux_unregister(dp->aux);
-	priv->dp = NULL;
+	priv->dp[dp->id] = NULL;
 }
 
 static const struct component_ops dp_display_comp_ops = {
@@ -1206,6 +1222,26 @@ int dp_display_request_irq(struct msm_dp *dp_display)
 	return 0;
 }
 
+static int dp_display_get_id(struct platform_device *pdev)
+{
+	const struct msm_dp_config *cfg = of_device_get_match_data(&pdev->dev);
+	struct resource *res;
+	int i;
+
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -EINVAL;
+
+	for (i = 0; i < cfg->num_dp; i++) {
+		if (cfg->io_start[i] == res->start)
+			return i;
+	}
+
+	dev_err(&pdev->dev, "unknown displayport instance\n");
+	return -EINVAL;
+}
+
 static int dp_display_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -1219,6 +1255,10 @@ static int dp_display_probe(struct platform_device *pdev)
 	dp = devm_kzalloc(&pdev->dev, sizeof(*dp), GFP_KERNEL);
 	if (!dp)
 		return -ENOMEM;
+
+	dp->id = dp_display_get_id(pdev);
+	if (dp->id < 0)
+		return -EINVAL;
 
 	dp->pdev = pdev;
 	dp->name = "drm_dp";
@@ -1391,6 +1431,9 @@ void msm_dp_debugfs_init(struct msm_dp *dp_display, struct drm_minor *minor)
 	struct device *dev;
 	int rc;
 
+	if (!dp_display)
+		return;
+
 	dp = container_of(dp_display, struct dp_display_private, dp_display);
 	dev = &dp->pdev->dev;
 
@@ -1440,8 +1483,12 @@ int msm_dp_modeset_init(struct msm_dp *dp_display, struct drm_device *dev,
 static struct msm_dp *msm_dp_from_drm_encoder(struct msm_drm_private *priv,
 					      struct drm_encoder *encoder)
 {
-	if (priv->dp && priv->dp->encoder == encoder)
-		return priv->dp;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(priv->dp); i++) {
+		if (priv->dp[i] && priv->dp[i]->encoder == encoder)
+			return priv->dp[i];
+	}
 
 	return NULL;
 }
