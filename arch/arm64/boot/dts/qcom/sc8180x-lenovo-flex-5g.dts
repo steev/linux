@@ -9,6 +9,8 @@
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include <dt-bindings/gpio/gpio.h>
 #include "sc8180x.dtsi"
+#include "pmc8180.dtsi"
+#include "pmc8180c.dtsi"
 
 / {
 	model = "Lenovo Flex 5G";
@@ -18,7 +20,31 @@
 		serial0 = &uart13;
 	};
 
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pmc8180c_lpg 4 1000000>;
+		enable-gpios = <&pmc8180c_gpios 8 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&bl_pwm_default_state>;
+	};
+
 	chosen {
+	};
+
+	panel {
+		compatible = "auo,b140han06";
+		no-hpd;
+
+		backlight = <&backlight>;
+
+		ports {
+			port {
+				auo_b140han06_in: endpoint {
+					remote-endpoint = <&mdss_edp_out>;
+				};
+			};
+		};
 	};
 
 	reserved-memory {
@@ -293,6 +319,15 @@
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&edp_hpd_active>;
+
+	ports {
+		port@2 {
+			reg = <2>;
+			mdss_edp_out: endpoint {
+				remote-endpoint = <&auo_b140han06_in>;
+			};
+		};
+	};
 };
 
 &pcie3 {
@@ -307,6 +342,10 @@
 	status = "okay";
 	vdda-phy-supply = <&vreg_l5e_0p88>;
 	vdda-pll-supply = <&vreg_l3c_1p2>;
+};
+
+&pmc8180c_lpg {
+	status = "okay";
 };
 
 &qupv3_id_0 {
@@ -612,4 +651,20 @@
 	vdd-1.3-rfa-supply = <&vreg_l9a_1p3>;
 	vdd-3.3-ch0-supply = <&vreg_l11c_3p3>;
 	vdd-3.3-ch1-supply = <&vreg_l10c_3p3>;
+};
+
+/* PINCTRL */
+
+&pmc8180c_gpios {
+	bl_pwm_default_state: bl-pwm-default-state {
+		en {
+			pins = "gpio8";
+			function = "normal";
+		};
+
+		pwm {
+			pins = "gpio10";
+			function = "func1";
+		};
+	};
 };
