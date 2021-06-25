@@ -227,10 +227,10 @@ static int msm_fault_handler(struct iommu_domain *domain, struct device *dev,
 	struct adreno_smmu_priv *adreno_smmu = dev_get_drvdata(iommu->base.dev);
 	struct adreno_smmu_fault_info info, *ptr = NULL;
 
-	if (adreno_smmu->get_fault_info) {
-		adreno_smmu->get_fault_info(adreno_smmu->cookie, &info);
-		ptr = &info;
-	}
+//	if (adreno_smmu->get_fault_info) {
+//		adreno_smmu->get_fault_info(adreno_smmu->cookie, &info);
+//		ptr = &info;
+//	}
 
 	if (iommu->base.handler)
 		return iommu->base.handler(iommu->base.arg, iova, flags, ptr);
