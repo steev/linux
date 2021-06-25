@@ -441,7 +441,7 @@ void dp_aux_deinit(struct drm_dp_aux *dp_aux)
 	dp_catalog_aux_enable(aux->catalog, false);
 }
 
-int dp_aux_register(struct drm_dp_aux *dp_aux)
+int dp_aux_register(struct drm_dp_aux *dp_aux, struct drm_device *drm_dev)
 {
 	struct dp_aux_private *aux;
 	int ret;
@@ -455,6 +455,7 @@ int dp_aux_register(struct drm_dp_aux *dp_aux)
 
 	aux->dp_aux.name = "dpu_dp_aux";
 	aux->dp_aux.dev = aux->dev;
+	aux->dp_aux.drm_dev = drm_dev;
 	aux->dp_aux.transfer = dp_aux_transfer;
 	ret = drm_dp_aux_register(&aux->dp_aux);
 	if (ret) {

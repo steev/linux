@@ -253,7 +253,7 @@ static int dp_display_bind(struct device *dev, struct device *master,
 	}
 
 	dp->aux->drm_dev = drm;
-	rc = dp_aux_register(dp->aux);
+	rc = dp_aux_register(dp->aux, drm);
 	if (rc) {
 		DRM_ERROR("DRM DP AUX register failed\n");
 		goto end;

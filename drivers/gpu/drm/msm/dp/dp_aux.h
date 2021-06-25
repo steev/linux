@@ -9,7 +9,7 @@
 #include "dp_catalog.h"
 #include <drm/drm_dp_helper.h>
 
-int dp_aux_register(struct drm_dp_aux *dp_aux);
+int dp_aux_register(struct drm_dp_aux *dp_aux, struct drm_device *drm_dev);
 void dp_aux_unregister(struct drm_dp_aux *dp_aux);
 void dp_aux_isr(struct drm_dp_aux *dp_aux);
 void dp_aux_init(struct drm_dp_aux *dp_aux);
