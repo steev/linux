@@ -238,7 +238,7 @@ void msm_dsi_manager_setup_encoder(int id)
 	struct msm_kms *kms = priv->kms;
 	struct drm_encoder *encoder = msm_dsi_get_encoder(msm_dsi);
 
-	if (encoder && kms->funcs->set_encoder_mode)
+	if (encoder && kms && kms->funcs->set_encoder_mode)
 		kms->funcs->set_encoder_mode(kms, encoder,
 					     dsi_mgr_is_cmd_mode(msm_dsi));
 }
