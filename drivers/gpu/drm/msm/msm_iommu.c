@@ -29,6 +29,9 @@ static struct msm_iommu_pagetable *to_pagetable(struct msm_mmu *mmu)
 	return container_of(mmu, struct msm_iommu_pagetable, base);
 }
 
+static int msm_fault_handler(struct iommu_domain *domain, struct device *dev,
+				unsigned long iova, int flags, void *arg);
+
 static int msm_iommu_pagetable_unmap(struct msm_mmu *mmu, u64 iova,
 		size_t size)
 {
@@ -150,6 +153,8 @@ struct msm_mmu *msm_iommu_pagetable_create(struct msm_mmu *parent)
 	const struct io_pgtable_cfg *ttbr1_cfg = NULL;
 	struct io_pgtable_cfg ttbr0_cfg;
 	int ret;
+
+	iommu_set_fault_handler(iommu->domain, msm_fault_handler, iommu);
 
 	/* Get the pagetable configuration from the domain */
 	if (adreno_smmu->cookie)
