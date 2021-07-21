@@ -181,9 +181,11 @@ struct qcom_pcie;
 
 struct qcom_pcie_ops {
 	int (*get_resources)(struct qcom_pcie *pcie);
+	int (*enable_resources)(struct qcom_pcie *pcie);
 	int (*init)(struct qcom_pcie *pcie);
 	int (*post_init)(struct qcom_pcie *pcie);
 	void (*deinit)(struct qcom_pcie *pcie);
+	void (*disable_resources)(struct qcom_pcie *pcie);
 	void (*post_deinit)(struct qcom_pcie *pcie);
 	void (*ltssm_enable)(struct qcom_pcie *pcie);
 	int (*config_sid)(struct qcom_pcie *pcie);
@@ -1345,6 +1347,31 @@ static int qcom_pcie_config_sid_sm8250(struct qcom_pcie *pcie)
 	return 0;
 }
 
+static int qcom_pcie_enable_resources(struct qcom_pcie *pcie)
+{
+	if (pcie->ops->enable_resources)
+		return pcie->ops->enable_resources(pcie);
+
+	return 0;
+}
+
+static int qcom_pcie_init(struct qcom_pcie *pcie)
+{
+	return pcie->ops->init(pcie);
+}
+
+static void qcom_pcie_deinit(struct qcom_pcie *pcie)
+{
+	if (pcie->ops->deinit)
+		pcie->ops->deinit(pcie);
+}
+
+static void qcom_pcie_disable_resources(struct qcom_pcie *pcie)
+{
+	if (pcie->ops->disable_resources)
+		pcie->ops->disable_resources(pcie);
+}
+
 static int qcom_pcie_host_init(struct pcie_port *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
@@ -1353,7 +1380,7 @@ static int qcom_pcie_host_init(struct pcie_port *pp)
 
 	qcom_ep_reset_assert(pcie);
 
-	ret = pcie->ops->init(pcie);
+	ret = qcom_pcie_init(pcie);
 	if (ret)
 		return ret;
 
@@ -1384,7 +1411,7 @@ err:
 err_disable_phy:
 	phy_power_off(pcie->phy);
 err_deinit:
-	pcie->ops->deinit(pcie);
+	qcom_pcie_deinit(pcie);
 
 	return ret;
 }
@@ -1520,10 +1547,14 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 
 	pp->ops = &qcom_pcie_dw_ops;
 
+	ret = qcom_pcie_enable_resources(pcie);
+	if (ret)
+		goto err_pm_runtime_put;
+
 	ret = phy_init(pcie->phy);
 	if (ret) {
 		pm_runtime_disable(&pdev->dev);
-		goto err_pm_runtime_put;
+		goto err_disable_resources;
 	}
 
 	platform_set_drvdata(pdev, pcie);
@@ -1532,10 +1563,13 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "cannot initialize host\n");
 		pm_runtime_disable(&pdev->dev);
-		goto err_pm_runtime_put;
+		goto err_disable_resources;
 	}
 
 	return 0;
+
+err_disable_resources:
+	qcom_pcie_disable_resources(pcie);
 
 err_pm_runtime_put:
 	pm_runtime_put(dev);
