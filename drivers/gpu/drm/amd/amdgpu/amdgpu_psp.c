@@ -24,7 +24,6 @@
  */
 
 #include <linux/firmware.h>
-#include <linux/dma-mapping.h>
 #include <drm/drm_drv.h>
 
 #include "amdgpu.h"
@@ -356,6 +355,44 @@ int psp_wait_for(struct psp_context *psp, uint32_t reg_index,
 	return -ETIME;
 }
 
+static const char *psp_gfx_cmd_name(enum psp_gfx_cmd_id cmd_id)
+{
+	switch (cmd_id) {
+	case GFX_CMD_ID_LOAD_TA:
+		return "LOAD_TA";
+	case GFX_CMD_ID_UNLOAD_TA:
+		return "UNLOAD_TA";
+	case GFX_CMD_ID_INVOKE_CMD:
+		return "INVOKE_CMD";
+	case GFX_CMD_ID_LOAD_ASD:
+		return "LOAD_ASD";
+	case GFX_CMD_ID_SETUP_TMR:
+		return "SETUP_TMR";
+	case GFX_CMD_ID_LOAD_IP_FW:
+		return "LOAD_IP_FW";
+	case GFX_CMD_ID_DESTROY_TMR:
+		return "DESTROY_TMR";
+	case GFX_CMD_ID_SAVE_RESTORE:
+		return "SAVE_RESTORE_IP_FW";
+	case GFX_CMD_ID_SETUP_VMR:
+		return "SETUP_VMR";
+	case GFX_CMD_ID_DESTROY_VMR:
+		return "DESTROY_VMR";
+	case GFX_CMD_ID_PROG_REG:
+		return "PROG_REG";
+	case GFX_CMD_ID_GET_FW_ATTESTATION:
+		return "GET_FW_ATTESTATION";
+	case GFX_CMD_ID_LOAD_TOC:
+		return "ID_LOAD_TOC";
+	case GFX_CMD_ID_AUTOLOAD_RLC:
+		return "AUTOLOAD_RLC";
+	case GFX_CMD_ID_BOOT_CFG:
+		return "BOOT_CFG";
+	default:
+		return "UNKNOWN CMD";
+	}
+}
+
 static int
 psp_cmd_submit_buf(struct psp_context *psp,
 		   struct amdgpu_firmware_info *ucode,
@@ -417,10 +454,10 @@ psp_cmd_submit_buf(struct psp_context *psp,
 	 */
 	if (!skip_unsupport && (psp->cmd_buf_mem->resp.status || !timeout) && !ras_intr) {
 		if (ucode)
-			DRM_WARN("failed to load ucode id (%d) ",
-				  ucode->ucode_id);
-		DRM_WARN("psp command (0x%X) failed and response status is (0x%X)\n",
-			 psp->cmd_buf_mem->cmd_id,
+			DRM_WARN("failed to load ucode (%s) ",
+				  amdgpu_ucode_name(ucode->ucode_id));
+		DRM_WARN("psp gfx command (%s) failed and response status is (0x%X)\n",
+			 psp_gfx_cmd_name(psp->cmd_buf_mem->cmd_id),
 			 psp->cmd_buf_mem->resp.status);
 		if (!timeout) {
 			ret = -EINVAL;
@@ -3235,11 +3272,12 @@ static ssize_t psp_usbc_pd_fw_sysfs_write(struct device *dev,
 {
 	struct drm_device *ddev = dev_get_drvdata(dev);
 	struct amdgpu_device *adev = drm_to_adev(ddev);
-	void *cpu_addr;
-	dma_addr_t dma_addr;
 	int ret, idx;
 	char fw_name[100];
 	const struct firmware *usbc_pd_fw;
+	struct amdgpu_bo *fw_buf_bo = NULL;
+	uint64_t fw_pri_mc_addr;
+	void *fw_pri_cpu_addr;
 
 	if (!adev->ip_blocks[AMD_IP_BLOCK_TYPE_PSP].status.late_initialized) {
 		DRM_INFO("PSP block is not ready yet.");
@@ -3254,31 +3292,24 @@ static ssize_t psp_usbc_pd_fw_sysfs_write(struct device *dev,
 	if (ret)
 		goto fail;
 
-	/* We need contiguous physical mem to place the FW  for psp to access */
-	cpu_addr = dma_alloc_coherent(adev->dev, usbc_pd_fw->size, &dma_addr, GFP_KERNEL);
-
-	ret = dma_mapping_error(adev->dev, dma_addr);
+	/* LFB address which is aligned to 1MB boundary per PSP request */
+	ret = amdgpu_bo_create_kernel(adev, usbc_pd_fw->size, 0x100000,
+						AMDGPU_GEM_DOMAIN_VRAM,
+						&fw_buf_bo,
+						&fw_pri_mc_addr,
+						&fw_pri_cpu_addr);
 	if (ret)
 		goto rel_buf;
 
-	memcpy_toio(cpu_addr, usbc_pd_fw->data, usbc_pd_fw->size);
-
-	/*
-	 * x86 specific workaround.
-	 * Without it the buffer is invisible in PSP.
-	 *
-	 * TODO Remove once PSP starts snooping CPU cache
-	 */
-#ifdef CONFIG_X86
-	clflush_cache_range(cpu_addr, (usbc_pd_fw->size & ~(L1_CACHE_BYTES - 1)));
-#endif
+	memcpy_toio(fw_pri_cpu_addr, usbc_pd_fw->data, usbc_pd_fw->size);
 
 	mutex_lock(&adev->psp.mutex);
-	ret = psp_load_usbc_pd_fw(&adev->psp, dma_addr);
+	ret = psp_load_usbc_pd_fw(&adev->psp, fw_pri_mc_addr);
 	mutex_unlock(&adev->psp.mutex);
 
+	amdgpu_bo_free_kernel(&fw_buf_bo, &fw_pri_mc_addr, &fw_pri_cpu_addr);
+
 rel_buf:
-	dma_free_coherent(adev->dev, usbc_pd_fw->size, cpu_addr, dma_addr);
 	release_firmware(usbc_pd_fw);
 fail:
 	if (ret) {
