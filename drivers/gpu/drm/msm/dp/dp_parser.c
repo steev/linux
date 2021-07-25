@@ -6,6 +6,7 @@
 #include <linux/of_gpio.h>
 #include <linux/phy/phy.h>
 
+#include <drm/drm_of.h>
 #include <drm/drm_print.h>
 
 #include "dp_parser.h"
@@ -276,6 +277,20 @@ static int dp_parser_clock(struct dp_parser *parser)
 	return 0;
 }
 
+static int dp_parser_find_panel(struct dp_parser *parser)
+{
+	struct device_node *np = parser->pdev->dev.of_node;
+	int rc;
+
+	rc = drm_of_find_panel_or_bridge(np, 2, 0, &parser->drm_panel, NULL);
+	if (rc == -ENODEV)
+		rc = 0;
+	else if (rc)
+		DRM_ERROR("failed to acquire DRM panel: %d\n", rc);
+
+	return rc;
+}
+
 static int dp_parser_parse(struct dp_parser *parser)
 {
 	int rc = 0;
@@ -294,6 +309,10 @@ static int dp_parser_parse(struct dp_parser *parser)
 		return rc;
 
 	rc = dp_parser_clock(parser);
+	if (rc)
+		return rc;
+
+	rc = dp_parser_find_panel(parser);
 	if (rc)
 		return rc;
 

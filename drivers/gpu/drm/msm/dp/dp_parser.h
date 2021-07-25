@@ -122,6 +122,7 @@ struct dp_parser {
 	struct dp_display_data disp_data;
 	const struct dp_regulator_cfg *regulator_cfg;
 	u32 max_dp_lanes;
+	struct drm_panel *drm_panel;
 
 	int (*parse)(struct dp_parser *parser);
 };
