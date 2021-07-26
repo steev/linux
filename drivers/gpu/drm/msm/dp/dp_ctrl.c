@@ -1769,8 +1769,9 @@ int dp_ctrl_on_link(struct dp_ctrl *dp_ctrl)
 static int dp_ctrl_link_retrain(struct dp_ctrl_private *ctrl)
 {
 	int training_step = DP_TRAINING_NONE;
+	struct dp_cr_status cr;
 
-	return dp_ctrl_setup_main_link(ctrl, &training_step);
+	return dp_ctrl_setup_main_link(ctrl, &cr, &training_step);
 }
 
 int dp_ctrl_on_stream(struct dp_ctrl *dp_ctrl)
