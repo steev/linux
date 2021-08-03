@@ -5,6 +5,7 @@
 
 #include <asm/thread_info.h>
 #include <asm/page.h>
+#include <asm/ftrace.lds.h>
 
 /*
  * Put .bss..swapper_pg_dir as the first thing in .bss. This will
@@ -46,6 +47,7 @@ SECTIONS
 		KPROBES_TEXT
 		IRQENTRY_TEXT
 		SOFTIRQENTRY_TEXT
+		FTRACE_HOTPATCH_TRAMPOLINES_TEXT
 		*(.text.*_indirect_*)
 		*(.fixup)
 		*(.gnu.warning)
@@ -70,6 +72,13 @@ SECTIONS
 
 	RW_DATA(0x100, PAGE_SIZE, THREAD_SIZE)
 	BOOT_DATA_PRESERVED
+
+	. = ALIGN(8);
+	.dma.refs : {
+		_start_dma_refs = .;
+		*(.dma.refs)
+		_end_dma_refs = .;
+	}
 
 	_edata = .;		/* End of data section */
 
@@ -135,6 +144,32 @@ SECTIONS
 	}
 
 	BOOT_DATA
+
+	/*
+	 * .dma section for code, data, ex_table that need to stay below 2 GB,
+	 * even when the kernel is relocated above 2 GB.
+	 */
+	. = ALIGN(PAGE_SIZE);
+	_sdma = .;
+	.dma.text : {
+		_stext_dma = .;
+		*(.dma.text)
+		*(.dma.text.*_indirect_*)
+		. = ALIGN(PAGE_SIZE);
+		_etext_dma = .;
+	}
+	. = ALIGN(16);
+	.dma.ex_table : {
+		_start_dma_ex_table = .;
+		KEEP(*(.dma.ex_table))
+		_stop_dma_ex_table = .;
+	}
+	. = ALIGN(PAGE_SIZE);
+	.dma.data : {
+		*(.dma.data)
+	}
+	. = ALIGN(PAGE_SIZE);
+	_edma = .;
 
 	/* early.c uses stsi, which requires page aligned data. */
 	. = ALIGN(PAGE_SIZE);
