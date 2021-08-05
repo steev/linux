@@ -372,11 +372,6 @@ struct tegra_pcie_port {
 	struct gpio_desc *reset_gpio;
 };
 
-struct tegra_pcie_bus {
-	struct list_head list;
-	unsigned int nr;
-};
-
 static inline void afi_writel(struct tegra_pcie *pcie, u32 value,
 			      unsigned long offset)
 {
@@ -1553,12 +1548,10 @@ static void tegra_pcie_msi_irq(struct irq_desc *desc)
 		while (reg) {
 			unsigned int offset = find_first_bit(&reg, 32);
 			unsigned int index = i * 32 + offset;
-			unsigned int irq;
+			int ret;
 
-			irq = irq_find_mapping(msi->domain->parent, index);
-			if (irq) {
-				generic_handle_irq(irq);
-			} else {
+			ret = generic_handle_domain_irq(msi->domain->parent, index);
+			if (ret) {
 				/*
 				 * that's weird who triggered this?
 				 * just clear it
