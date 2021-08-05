@@ -139,6 +139,11 @@ struct f2fs_mount_info {
 	int fsync_mode;			/* fsync policy */
 	int fs_mode;			/* fs mode: LFS or ADAPTIVE */
 	int bggc_mode;			/* bggc mode: off, on or sync */
+	int discard_unit;		/*
+					 * discard command's offset/size should
+					 * be aligned to this unit: block,
+					 * segment or section
+					 */
 	struct fscrypt_dummy_policy dummy_enc_policy; /* test dummy encryption */
 	block_t unusable_cap_perc;	/* percentage for cap */
 	block_t unusable_cap;		/* Amount of space allowed to be
@@ -1252,6 +1257,7 @@ enum {
 	GC_IDLE_AT,
 	GC_URGENT_HIGH,
 	GC_URGENT_LOW,
+	MAX_GC_MODE,
 };
 
 enum {
@@ -1295,6 +1301,12 @@ enum {
 				 * user can control the file compression
 				 * using ioctls
 				 */
+};
+
+enum {
+	DISCARD_UNIT_BLOCK,	/* basic discard unit is block */
+	DISCARD_UNIT_SEGMENT,	/* basic discard unit is segment */
+	DISCARD_UNIT_SECTION,	/* basic discard unit is section */
 };
 
 static inline int f2fs_test_bit(unsigned int nr, char *addr);
@@ -1731,6 +1743,12 @@ struct f2fs_sb_info {
 
 	struct kmem_cache *inline_xattr_slab;	/* inline xattr entry */
 	unsigned int inline_xattr_slab_size;	/* default inline xattr slab size */
+
+	/* For reclaimed segs statistics per each GC mode */
+	unsigned int gc_segment_mode;		/* GC state for reclaimed segments */
+	unsigned int gc_reclaimed_segs[MAX_GC_MODE];	/* Reclaimed segs for each mode */
+
+	unsigned long seq_file_ra_mul;		/* multiplier for ra_pages of seq. files in fadvise */
 
 #ifdef CONFIG_F2FS_FS_COMPRESSION
 	struct kmem_cache *page_array_slab;	/* page array entry */
@@ -3986,6 +4004,9 @@ void f2fs_destroy_extent_cache(void);
 /*
  * sysfs.c
  */
+#define MIN_RA_MUL	2
+#define MAX_RA_MUL	256
+
 int __init f2fs_init_sysfs(void);
 void f2fs_exit_sysfs(void);
 int f2fs_register_sysfs(struct f2fs_sb_info *sbi);
@@ -4136,7 +4157,8 @@ static inline void set_compress_context(struct inode *inode)
 				1 << COMPRESS_CHKSUM : 0;
 	F2FS_I(inode)->i_cluster_size =
 			1 << F2FS_I(inode)->i_log_cluster_size;
-	if (F2FS_I(inode)->i_compress_algorithm == COMPRESS_LZ4 &&
+	if ((F2FS_I(inode)->i_compress_algorithm == COMPRESS_LZ4 ||
+		F2FS_I(inode)->i_compress_algorithm == COMPRESS_ZSTD) &&
 			F2FS_OPTION(sbi).compress_level)
 		F2FS_I(inode)->i_compress_flag |=
 				F2FS_OPTION(sbi).compress_level <<
@@ -4304,16 +4326,6 @@ static inline int block_unaligned_IO(struct inode *inode,
 	return align & blocksize_mask;
 }
 
-static inline int allow_outplace_dio(struct inode *inode,
-				struct kiocb *iocb, struct iov_iter *iter)
-{
-	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-	int rw = iov_iter_rw(iter);
-
-	return (f2fs_lfs_mode(sbi) && (rw == WRITE) &&
-				!block_unaligned_IO(inode, iocb, iter));
-}
-
 static inline bool f2fs_force_buffered_io(struct inode *inode,
 				struct kiocb *iocb, struct iov_iter *iter)
 {
@@ -4366,6 +4378,11 @@ static inline bool is_journalled_quota(struct f2fs_sb_info *sbi)
 		return true;
 #endif
 	return false;
+}
+
+static inline bool f2fs_block_unit_discard(struct f2fs_sb_info *sbi)
+{
+	return F2FS_OPTION(sbi).discard_unit == DISCARD_UNIT_BLOCK;
 }
 
 #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
