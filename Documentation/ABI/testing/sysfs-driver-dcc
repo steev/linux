@@ -1,0 +1,114 @@
+What:           /sys/bus/platform/devices/.../trigger
+Date:           March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This is the sysfs interface for manual software
+		triggers.The user can simply enter a 1 against
+		the sysfs file and enable a manual trigger.
+		Example:
+		echo  1 > /sys/bus/platform/devices/.../trigger
+
+What:           /sys/bus/platform/devices/.../enable
+Date:           March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This sysfs interface is used for enabling the
+		the dcc hardware.Without this being set to 1,
+		the dcc hardware ceases to function.
+		Example:
+		echo  0 > /sys/bus/platform/devices/.../enable
+		(disable interface)
+		echo  1 > /sys/bus/platform/devices/.../enable
+		(enable interface)
+
+What:           /sys/bus/platform/devices/.../config
+Date:           March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This is the most commonly used sysfs interface
+		file and this basically stores the addresses of
+		the registers which needs to be read in case of
+		a hardware crash or manual software triggers.
+		Example:
+		echo  0x80000010 10 > /sys/bus/platform/devices/../config
+		This specifies that 10 words starting from address
+		0x80000010 is to be read.In case there are no words to be
+		specified we can simply enter the address.
+
+What:           /sys/bus/platform/devices/.../config_write
+Date:           March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This file allows user to write a value to the register
+		address given as argument.The values are entered in the
+		form of <register_address> <value>.The reason for this
+		feature of dcc is that for accessing certain registers
+		it is necessary to set some bits of soe other register.
+		That is achievable by giving DCC this privelege.
+		Example:
+		echo 0x80000000 0xFF > /sys/bus/platform/devices/.../config_write
+
+What:           /sys/bus/platform/devices/.../config_reset
+Date:           March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This file is used to reset the configuration of
+		a dcc driver to the default configuration.
+		Example:
+		echo  1 > /sys/bus/platform/devices/.../config_reset
+
+What:           /sys/bus/platform/devices/.../loop
+Date:		March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This file is used to enter the loop count as dcc
+		driver gives the option to loop multiple times on
+		the same register and store the values for each
+		loop.This is done to capture the changing values
+		of a register with time which comes handy for
+		debugging purposes.
+		Example:
+		echo 10 > /sys/bus/platform/devices/10a2000.dcc/loop
+		(Setting the loop count to 10)
+		echo  0x80000010 10 > /sys/bus/platform/devices/.../config
+                (Read 10 words starting from address 0x80000010O)
+		echo 1 > /sys/bus/platform/devices/.../loop
+		(Terminate the loop by writing a count of 1 to the loop sysfs node)
+
+What:           /sys/bus/platform/devices/.../rd_mod_wr
+Date:           March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This file is used to read the value of the register
+		and then write the value given as an argument to the
+		register address in config.The address argument should
+		be given of the form <mask> <value>.For debugging
+		purposes sometimes we need to first read from a register
+		and then set some values to the register.
+		Example:
+		echo 0x80000000 > /sys/bus/platform/devices/.../config
+		(Set the address in config file)
+		echo 0xF 0xA > /sys/bus/platform/devices/.../rd_mod_wr
+		(Provide the mask and the value to write)
+
+What:           /sys/bus/platform/devices/.../ready
+Date:           March 2021
+Contact:        Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This file is used to check the status of the dcc
+		hardware if it's ready to take the inputs.
+		Example:
+		cat /sys/bus/platform/devices/.../ready
+
+What:		/sys/bus/platform/devices/.../curr_list
+Date:		February 2021
+Contact:	Souradeep Chowdhury <schowdhu@codeaurora.org>
+Description:
+		This attribute is used to enter the linklist to be
+		used while appending addresses.The range of values
+		for this can be from 0 to 3.This feature is given in
+		order to use certain linkedlist for certain debugging
+		purposes.
+		Example:
+		echo 0 > /sys/bus/platform/devices/10a2000.dcc/curr_list
+
