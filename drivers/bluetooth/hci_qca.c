@@ -69,6 +69,8 @@
 #define QCA_LAST_SEQUENCE_NUM		0xFFFF
 #define QCA_CRASHBYTE_PACKET_LEN	1096
 #define QCA_MEMDUMP_BYTE		0xFB
+#define QCA_SSR_OPCODE			0xFC0C
+#define QCA_SSR_PKT_LEN		5
 
 enum qca_flags {
 	QCA_IBS_DISABLED,
@@ -868,6 +870,14 @@ static int qca_enqueue(struct hci_uart *hu, struct sk_buff *skb)
 
 	/* Prepend skb with frame type */
 	memcpy(skb_push(skb, 1), &hci_skb_pkt_type(skb), 1);
+
+	if (hci_skb_pkt_type(skb) == HCI_COMMAND_PKT &&
+	    skb->len == QCA_SSR_PKT_LEN &&
+	    hci_skb_opcode(skb) == QCA_SSR_OPCODE) {
+		bt_dev_info(hu->hdev, "Triggering ssr");
+		set_bit(QCA_SSR_TRIGGERED, &qca->flags);
+		set_bit(QCA_MEMDUMP_COLLECTION, &qca->flags);
+	}
 
 	spin_lock_irqsave(&qca->hci_ibs_lock, flags);
 
