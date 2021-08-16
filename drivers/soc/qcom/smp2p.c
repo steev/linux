@@ -18,6 +18,7 @@
 #include <linux/soc/qcom/smem.h>
 #include <linux/soc/qcom/smem_state.h>
 #include <linux/spinlock.h>
+#include <linux/pm_wakeirq.h>
 
 /*
  * The Shared Memory Point to Point (SMP2P) protocol facilitates communication
@@ -538,8 +539,19 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 		goto unwind_interfaces;
 	}
 
+	/* Setup smp2p interrupt as wakeup source */
+	ret = device_init_wakeup(&pdev->dev, true);
+	if (ret)
+		goto unwind_interfaces;
+
+	ret = dev_pm_set_wake_irq(&pdev->dev, irq);
+	if (ret)
+		goto set_wakeup_failed;
 
 	return 0;
+
+set_wakeup_failed:
+	device_init_wakeup(&pdev->dev, false);
 
 unwind_interfaces:
 	list_for_each_entry(entry, &smp2p->inbound, node)
