@@ -68,6 +68,14 @@
 		clock-names = "ext_clock";
 	};
 
+	typec2_vbus: regulator-typec2_vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "TYPEC2_VBUS";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		vin-supply = <&dc_in>;
+	};
+
 	flash_1v8: regulator-flash_1v8 {
 		compatible = "regulator-fixed";
 		regulator-name = "FLASH_1V8";
@@ -210,6 +218,18 @@
 	};
 };
 
+&ao_pinctrl {
+	/* Ensure the TYPE C controller irq pin is not driven by the SoC */
+	fusb302_irq_pins: fusb302_irq {
+		mux {
+			groups = "GPIOAO_5";
+			function = "gpio_aobus";
+			bias-pull-up;
+			output-disable;
+		};
+	};
+};
+
 &arb {
 	status = "okay";
 };
@@ -295,6 +315,26 @@
 	status = "disabled";
 	pinctrl-0 = <&remote_input_ao_pins>;
 	pinctrl-names = "default";
+};
+
+&i2c3 {
+	pinctrl-0 = <&i2c3_sda_a_pins>, <&i2c3_sck_a_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	fusb302@22 {
+		compatible = "fcs,fusb302";
+		reg = <0x22>;
+
+		pinctrl-0 = <&fusb302_irq_pins>;
+		pinctrl-names = "default";
+		interrupt-parent = <&gpio_intc>;
+		interrupts = <59 IRQ_TYPE_LEVEL_LOW>;
+
+		vbus-supply = <&typec2_vbus>;
+
+		status = "okay";
+	};
 };
 
 &pwm_AO_cd {
@@ -416,4 +456,12 @@
 
 &usb {
 	status = "okay";
+};
+
+&usb2_phy0 {
+	phy-supply = <&typec2_vbus>;
+};
+
+&usb3_pcie_phy {
+	phy-supply = <&typec2_vbus>;
 };
