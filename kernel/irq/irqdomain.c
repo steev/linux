@@ -1231,7 +1231,7 @@ static int irq_domain_trim_hierarchy(unsigned int virq)
 	 */
 	for (irqd = irq_data->parent_data; irqd; irq_data = irqd, irqd = irqd->parent_data) {
 		/* Can't have a valid irqchip after a trim marker */
-		if (irqd->chip && tail)
+		if (!IS_ERR(irqd->chip) && tail)
 			return -EINVAL;
 
 		/* Can't have an empty irqchip before a trim marker */
@@ -1243,7 +1243,8 @@ static int irq_domain_trim_hierarchy(unsigned int virq)
 			if (PTR_ERR(irqd->chip) != -ENOTCONN)
 				return -EINVAL;
 
-			tail = irq_data;
+			if (!tail)
+				tail = irq_data;
 		}
 	}
 
