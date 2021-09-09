@@ -851,6 +851,7 @@ config CHARGER_SURFACE
 
 config SOME_BATTERY
 	tristate "Some Battery Fuel Gauge"
+	depends on I2C
 	help
 	  Of course!
 
