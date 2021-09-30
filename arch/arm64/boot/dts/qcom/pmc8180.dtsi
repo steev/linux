@@ -42,7 +42,7 @@
 
 &spmi_bus {
 	pmc8180_0: pmic@0 {
-		compatible = "qcom,pmc8180", "qcom,spmi-pmic";
+		compatible = "qcom,pm8150", "qcom,spmi-pmic";
 		reg = <0x0 SPMI_USID>;
 		#address-cells = <1>;
 		#size-cells = <0>;

@@ -40,8 +40,114 @@
 };
 
 &spmi_bus {
+	pmic@2 {
+		compatible = "qcom,smb2351", "qcom,spmi-pmic";
+		reg = <0x2 SPMI_USID>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		bcl@1d00 {
+			compatible = "qcom,bcl-v5";
+			reg = <0x1d00 0x100>;
+			interrupts = <0x2 0x1d 0x0 IRQ_TYPE_NONE>,
+				     <0x2 0x1d 0x1 IRQ_TYPE_NONE>,
+				     <0x2 0x1d 0x2 IRQ_TYPE_NONE>;
+			interrupt-names = "bcl-lvl0",
+					  "bcl-lvl1",
+					  "bcl-lvl2";
+			#thermal-sensor-cells = <1>;
+		};
+
+		adc@3100 {
+			compatible = "qcom,spmi-adc-rev2";
+			reg = <0x3100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			#io-channel-cells = <1>;
+			interrupts = <0x2 0x31 0x0 IRQ_TYPE_EDGE_RISING>;
+
+			ref-gnd@0 {
+				reg = <ADC5_REF_GND>;
+				qcom,pre-scaling = <1 1>;
+				label = "ref_gnd";
+			};
+
+			vref-1p25@1 {
+				reg = <ADC5_1P25VREF>;
+				qcom,pre-scaling = <1 1>;
+				label = "vref_1p25";
+			};
+
+			vcoin@85 {
+				reg = <0x85>;
+				qcom,pre-scaling = <1 1>;
+				label = "vcoin2";
+			};
+		};
+	};
+
+	pmic@6 {
+		compatible = "qcom,pm8150c", "qcom,spmi-pmic";
+		reg = <0x6 SPMI_USID>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	pmic@8 {
+		compatible = "qcom,pm8150", "qcom,spmi-pmic";
+		reg = <0x8 SPMI_USID>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	pmic@a {
+		compatible = "qcom,smb2351", "qcom,spmi-pmic";
+		reg = <0xa SPMI_USID>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		bcl@1d00 {
+			compatible = "qcom,bcl-v5";
+			reg = <0x1d00 0x100>;
+			interrupts = <0xa 0x1d 0x0 IRQ_TYPE_NONE>,
+				     <0xa 0x1d 0x1 IRQ_TYPE_NONE>,
+				     <0xa 0x1d 0x2 IRQ_TYPE_NONE>;
+			interrupt-names = "bcl-lvl0",
+					  "bcl-lvl1",
+					  "bcl-lvl2";
+			#thermal-sensor-cells = <1>;
+		};
+
+		adc@3100 {
+			compatible = "qcom,spmi-adc-rev2";
+			reg = <0x3100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			#io-channel-cells = <1>;
+			interrupts = <0xa 0x31 0x0 IRQ_TYPE_EDGE_RISING>;
+
+			ref-gnd@0 {
+				reg = <ADC5_REF_GND>;
+				qcom,pre-scaling = <1 1>;
+				label = "ref_gnd";
+			};
+
+			vref-1p25@1 {
+				reg = <ADC5_1P25VREF>;
+				qcom,pre-scaling = <1 1>;
+				label = "vref_1p25";
+			};
+
+			vcoin@85 {
+				reg = <0x85>;
+				qcom,pre-scaling = <1 1>;
+				label = "vcoin";
+			};
+		};
+	};
+
 	pmic@4 {
-		compatible = "qcom,pmc8180c", "qcom,spmi-pmic";
+		compatible = "qcom,pm8150c", "qcom,spmi-pmic";
 		reg = <0x4 SPMI_USID>;
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -51,6 +157,18 @@
 			reg = <0x0800>;
 
 			status = "disabled";
+		};
+
+		pm8150l_bcl: bcl@3d00 {
+			compatible = "qcom,bcl-v5";
+			reg = <0x3d00 0x100>;
+			interrupts = <0x4 0x3d 0x0 IRQ_TYPE_NONE>,
+				     <0x4 0x3d 0x1 IRQ_TYPE_NONE>,
+				     <0x4 0x3d 0x2 IRQ_TYPE_NONE>;
+			interrupt-names = "bcl-lvl0",
+					  "bcl-lvl1",
+					  "bcl-lvl2";
+			#thermal-sensor-cells = <1>;
 		};
 
 		pmc8180c_temp: temp-alarm@2400 {

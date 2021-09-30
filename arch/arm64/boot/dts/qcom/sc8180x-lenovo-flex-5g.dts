@@ -573,7 +573,7 @@
 	pinctrl-0 = <&uart13_state>;
 
 	bluetooth {
-		compatible = "qcom,wcn3990-bt";
+		compatible = "qcom,wcn3998-bt";
 
 		vddio-supply = <&vreg_s4a_1p8>;
 		vddxo-supply = <&vreg_l7a_1p8>;
