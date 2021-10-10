@@ -1,0 +1,84 @@
+## Introduction
+
+This document describes overlays provided in the kernel packages.
+For generic device tree overlays documentation please see
+https://wiki.radxa.com/Device-tree-overlays
+
+## Platform and Chips:
+
+Amlogic
+- meson-g12a / S905Y2
+
+#### usage
+
+Kernel provided DT overlay files are in
+  /boot/dtbs/$(uname -r)/amlogic/overlay/
+
+/boot/uEnv.txt contents:
+
+overlays=meson-g12a-i2c-ee-m3 meson-g12a-i2c-ao-m0 meson-g12a-uart-ee-c
+
+Add names of overlays you want to activate to overlays= line in /boot/uEnv.txt, separated with spaces.
+Add required parameters with their values to /boot/uEnv.txt, one per line.
+Add optional parameters with their values to /boot/uEnv.txt if you want to change the default value, one per line.
+
+#### Meson Overlay details:
+
+- meson-g12a-i2c-ee-m1 meson-g12a-i2c-ee-m3 meson-g12a-i2c-ao-m0
+- meson-g12a-uart-ee-c
+- meson-g12a-pwm-c-on-gpiox-8 meson-g12a-pwmao-a-on-gpioao-11
+
+#### meson-g12a-i2c-ee-m1
+
+Activates I2C EE M3
+
+Device name: /dev/i2c-1
+
+Pins (SCL, SDA): GPIOH_7, GPIOH_6
+
+Usage: add one line in /boot/uEnv.txt
+overlays=meson-g12a-i2c-ee-m1
+
+#### meson-g12a-i2c-ee-m3
+
+Activates I2C EE M3
+
+Device name: /dev/i2c-3
+
+Pins (SCL, SDA): GPIOA_15, GPIOA_14
+
+Usage: add one line in /boot/uEnv.txt
+overlays=meson-g12a-i2c-ee-m3
+
+#### meson-g12a-i2c-ao-m0
+
+Activates I2C AO M0
+
+Device name: /dev/i2c-4
+
+Pins (SCL, SDA): GPIOAO_2, GPIOAO_3
+
+Usage: add one line in /boot/uEnv.txt
+overlays=meson-g12a-i2c-ao-m0
+
+#### meson-g12a-uart-ee-c
+
+Activates UART EE C (/dev/ttyAML4)
+
+pins (RX, TX, RTS, CTS): GPIOH_6, GPIOH_7, GPIOH_4, GPIOH_5
+
+Usage: add one line in /boot/uEnv.txt
+overlays=meson-g12a-uart-ee-c
+
+#### meson-g12a-pwm-c-on-gpiox-8
+
+Activates PWM_C
+
+Pins: GPIOX_8
+
+#### meson-g12a-pwmao-a-on-gpioao-11
+
+Activates PWMAO_A
+
+Pins: GPIOAO_11
+
