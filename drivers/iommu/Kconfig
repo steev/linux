@@ -311,6 +311,7 @@ config ARM_SMMU
 	select IOMMU_API
 	select IOMMU_IO_PGTABLE_LPAE
 	select ARM_DMA_USE_IOMMU if ARM
+	select QCOM_SCM if ARM_SMMU_QCOM
 	help
 	  Support for implementations of the ARM System MMU architecture
 	  versions 1 and 2.
@@ -354,6 +355,13 @@ config ARM_SMMU_DISABLE_BYPASS_BY_DEFAULT
 	  NOTE: the kernel command line parameter
 	  'arm-smmu.disable_bypass' will continue to override this
 	  config.
+
+config ARM_SMMU_QCOM
+	def_bool y
+	depends on ARM_SMMU && ARCH_QCOM
+	help
+	  When running on a Qualcomm platform that has the custom variant
+	  of the ARM SMMU, this needs to be built into the SMMU driver.
 
 config ARM_SMMU_V3
 	tristate "ARM Ltd. System MMU Version 3 (SMMUv3) Support"
