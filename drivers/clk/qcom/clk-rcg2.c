@@ -746,11 +746,10 @@ static int clk_pixel_determine_rate(struct clk_hw *hw,
 	return -EINVAL;
 }
 
-static int clk_pixel_set_rate(struct clk_hw *hw, unsigned long rate,
-		unsigned long parent_rate)
+static int clk_pixel_set_rate_helper(struct clk_hw *hw, unsigned long rate,
+		unsigned long parent_rate, struct freq_tbl *f)
 {
 	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
-	struct freq_tbl f = { 0 };
 	const struct frac_entry *frac = frac_table_pixel;
 	unsigned long request;
 	int delta = 100000;
@@ -764,7 +763,7 @@ static int clk_pixel_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	for (i = 0; i < num_parents; i++)
 		if (cfg == rcg->parent_map[i].cfg) {
-			f.src = rcg->parent_map[i].src;
+			f->src = rcg->parent_map[i].src;
 			break;
 		}
 
@@ -777,15 +776,29 @@ static int clk_pixel_set_rate(struct clk_hw *hw, unsigned long rate,
 
 		regmap_read(rcg->clkr.regmap, rcg->cmd_rcgr + CFG_REG,
 				&hid_div);
-		f.pre_div = hid_div;
-		f.pre_div >>= CFG_SRC_DIV_SHIFT;
-		f.pre_div &= mask;
-		f.m = frac->num;
-		f.n = frac->den;
+		f->pre_div = hid_div;
+		f->pre_div >>= CFG_SRC_DIV_SHIFT;
+		f->pre_div &= mask;
+		f->m = frac->num;
+		f->n = frac->den;
 
-		return clk_rcg2_configure(rcg, &f);
+		return 0;
 	}
 	return -EINVAL;
+}
+
+static int clk_pixel_set_rate(struct clk_hw *hw, unsigned long rate,
+		unsigned long parent_rate)
+{
+	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
+	struct freq_tbl f = { 0 };
+	int ret;
+
+	ret = clk_pixel_set_rate_helper(hw, rate, parent_rate, &f);
+	if (ret)
+		return ret;
+
+	return clk_rcg2_configure(rcg, &f);
 }
 
 static int clk_pixel_set_rate_and_parent(struct clk_hw *hw, unsigned long rate,
@@ -1047,6 +1060,41 @@ const struct clk_ops clk_rcg2_shared_ops = {
 	.set_rate_and_parent = clk_rcg2_shared_set_rate_and_parent,
 };
 EXPORT_SYMBOL_GPL(clk_rcg2_shared_ops);
+
+static int clk_pixel_shared_set_rate(struct clk_hw *hw, unsigned long rate,
+		unsigned long parent_rate)
+{
+	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
+	struct freq_tbl f = { 0 };
+	int ret;
+
+	ret = clk_pixel_set_rate_helper(hw, rate, parent_rate, &f);
+	if (ret)
+		return ret;
+
+	if (!__clk_is_enabled(hw->clk))
+		return __clk_rcg2_configure(rcg, &f);
+
+	return clk_rcg2_shared_force_enable_clear(hw, &f);
+}
+
+static int clk_pixel_shared_set_rate_and_parent(struct clk_hw *hw, unsigned long rate,
+		unsigned long parent_rate, u8 index)
+{
+	return clk_pixel_shared_set_rate(hw, rate, parent_rate);
+}
+
+const struct clk_ops clk_pixel_shared_ops = {
+	.enable = clk_rcg2_shared_enable,
+	.disable = clk_rcg2_shared_disable,
+	.get_parent = clk_rcg2_get_parent,
+	.set_parent = clk_rcg2_set_parent,
+	.recalc_rate = clk_rcg2_recalc_rate,
+	.set_rate = clk_pixel_shared_set_rate,
+	.set_rate_and_parent = clk_pixel_shared_set_rate_and_parent,
+	.determine_rate = clk_pixel_determine_rate,
+};
+EXPORT_SYMBOL_GPL(clk_pixel_shared_ops);
 
 /* Common APIs to be used for DFS based RCGR */
 static void clk_rcg2_dfs_populate_freq(struct clk_hw *hw, unsigned int l,
