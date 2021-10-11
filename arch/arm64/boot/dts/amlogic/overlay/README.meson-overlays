@@ -16,7 +16,9 @@ Kernel provided DT overlay files are in
 
 /boot/uEnv.txt contents:
 
-overlays=meson-g12a-i2c-ee-m3 meson-g12a-i2c-ao-m0 meson-g12a-uart-ee-c
+overlays=meson-g12a-i2c-ao-m0-gpioao-2-gpioao-3 meson-g12a-i2c-ee-m1-gpioh-6-gpioh-7 meson-g12a-i2c-ee-m3-gpioa-14-gpioa-15 meson-g12a-spi-spidev
+param_spidev_spi_bus=0
+param_spidev_max_freq=10000000
 
 Add names of overlays you want to activate to overlays= line in /boot/uEnv.txt, separated with spaces.
 Add required parameters with their values to /boot/uEnv.txt, one per line.
@@ -24,22 +26,34 @@ Add optional parameters with their values to /boot/uEnv.txt if you want to chang
 
 #### Meson Overlay details:
 
-- meson-g12a-i2c-ee-m1 meson-g12a-i2c-ee-m3 meson-g12a-i2c-ao-m0
+- meson-g12a-i2c-ao-m0-gpioao-2-gpioao-3 meson-g12a-i2c-ee-m1-gpioh-6-gpioh-7 meson-g12a-i2c-ee-m1-gpiox-10-gpiox-11 meson-g12a-i2c-ee-m3-gpioa-14-gpioa-15
+- meson-g12a-pwmao-a-on-gpioao-11 meson-g12a-pwm-c-on-gpiox-8
+- meson-g12a-spi-spidev
 - meson-g12a-uart-ee-c
-- meson-g12a-pwm-c-on-gpiox-8 meson-g12a-pwmao-a-on-gpioao-11
 
-#### meson-g12a-i2c-ee-m1
+#### meson-g12a-i2c-ee-m1-gpioh-6-gpioh-7
 
-Activates I2C EE M3
+Activates I2C EE M1
 
 Device name: /dev/i2c-1
 
 Pins (SCL, SDA): GPIOH_7, GPIOH_6
 
 Usage: add one line in /boot/uEnv.txt
-overlays=meson-g12a-i2c-ee-m1
+overlays=meson-g12a-i2c-ee-m1-gpioh-6-gpioh-7
 
-#### meson-g12a-i2c-ee-m3
+#### meson-g12a-i2c-ee-m1-gpiox-10-gpiox-11
+
+Activates I2C EE M1
+
+Device name: /dev/i2c-1
+
+Pins (SCL, SDA): GPIOX_11, GPIOX_10
+
+Usage: add one line in /boot/uEnv.txt
+overlays=meson-g12a-i2c-ee-m1-gpiox-10-gpiox-11
+
+#### meson-g12a-i2c-ee-m3-gpioa-14-gpioa-15
 
 Activates I2C EE M3
 
@@ -48,9 +62,9 @@ Device name: /dev/i2c-3
 Pins (SCL, SDA): GPIOA_15, GPIOA_14
 
 Usage: add one line in /boot/uEnv.txt
-overlays=meson-g12a-i2c-ee-m3
+overlays=meson-g12a-i2c-ee-m3-gpioa-14-gpioa-15
 
-#### meson-g12a-i2c-ao-m0
+#### meson-g12a-i2c-ao-m0-gpioao-2-gpioao-3
 
 Activates I2C AO M0
 
@@ -59,7 +73,7 @@ Device name: /dev/i2c-4
 Pins (SCL, SDA): GPIOAO_2, GPIOAO_3
 
 Usage: add one line in /boot/uEnv.txt
-overlays=meson-g12a-i2c-ao-m0
+overlays=meson-g12a-i2c-ao-m0-gpioao-2-gpioao-3
 
 #### meson-g12a-uart-ee-c
 
@@ -81,4 +95,36 @@ Pins: GPIOX_8
 Activates PWMAO_A
 
 Pins: GPIOAO_11
+
+#### meson-g12a-spi-spidev
+
+Activates SPIdev device node (/dev/spidevX.Y) for userspace SPI access,
+where X is the bus number and Y is the CS number
+
+SPI A bus
+    pins (SS0, SCLK, MOSI, MISO): GPIOX_10, GPIOX_11, GPIOX_8, GPIOX_9
+    device: /dev/spidev0.0
+
+SPI B bus
+    pins (SS0, SCLK, MOSI, MISO): GPIOH_6, GPIOH_7, GPIOH_4, GPIOH_5
+    device: /dev/spidev1.0
+
+Parameters:
+
+param_spidev_spi_bus (int)
+    SPI bus to activate SPIdev support on
+    Required
+    Supported values: 0, 1
+
+param_spidev_spi_cs (int)
+    SPI chip select number
+    Optional
+    Default: 0
+    Supported values: 0
+
+param_spidev_max_freq (int)
+    Maximum SPIdev frequency
+    Optional
+    Default: 10000000
+    Range: 3000 - 100000000
 
