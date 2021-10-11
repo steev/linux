@@ -8,7 +8,7 @@
 		target = <&i2c1>;
 		__overlay__ {
 			status = "okay";
-			pinctrl-0 = <&i2c1_sck_x_pins &i2c1_sda_h6_pins>;
+			pinctrl-0 = <&i2c1_sda_h6_pins &i2c1_sck_h7_pins>;
 			pinctrl-names = "default";
 		};
 	};
