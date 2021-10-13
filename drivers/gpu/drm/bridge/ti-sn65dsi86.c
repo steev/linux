@@ -733,12 +733,13 @@ static int ti_sn_bridge_attach(struct drm_bridge *bridge,
 	if (!(val & DPPLL_CLK_SRC_DSICLK))
 		dsi->mode_flags |= MIPI_DSI_CLOCK_NON_CONTINUOUS;
 
+	pdata->dsi = dsi;
+
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0) {
 		DRM_ERROR("failed to attach dsi to host\n");
 		goto err_dsi_attach;
 	}
-	pdata->dsi = dsi;
 
 	/* We never want the next bridge to *also* create a connector: */
 	flags |= DRM_BRIDGE_ATTACH_NO_CONNECTOR;
