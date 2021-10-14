@@ -88,6 +88,7 @@
 
 		gpio = <&tlmm 88 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 
 	sw_edp_1p2: sw-edp-1p2-regulator {
@@ -100,6 +101,7 @@
 
 		gpio = <&pm8998_gpio 9 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 
 	sn65dsi86_refclk: sn65dsi86-refclk {
@@ -175,6 +177,7 @@
 			regulator-min-microvolt = <880000>;
 			regulator-max-microvolt = <880000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-boot-on;
 		};
 
 		vddpx_10:
@@ -243,7 +246,7 @@
 			regulator-min-microvolt = <1880000>;
 			regulator-max-microvolt = <1880000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			regulator-always-on;
+			regulator-boot-on;
 		};
 
 		vreg_l15a_1p8: ldo15 {
@@ -315,6 +318,7 @@
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1208000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-boot-on;
 		};
 
 		vreg_l28a_3p0: ldo28 {
