@@ -159,16 +159,6 @@ void topology_set_cpu_scale(unsigned int cpu, unsigned long capacity)
 
 DEFINE_PER_CPU(unsigned long, thermal_pressure);
 
-void topology_set_thermal_pressure(const struct cpumask *cpus,
-			       unsigned long th_pressure)
-{
-	int cpu;
-
-	for_each_cpu(cpu, cpus)
-		WRITE_ONCE(per_cpu(thermal_pressure, cpu), th_pressure);
-}
-EXPORT_SYMBOL_GPL(topology_set_thermal_pressure);
-
 /**
  * topology_thermal_pressure_update() - Update thermal pressure for CPUs
  * @cpus	: The related CPUs for which capacity has been reduced
@@ -184,7 +174,7 @@ EXPORT_SYMBOL_GPL(topology_set_thermal_pressure);
 void topology_thermal_pressure_update(const struct cpumask *cpus,
 				      unsigned long capped_freq)
 {
-	unsigned long max_capacity, capacity;
+	unsigned long max_capacity, capacity, th_pressure;
 	int cpu;
 
 	if (!cpus)
@@ -199,7 +189,10 @@ void topology_thermal_pressure_update(const struct cpumask *cpus,
 	capacity = mult_frac(capped_freq, max_capacity,
 			     per_cpu(freq_factor, cpu));
 
-	arch_set_thermal_pressure(cpus, max_capacity - capacity);
+	th_pressure = max_capacity - capacity;
+
+	for_each_cpu(cpu, cpus)
+		WRITE_ONCE(per_cpu(thermal_pressure, cpu), th_pressure);
 }
 EXPORT_SYMBOL_GPL(topology_thermal_pressure_update);
 

@@ -259,13 +259,6 @@ unsigned long arch_scale_thermal_pressure(int cpu)
 }
 #endif
 
-#ifndef arch_set_thermal_pressure
-static __always_inline
-void arch_set_thermal_pressure(const struct cpumask *cpus,
-			       unsigned long th_pressure)
-{ }
-#endif
-
 #ifndef arch_thermal_pressure_update
 static __always_inline
 void arch_thermal_pressure_update(const struct cpumask *cpus,
