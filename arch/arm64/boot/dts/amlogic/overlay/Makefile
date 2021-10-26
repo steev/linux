@@ -7,6 +7,7 @@ dtbo-$(CONFIG_ARCH_MESON) += \
 	meson-g12a-pwmao-a-on-gpioao-11.dtbo \
 	meson-g12a-pwm-c-on-gpiox-8.dtbo \
 	meson-g12a-spi-spidev.dtbo \
+	meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1.dtbo \
 	meson-g12a-uart-ao-b-on-gpioao-2-gpioao-3.dtbo \
 	meson-g12a-uart-ao-b-on-gpioao-8-gpioao-9.dtbo \
 	meson-g12a-uart-ee-c.dtbo
