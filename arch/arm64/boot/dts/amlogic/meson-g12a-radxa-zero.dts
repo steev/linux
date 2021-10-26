@@ -29,10 +29,6 @@
 		spi2 = &spifc;
 	};
 
-	chosen {
-		stdout-path = "serial0:115200n8";
-	};
-
 	memory@0 {
 		device_type = "memory";
 		reg = <0x0 0x0 0x0 0x40000000>;
@@ -416,12 +412,6 @@
 		clocks = <&wifi32k>;
 		clock-names = "lpo";
 	};
-};
-
-&uart_AO {
-	status = "okay";
-	pinctrl-0 = <&uart_ao_a_pins>;
-	pinctrl-names = "default";
 };
 
 &usb {

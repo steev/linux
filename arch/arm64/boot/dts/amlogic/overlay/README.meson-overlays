@@ -29,7 +29,7 @@ Add optional parameters with their values to /boot/uEnv.txt if you want to chang
 - meson-g12a-i2c-ao-m0-gpioao-2-gpioao-3 meson-g12a-i2c-ee-m1-gpioh-6-gpioh-7 meson-g12a-i2c-ee-m1-gpiox-10-gpiox-11 meson-g12a-i2c-ee-m3-gpioa-14-gpioa-15
 - meson-g12a-pwmao-a-on-gpioao-11 meson-g12a-pwm-c-on-gpiox-8
 - meson-g12a-spi-spidev
-- meson-g12a-uart-ao-b-on-gpioao-2-gpioao-3 meson-g12a-uart-ao-b-on-gpioao-8-gpioao-9 meson-g12a-uart-ee-c
+- meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1 meson-g12a-uart-ao-b-on-gpioao-2-gpioao-3 meson-g12a-uart-ao-b-on-gpioao-8-gpioao-9 meson-g12a-uart-ee-c
 
 #### meson-g12a-i2c-ee-m1-gpioh-6-gpioh-7
 
@@ -74,6 +74,26 @@ Pins (SCL, SDA): GPIOAO_2, GPIOAO_3
 
 Usage: add one line in /boot/uEnv.txt
 overlays=meson-g12a-i2c-ao-m0-gpioao-2-gpioao-3
+
+#### meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1
+
+Activates UART AO A (/dev/ttyAML0)
+
+pins (RX, TX): GPIOAO_1, GPIOAO_0
+
+Usage: add one line in /boot/uEnv.txt
+overlays=meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1
+
+This dtbo meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1 enables us to use /dev/ttyAML0 as serial console or common serial communication.
+
+For usage of serial console, add the following lines to /boot/uEnv.txt
+
+console=ttyAML0,115200
+overlays=meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1
+
+For usage of common serial communication, add the following line to /boot/uEnv.txt
+
+overlays=meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1
 
 #### meson-g12a-uart-ao-b-on-gpioao-2-gpioao-3
 
