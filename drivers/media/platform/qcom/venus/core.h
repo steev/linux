@@ -119,6 +119,7 @@ struct venus_format {
  * @use_tz:	a flag that suggests presence of trustzone
  * @fw:		structure of firmware parameters
  * @lock:	a lock for this strucure
+ * @sync_lock	a lock for probe sync between venus_core and venus_enc/dec
  * @instances:	a list_head of all instances
  * @insts_count:	num of instances
  * @state:	the state of the venus core
@@ -176,6 +177,7 @@ struct venus_core {
 		size_t mem_size;
 	} fw;
 	struct mutex lock;
+	struct mutex sync_lock;
 	struct list_head instances;
 	atomic_t insts_count;
 	unsigned int state;

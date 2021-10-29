@@ -317,6 +317,7 @@ static int venus_probe(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&core->instances);
 	mutex_init(&core->lock);
+	mutex_init(&core->sync_lock);
 	INIT_DELAYED_WORK(&core->work, venus_sys_error_handler);
 
 	ret = devm_request_threaded_irq(dev, core->irq, hfi_isr, hfi_isr_thread,
@@ -330,6 +331,8 @@ static int venus_probe(struct platform_device *pdev)
 		goto err_core_put;
 
 	venus_assign_register_offsets(core);
+
+	mutex_lock(&core->sync_lock);
 
 	ret = v4l2_device_register(dev, &core->v4l2_dev);
 	if (ret)
@@ -377,6 +380,7 @@ static int venus_probe(struct platform_device *pdev)
 		goto err_dev_unregister;
 	}
 
+	mutex_unlock(&core->sync_lock);
 	venus_dbgfs_init(core);
 
 	return 0;
@@ -396,6 +400,7 @@ err_runtime_disable:
 	hfi_destroy(core);
 err_core_deinit:
 	hfi_core_deinit(core, false);
+	mutex_unlock(&core->sync_lock);
 err_core_put:
 	if (core->pm_ops->core_put)
 		core->pm_ops->core_put(core);
@@ -432,6 +437,7 @@ static int venus_remove(struct platform_device *pdev)
 
 	mutex_destroy(&core->pm_lock);
 	mutex_destroy(&core->lock);
+	mutex_destroy(&core->sync_lock);
 	venus_dbgfs_deinit(core);
 
 	return ret;

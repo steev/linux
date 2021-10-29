@@ -1338,17 +1338,32 @@ static int venc_probe(struct platform_device *pdev)
 	if (!core)
 		return -EPROBE_DEFER;
 
+	/* Sync and wait on the venus core to initialize first.
+	 * If we manage to acquire the sync_lock here it means
+	 * that the venus_probe() finished running */
+	ret = mutex_trylock(&core->sync_lock);
+	if (!ret) {
+		return -EPROBE_DEFER;
+	} else {
+		if (core->state != CORE_INIT) {
+			ret = -ENODEV;
+			goto err_core_unlock;
+		}
+	}
+
 	platform_set_drvdata(pdev, core);
 
 	if (core->pm_ops->venc_get) {
 		ret = core->pm_ops->venc_get(dev);
 		if (ret)
-			return ret;
+			goto err_core_unlock;
 	}
 
 	vdev = video_device_alloc();
-	if (!vdev)
-		return -ENOMEM;
+	if (!vdev) {
+		ret = -ENOMEM;
+		goto err_core_unlock;
+	}
 
 	strscpy(vdev->name, "qcom-venus-encoder", sizeof(vdev->name));
 	vdev->release = video_device_release;
@@ -1367,11 +1382,14 @@ static int venc_probe(struct platform_device *pdev)
 
 	video_set_drvdata(vdev, core);
 	pm_runtime_enable(dev);
+	mutex_unlock(&core->sync_lock);
 
 	return 0;
 
 err_vdev_release:
 	video_device_release(vdev);
+err_core_unlock:
+	mutex_unlock(&core->sync_lock);
 	return ret;
 }
 
