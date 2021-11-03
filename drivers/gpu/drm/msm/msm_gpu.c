@@ -16,6 +16,8 @@
 #include <linux/devcoredump.h>
 #include <linux/sched/task.h>
 
+static void hangcheck_timer_reset(struct msm_gpu *gpu);
+
 /*
  * Power Management:
  */
@@ -440,6 +442,10 @@ static void recover_worker(struct kthread_work *work)
 				gpu->funcs->submit(gpu, submit);
 			spin_unlock_irqrestore(&ring->submit_lock, flags);
 		}
+
+		hangcheck_timer_reset(gpu);
+	} else {
+		del_timer(&gpu->hangcheck_timer);
 	}
 
 	mutex_unlock(&dev->struct_mutex);
@@ -712,6 +718,10 @@ static void retire_worker(struct kthread_work *work)
 	struct msm_gpu *gpu = container_of(work, struct msm_gpu, retire_work);
 
 	retire_submits(gpu);
+
+	if (!msm_gpu_active(gpu)) {
+		del_timer(&gpu->hangcheck_timer);
+	}
 }
 
 /* call from irq handler to schedule work to retire bo's */
