@@ -19,6 +19,7 @@
 
 #define AIU_I2S_DAC_CFG_MSB_FIRST	BIT(2)
 #define AIU_I2S_MISC_HOLD_EN		BIT(2)
+#define AIU_I2S_MISC_FORCE_LEFT_RIGHT	BIT(4)
 #define AIU_CLK_CTRL_I2S_DIV_EN		BIT(0)
 #define AIU_CLK_CTRL_I2S_DIV		GENMASK(3, 2)
 #define AIU_CLK_CTRL_AOCLK_INVERT	BIT(6)
@@ -40,9 +41,16 @@ static void aiu_encoder_i2s_divider_enable(struct snd_soc_component *component,
 static void aiu_encoder_i2s_hold(struct snd_soc_component *component,
 				 bool enable)
 {
+	unsigned int value;
+
+	if (enable)
+		value = AIU_I2S_MISC_HOLD_EN;
+	else
+		value = AIU_I2S_MISC_FORCE_LEFT_RIGHT;
+
 	snd_soc_component_update_bits(component, AIU_I2S_MISC,
-				      AIU_I2S_MISC_HOLD_EN,
-				      enable ? AIU_I2S_MISC_HOLD_EN : 0);
+				      AIU_I2S_MISC_HOLD_EN |
+				      AIU_I2S_MISC_FORCE_LEFT_RIGHT, value);
 }
 
 static int aiu_encoder_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
