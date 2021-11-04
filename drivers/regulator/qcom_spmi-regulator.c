@@ -2147,20 +2147,29 @@ static int qcom_spmi_regulator_probe(struct platform_device *pdev)
 			dev_err(dev, "ERROR reading SAW regmap\n");
 	}
 
-	for (reg = match->data; reg->name; reg++) {
-
+	for_each_child_of_node(node, reg_node) {
 		if (saw_regmap) {
-			reg_node = of_get_child_by_name(node, reg->name);
 			reg_prop = of_find_property(reg_node, "qcom,saw-slave",
 						    &lenp);
-			of_node_put(reg_node);
 			if (reg_prop)
 				continue;
 		}
 
+		for (reg = match->data; reg->name; reg++) {
+			if (of_node_name_eq(reg_node, reg->name))
+				break;
+		}
+
+		if (!reg->name) {
+			dev_err(dev, "No regulator matches device node %pOF\n", reg_node);
+			continue;
+		}
+
 		vreg = devm_kzalloc(dev, sizeof(*vreg), GFP_KERNEL);
-		if (!vreg)
+		if (!vreg) {
+			of_node_put(reg_node);
 			return -ENOMEM;
+		}
 
 		vreg->dev = dev;
 		vreg->base = reg->base;
@@ -2211,6 +2220,7 @@ static int qcom_spmi_regulator_probe(struct platform_device *pdev)
 		rdev = devm_regulator_register(dev, &vreg->desc, &config);
 		if (IS_ERR(rdev)) {
 			dev_err(dev, "failed to register %s\n", name);
+			of_node_put(reg_node);
 			return PTR_ERR(rdev);
 		}
 
