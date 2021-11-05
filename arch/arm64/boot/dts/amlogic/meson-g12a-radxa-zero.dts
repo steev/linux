@@ -197,6 +197,17 @@
 		clock-frequency = <32768>;
 		pwms = <&pwm_ef 0 30518 0>; /* PWM_E at 32.768KHz */
 	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led-green {
+			label = "radxa-zero:green";
+			gpios = <&gpio_ao GPIOAO_8 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "on";
+		};
+	};
 };
 
 &ao_pinctrl {
