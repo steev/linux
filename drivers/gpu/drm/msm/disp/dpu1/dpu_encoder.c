@@ -2146,15 +2146,16 @@ int dpu_encoder_setup(struct drm_device *dev, struct drm_encoder *enc,
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct dpu_kms *dpu_kms = to_dpu_kms(priv->kms);
-	struct drm_encoder *drm_enc = NULL;
 	struct dpu_encoder_virt *dpu_enc = NULL;
 	int ret = 0;
 
 	dpu_enc = to_dpu_encoder_virt(enc);
 
 	ret = dpu_encoder_setup_display(dpu_enc, dpu_kms, disp_info);
-	if (ret)
+	if (ret) {
+		DPU_ERROR("failed to create encoder\n");
 		goto fail;
+	}
 
 	atomic_set(&dpu_enc->frame_done_timeout_ms, 0);
 	timer_setup(&dpu_enc->frame_done_timer,
@@ -2178,16 +2179,8 @@ int dpu_encoder_setup(struct drm_device *dev, struct drm_encoder *enc,
 
 	DPU_DEBUG_ENC(dpu_enc, "created\n");
 
-	return ret;
-
 fail:
-	DPU_ERROR("failed to create encoder\n");
-	if (drm_enc)
-		dpu_encoder_destroy(drm_enc);
-
 	return ret;
-
-
 }
 
 struct drm_encoder *dpu_encoder_init(struct drm_device *dev,
