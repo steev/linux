@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
+#include <linux/list_sort.h>
 #include <linux/slab.h>
 #include <linux/slimbus.h>
 #include <sound/pcm_params.h>
@@ -1983,6 +1984,18 @@ static int wcd934x_set_channel_map(struct snd_soc_dai *dai,
 	return 0;
 }
 
+static int wcd934x_slim_ch_comp(void *priv, const struct list_head *a,
+				  const struct list_head *b)
+{
+	struct wcd934x_slim_ch *ch_a = container_of(a, struct wcd934x_slim_ch, list);
+	struct wcd934x_slim_ch *ch_b = container_of(b, struct wcd934x_slim_ch, list);
+
+	if (ch_a->port > ch_b->port)
+		return 1;
+
+	return 0;
+}
+
 static int wcd934x_get_channel_map(struct snd_soc_dai *dai,
 				   unsigned int *tx_num, unsigned int *tx_slot,
 				   unsigned int *rx_num, unsigned int *rx_slot)
@@ -2004,6 +2017,7 @@ static int wcd934x_get_channel_map(struct snd_soc_dai *dai,
 			return -EINVAL;
 		}
 
+		list_sort(NULL, &wcd->dai[dai->id].slim_ch_list, wcd934x_slim_ch_comp);
 		list_for_each_entry(ch, &wcd->dai[dai->id].slim_ch_list, list)
 			rx_slot[i++] = ch->ch_num;
 
@@ -2018,6 +2032,7 @@ static int wcd934x_get_channel_map(struct snd_soc_dai *dai,
 			return -EINVAL;
 		}
 
+		list_sort(NULL, &wcd->dai[dai->id].slim_ch_list, wcd934x_slim_ch_comp);
 		list_for_each_entry(ch, &wcd->dai[dai->id].slim_ch_list, list)
 			tx_slot[i++] = ch->ch_num;
 
