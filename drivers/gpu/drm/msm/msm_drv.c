@@ -1417,7 +1417,7 @@ static void msm_pdev_shutdown(struct platform_device *pdev)
 	struct drm_device *drm = platform_get_drvdata(pdev);
 	struct msm_drm_private *priv = drm ? drm->dev_private : NULL;
 
-	if (!priv || !priv->kms)
+	if (!priv || !priv->kms || !drm->mode_config.funcs)
 		return;
 
 	drm_atomic_helper_shutdown(drm);
