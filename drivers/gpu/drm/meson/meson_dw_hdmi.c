@@ -434,7 +434,7 @@ static int dw_hdmi_phy_init(struct dw_hdmi *hdmi, void *data,
 		readl_relaxed(priv->io_base + _REG(VPU_HDMI_SETTING));
 
 	DRM_DEBUG_DRIVER("\"%s\" div%d\n", mode->name,
-			 mode->clock > 340000 ? 40 : 10);
+			 mode->clock > DRM_HDMI_14_MAX_TMDS_CLK_KHZ ? 40 : 10);
 
 	/* Enable clocks */
 	regmap_update_bits(priv->hhi, HHI_HDMI_CLK_CNTL, 0xffff, 0x100);
@@ -457,7 +457,7 @@ static int dw_hdmi_phy_init(struct dw_hdmi *hdmi, void *data,
 	dw_hdmi->data->top_write(dw_hdmi, HDMITX_TOP_BIST_CNTL, BIT(12));
 
 	/* TMDS pattern setup */
-	if (mode->clock > 340000 &&
+	if (mode->clock > DRM_HDMI_14_MAX_TMDS_CLK_KHZ &&
 	    dw_hdmi->output_bus_fmt == MEDIA_BUS_FMT_YUV8_1X24) {
 		dw_hdmi->data->top_write(dw_hdmi, HDMITX_TOP_TMDS_CLK_PTTN_01,
 				  0);

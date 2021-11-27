@@ -258,6 +258,8 @@ struct drm_hdmi_info {
 	struct drm_hdmi_dsc_cap dsc_cap;
 };
 
+#define DRM_HDMI_14_MAX_TMDS_CLK_KHZ	(340 * 1000)
+
 /**
  * enum drm_link_status - connector's link_status property value
  *
