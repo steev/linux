@@ -167,6 +167,7 @@ clk_rcg2_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
 	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
 	u32 cfg, hid_div, m = 0, n = 0, mode = 0, mask;
+	unsigned long rate;
 
 	regmap_read(rcg->clkr.regmap, RCG_CFG_OFFSET(rcg), &cfg);
 
@@ -186,7 +187,11 @@ clk_rcg2_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 	hid_div = cfg >> CFG_SRC_DIV_SHIFT;
 	hid_div &= mask;
 
-	return calc_rate(parent_rate, m, n, mode, hid_div);
+	rate = calc_rate(parent_rate, m, n, mode, hid_div);
+	if (!rcg->current_rate)
+		rcg->current_rate = rate;
+
+	return rate;
 }
 
 static int _freq_tbl_determine_rate(struct clk_hw *hw, const struct freq_tbl *f,
@@ -978,12 +983,14 @@ static int clk_rcg2_shared_set_rate(struct clk_hw *hw, unsigned long rate,
 	if (!f)
 		return -EINVAL;
 
+	rcg->current_rate = rate;
+
 	/*
-	 * In case clock is disabled, update the CFG, M, N and D registers
-	 * and don't hit the update bit of CMD register.
+	 * In the case that the shared RCG is parked, current_rate will be
+	 * applied as the clock is unparked again, so just return here.
 	 */
 	if (!__clk_is_enabled(hw->clk))
-		return __clk_rcg2_configure(rcg, f);
+		return 0;
 
 	return clk_rcg2_shared_force_enable_clear(hw, f);
 }
@@ -997,7 +1004,12 @@ static int clk_rcg2_shared_set_rate_and_parent(struct clk_hw *hw,
 static int clk_rcg2_shared_enable(struct clk_hw *hw)
 {
 	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
+	const struct freq_tbl *f = NULL;
 	int ret;
+
+	f = qcom_find_freq(rcg->freq_tbl, rcg->current_rate);
+	if (!f)
+		return -EINVAL;
 
 	/*
 	 * Set the update bit because required configuration has already
@@ -1007,7 +1019,7 @@ static int clk_rcg2_shared_enable(struct clk_hw *hw)
 	if (ret)
 		return ret;
 
-	ret = update_config(rcg);
+	ret = clk_rcg2_configure(rcg, f);
 	if (ret)
 		return ret;
 
@@ -1017,13 +1029,6 @@ static int clk_rcg2_shared_enable(struct clk_hw *hw)
 static void clk_rcg2_shared_disable(struct clk_hw *hw)
 {
 	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
-	u32 cfg;
-
-	/*
-	 * Store current configuration as switching to safe source would clear
-	 * the SRC and DIV of CFG register
-	 */
-	regmap_read(rcg->clkr.regmap, rcg->cmd_rcgr + CFG_REG, &cfg);
 
 	/*
 	 * Park the RCG at a safe configuration - sourced off of safe source.
@@ -1041,9 +1046,6 @@ static void clk_rcg2_shared_disable(struct clk_hw *hw)
 	update_config(rcg);
 
 	clk_rcg2_clear_force_enable(hw);
-
-	/* Write back the stored configuration corresponding to current rate */
-	regmap_write(rcg->clkr.regmap, rcg->cmd_rcgr + CFG_REG, cfg);
 }
 
 const struct clk_ops clk_rcg2_shared_ops = {
