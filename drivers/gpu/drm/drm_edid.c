@@ -4975,7 +4975,7 @@ static void drm_parse_hdmi_forum_vsdb(struct drm_connector *connector,
 		u32 max_tmds_clock = hf_vsdb[5] * 5000;
 		struct drm_scdc *scdc = &hdmi->scdc;
 
-		if (max_tmds_clock > 340000) {
+		if (max_tmds_clock > DRM_HDMI_14_MAX_TMDS_CLK_KHZ) {
 			display->max_tmds_clock = max_tmds_clock;
 			DRM_DEBUG_KMS("HF-VSDB: max TMDS clock %d kHz\n",
 				display->max_tmds_clock);

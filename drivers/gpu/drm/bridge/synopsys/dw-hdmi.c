@@ -46,7 +46,7 @@
 /* DW-HDMI Controller >= 0x200a are at least compliant with SCDC version 1 */
 #define SCDC_MIN_SOURCE_VERSION	0x1
 
-#define HDMI14_MAX_TMDSCLK	340000000
+#define HDMI14_MAX_TMDSCLK	(DRM_HDMI_14_MAX_TMDS_CLK_KHZ * 1000)
 
 enum hdmi_datamap {
 	RGB444_8B = 0x01,
@@ -1272,7 +1272,7 @@ static bool dw_hdmi_support_scdc(struct dw_hdmi *hdmi,
 	 * for low rates is not supported either
 	 */
 	if (!display->hdmi.scdc.scrambling.low_rates &&
-	    display->max_tmds_clock <= 340000)
+	    display->max_tmds_clock <= DRM_HDMI_14_MAX_TMDS_CLK_KHZ)
 		return false;
 
 	return true;
