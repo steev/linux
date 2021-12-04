@@ -448,7 +448,6 @@
 
 &usb {
 	status = "okay";
-	dr_mode = "host";
 };
 
 &usb2_phy0 {
