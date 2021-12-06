@@ -271,9 +271,6 @@ static int meson_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	struct meson_pwm *meson = to_meson_pwm(chip);
 	int err = 0;
 
-	if (!state)
-		return -EINVAL;
-
 	if (!state->enabled) {
 		if (state->polarity == PWM_POLARITY_INVERSED) {
 			/*
