@@ -858,6 +858,9 @@ static int disp_cc_sdm845_probe(struct platform_device *pdev)
 
 	clk_fabia_pll_configure(&disp_cc_pll0, regmap, &disp_cc_pll0_config);
 
+	/* Park disp_cc_mdss_mdp_clk_src */
+	clk_rcg2_park_safely(regmap, 0x2088, 0);
+
 	/* Enable hardware clock gating for DSI and MDP clocks */
 	regmap_update_bits(regmap, 0x8000, 0x7f0, 0x7f0);
 
