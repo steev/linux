@@ -172,6 +172,8 @@ extern const struct clk_ops clk_gfx3d_ops;
 extern const struct clk_ops clk_rcg2_shared_ops;
 extern const struct clk_ops clk_dp_ops;
 
+int clk_rcg2_park_safely(struct regmap *regmap, u32 offset, unsigned int safe_src);
+
 struct clk_rcg_dfs_data {
 	struct clk_rcg2 *rcg;
 	struct clk_init_data *init;

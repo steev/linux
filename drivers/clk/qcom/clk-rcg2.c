@@ -1036,6 +1036,40 @@ static void clk_rcg2_shared_disable(struct clk_hw *hw)
 	regmap_write(rcg->clkr.regmap, rcg->cmd_rcgr + CFG_REG, cfg);
 }
 
+int clk_rcg2_park_safely(struct regmap *regmap, u32 offset, unsigned int safe_src)
+{
+	unsigned int val, ret, count;
+
+	ret = regmap_read(regmap, offset + CFG_REG, &val);
+	if (ret)
+		return ret;
+
+	/* assume safe source is 0 */
+	if ((val & CFG_SRC_SEL_MASK) == (safe_src << CFG_SRC_SEL_SHIFT))
+		return 0;
+
+	regmap_write(regmap, offset + CFG_REG, safe_src << CFG_SRC_SEL_SHIFT);
+
+	ret = regmap_update_bits(regmap, offset + CMD_REG,
+				 CMD_UPDATE, CMD_UPDATE);
+	if (ret)
+		return ret;
+
+	/* Wait for update to take effect */
+	for (count = 500; count > 0; count--) {
+		ret = regmap_read(regmap, offset + CMD_REG, &val);
+		if (ret)
+			return ret;
+		if (!(val & CMD_UPDATE))
+			return 0;
+		udelay(1);
+	}
+
+	WARN(1, "the rcg didn't update its configuration.");
+	return -EBUSY;
+}
+EXPORT_SYMBOL_GPL(clk_rcg2_park_safely);
+
 const struct clk_ops clk_rcg2_shared_ops = {
 	.enable = clk_rcg2_shared_enable,
 	.disable = clk_rcg2_shared_disable,
