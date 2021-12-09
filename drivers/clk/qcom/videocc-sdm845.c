@@ -329,6 +329,9 @@ static int video_cc_sdm845_probe(struct platform_device *pdev)
 
 	clk_fabia_pll_configure(&video_pll0, regmap, &video_pll0_config);
 
+	/* Park video_cc_venus_clk_src */
+	clk_rcg2_park_safely(regmap, video_cc_venus_clk_src.cmd_rcgr, 0);
+
 	return qcom_cc_really_probe(pdev, &video_cc_sdm845_desc, regmap);
 }
 
