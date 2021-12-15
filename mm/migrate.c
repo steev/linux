@@ -339,6 +339,8 @@ void pmd_migration_entry_wait(struct mm_struct *mm, pmd_t *pmd)
 {
 	spinlock_t *ptl;
 	struct folio *folio;
+
+	ptl = pmd_lock(mm, pmd);
 	if (!is_pmd_migration_entry(*pmd))
 		goto unlock;
 	folio = page_folio(pfn_swap_entry_to_page(pmd_to_swp_entry(*pmd)));
