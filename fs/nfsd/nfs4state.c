@@ -375,9 +375,9 @@ static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops = {
  *
  * which we should reject.
  *
- * But you could also argue that what our current code is already
- * overkill, since it only exists to return NFS4ERR_INVAL on incorrect
- * client behavior.
+ * But you could also argue that our current code is already overkill,
+ * since it only exists to return NFS4ERR_INVAL on incorrect client
+ * behavior.
  */
 static unsigned int
 bmap_to_share_mode(unsigned long bmap)
