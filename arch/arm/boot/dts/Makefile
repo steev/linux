@@ -61,6 +61,7 @@ dtb-$(CONFIG_SOC_SAM_V7) += \
 	at91-sama5d2_icp.dtb \
 	at91-sama5d2_ptc_ek.dtb \
 	at91-sama5d2_xplained.dtb \
+	at91-sama5d3_ksz9477_evb.dtb \
 	at91-sama5d3_xplained.dtb \
 	at91-dvk_som60.dtb \
 	at91-gatwick.dtb \
@@ -263,12 +264,14 @@ dtb-$(CONFIG_ARCH_IXP4XX) += \
 	intel-ixp46x-ixdp465.dtb \
 	intel-ixp42x-adi-coyote.dtb \
 	intel-ixp42x-ixdpg425.dtb \
+	intel-ixp42x-goramo-multilink.dtb \
 	intel-ixp42x-iomega-nas100d.dtb \
 	intel-ixp42x-dlink-dsm-g600.dtb \
 	intel-ixp42x-gateworks-gw2348.dtb \
 	intel-ixp43x-gateworks-gw2358.dtb \
 	intel-ixp42x-netgear-wg302v2.dtb \
-	intel-ixp42x-arcom-vulcan.dtb
+	intel-ixp42x-arcom-vulcan.dtb \
+	intel-ixp42x-gateway-7001.dtb
 dtb-$(CONFIG_ARCH_KEYSTONE) += \
 	keystone-k2hk-evm.dtb \
 	keystone-k2l-evm.dtb \
