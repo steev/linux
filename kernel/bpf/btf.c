@@ -4826,7 +4826,7 @@ struct btf *bpf_prog_get_target_btf(const struct bpf_prog *prog)
 		return prog->aux->attach_btf;
 }
 
-static bool is_string_ptr(struct btf *btf, const struct btf_type *t)
+static bool is_int_ptr(struct btf *btf, const struct btf_type *t)
 {
 	/* t comes in already as a pointer */
 	t = btf_type_by_id(btf, t->type);
@@ -4835,8 +4835,7 @@ static bool is_string_ptr(struct btf *btf, const struct btf_type *t)
 	if (BTF_INFO_KIND(t->info) == BTF_KIND_CONST)
 		t = btf_type_by_id(btf, t->type);
 
-	/* char, signed char, unsigned char */
-	return btf_type_is_int(t) && t->size == 1;
+	return btf_type_is_int(t);
 }
 
 bool btf_ctx_access(int off, int size, enum bpf_access_type type,
@@ -4957,7 +4956,7 @@ bool btf_ctx_access(int off, int size, enum bpf_access_type type,
 		 */
 		return true;
 
-	if (is_string_ptr(btf, t))
+	if (is_int_ptr(btf, t))
 		return true;
 
 	/* this is a pointer to another type */
@@ -6534,12 +6533,11 @@ static struct bpf_cand_cache *populate_cand_cache(struct bpf_cand_cache *cands,
 		bpf_free_cands_from_cache(*cc);
 		*cc = NULL;
 	}
-	new_cands = kmalloc(sizeof_cands(cands->cnt), GFP_KERNEL);
+	new_cands = kmemdup(cands, sizeof_cands(cands->cnt), GFP_KERNEL);
 	if (!new_cands) {
 		bpf_free_cands(cands);
 		return ERR_PTR(-ENOMEM);
 	}
-	memcpy(new_cands, cands, sizeof_cands(cands->cnt));
 	/* strdup the name, since it will stay in cache.
 	 * the cands->name points to strings in prog's BTF and the prog can be unloaded.
 	 */
@@ -6657,7 +6655,7 @@ bpf_core_find_cands(struct bpf_core_ctx *ctx, u32 local_type_id)
 
 	main_btf = bpf_get_btf_vmlinux();
 	if (IS_ERR(main_btf))
-		return (void *)main_btf;
+		return ERR_CAST(main_btf);
 
 	local_type = btf_type_by_id(local_btf, local_type_id);
 	if (!local_type)
@@ -6684,14 +6682,14 @@ bpf_core_find_cands(struct bpf_core_ctx *ctx, u32 local_type_id)
 	/* Attempt to find target candidates in vmlinux BTF first */
 	cands = bpf_core_add_cands(cands, main_btf, 1);
 	if (IS_ERR(cands))
-		return cands;
+		return ERR_CAST(cands);
 
 	/* cands is a pointer to kmalloced memory here if cands->cnt > 0 */
 
 	/* populate cache even when cands->cnt == 0 */
 	cc = populate_cand_cache(cands, vmlinux_cand_cache, VMLINUX_CAND_CACHE_SIZE);
 	if (IS_ERR(cc))
-		return cc;
+		return ERR_CAST(cc);
 
 	/* if vmlinux BTF has any candidate, don't go for module BTFs */
 	if (cc->cnt)
@@ -6717,7 +6715,7 @@ check_modules:
 		cands = bpf_core_add_cands(cands, mod_btf, btf_nr_types(main_btf));
 		if (IS_ERR(cands)) {
 			btf_put(mod_btf);
-			return cands;
+			return ERR_CAST(cands);
 		}
 		spin_lock_bh(&btf_idr_lock);
 		btf_put(mod_btf);
