@@ -79,7 +79,7 @@ static struct clk_rcg2 video_cc_venus_clk_src = {
 		.name = "video_cc_venus_clk_src",
 		.parent_data = video_cc_parent_data_0,
 		.num_parents = ARRAY_SIZE(video_cc_parent_data_0),
-		.flags = CLK_SET_RATE_PARENT,
+		.flags = CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE,
 		.ops = &clk_rcg2_shared_ops,
 	},
 };
@@ -236,7 +236,7 @@ static struct clk_branch video_cc_venus_ctl_core_clk = {
 				&video_cc_venus_clk_src.clkr.hw,
 			},
 			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT,
+			.flags = CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE,
 			.ops = &clk_branch2_ops,
 		},
 	},
