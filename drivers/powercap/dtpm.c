@@ -23,6 +23,7 @@
 #include <linux/powercap.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
+#include <linux/of.h>
 
 #define DTPM_POWER_LIMIT_FLAG 0
 
@@ -461,19 +462,163 @@ int dtpm_register(const char *name, struct dtpm *dtpm, struct dtpm *parent)
 	return 0;
 }
 
-static int __init init_dtpm(void)
+static struct dtpm *dtpm_setup_virtual(const struct dtpm_node *hierarchy,
+				       struct dtpm *parent)
+{
+	struct dtpm *dtpm;
+	int ret;
+
+	dtpm = kzalloc(sizeof(*dtpm), GFP_KERNEL);
+	if (!dtpm)
+		return ERR_PTR(-ENOMEM);
+	dtpm_init(dtpm, NULL);
+
+	ret = dtpm_register(hierarchy->name, dtpm, parent);
+	if (ret) {
+		pr_err("Failed to register dtpm node '%s': %d\n",
+		       hierarchy->name, ret);
+		kfree(dtpm);
+		return ERR_PTR(ret);
+	}
+
+	return dtpm;
+}
+
+static struct dtpm *dtpm_setup_dt(const struct dtpm_node *hierarchy,
+				  struct dtpm *parent)
 {
 	struct dtpm_descr *dtpm_descr;
+	struct device_node *np;
+	int ret;
 
+	np = of_find_node_by_path(hierarchy->name);
+	if (!np) {
+		pr_err("Failed to find '%s'\n", hierarchy->name);
+		return ERR_PTR(-ENXIO);
+	}
+
+	for_each_dtpm_table(dtpm_descr) {
+
+		ret = dtpm_descr->setup(parent, np);
+		if (ret) {
+			pr_err("Failed to setup '%s': %d\n", hierarchy->name, ret);
+			of_node_put(np);
+			return ERR_PTR(ret);
+		}
+
+		of_node_put(np);
+	}
+
+	/*
+	 * By returning a NULL pointer, we let know the caller there
+	 * is no child for us as we are a leaf of the tree
+	 */
+	return NULL;
+}
+
+typedef struct dtpm * (*dtpm_node_callback_t)(const struct dtpm_node *, struct dtpm *);
+
+dtpm_node_callback_t dtpm_node_callback[] = {
+	[DTPM_NODE_VIRTUAL] = dtpm_setup_virtual,
+	[DTPM_NODE_DT] = dtpm_setup_dt,
+};
+
+static int dtpm_for_each_child(const struct dtpm_node *hierarchy,
+			       const struct dtpm_node *it, struct dtpm *parent)
+{
+	struct dtpm *dtpm;
+	int i, ret;
+
+	for (i = 0; hierarchy[i].name; i++) {
+
+		if (hierarchy[i].parent != it)
+			continue;
+
+		dtpm = dtpm_node_callback[hierarchy[i].type](&hierarchy[i], parent);
+		if (!dtpm || IS_ERR(dtpm))
+			continue;
+
+		ret = dtpm_for_each_child(hierarchy, &hierarchy[i], dtpm);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+/**
+ * dtpm_create_hierarchy - Create the dtpm hierarchy
+ * @hierarchy: An array of struct dtpm_node describing the hierarchy
+ *
+ * The function is called by the platform specific code with the
+ * description of the different node in the hierarchy. It creates the
+ * tree in the sysfs filesystem under the powercap dtpm entry.
+ *
+ * The expected tree has the format:
+ *
+ * struct dtpm_node hierarchy[] = {
+ *	[0] { .name = "topmost" },
+ *      [1] { .name = "package", .parent = &hierarchy[0] },
+ *      [2] { .name = "/cpus/cpu0", .type = DTPM_NODE_DT, .parent = &hierarchy[1] },
+ *      [3] { .name = "/cpus/cpu1", .type = DTPM_NODE_DT, .parent = &hierarchy[1] },
+ *      [4] { .name = "/cpus/cpu2", .type = DTPM_NODE_DT, .parent = &hierarchy[1] },
+ *      [5] { .name = "/cpus/cpu3", .type = DTPM_NODE_DT, .parent = &hierarchy[1] },
+ *	[6] { }
+ * };
+ *
+ * The last element is always an empty one and marks the end of the
+ * array.
+ *
+ * Return: zero on success, a negative value in case of error. Errors
+ * are reported back from the underlying functions.
+ */
+int dtpm_create_hierarchy(struct of_device_id *dtpm_match_table)
+{
+	const struct of_device_id *match;
+	const struct dtpm_node *hierarchy;
+	struct dtpm_descr *dtpm_descr;
+	struct device_node *np;
+	int ret;
+
+	np = of_find_node_by_path("/");
+	if (!np)
+		return -ENODEV;
+
+	match = of_match_node(dtpm_match_table, np);
+
+	of_node_put(np);
+
+	if (!match)
+		return -ENODEV;
+
+	hierarchy = match->data;
+	if (!hierarchy)
+		return -EFAULT;
+
+	ret = dtpm_for_each_child(hierarchy, NULL, NULL);
+	if (ret)
+		return ret;
+	
+	for_each_dtpm_table(dtpm_descr) {
+
+		if (!dtpm_descr->init)
+			continue;
+
+		dtpm_descr->init();
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(dtpm_create_hierarchy);
+
+static int __init init_dtpm(void)
+{
 	pct = powercap_register_control_type(NULL, "dtpm", NULL);
 	if (IS_ERR(pct)) {
 		pr_err("Failed to register control type\n");
 		return PTR_ERR(pct);
 	}
 
-	for_each_dtpm_table(dtpm_descr)
-		dtpm_descr->init();
-
 	return 0;
 }
-late_initcall(init_dtpm);
+fs_initcall_sync(init_dtpm);
