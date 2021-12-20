@@ -94,6 +94,8 @@ static int kvm_vcpu_finalize_sve(struct kvm_vcpu *vcpu)
 {
 	void *buf;
 	unsigned int vl;
+	size_t reg_sz;
+	int ret;
 
 	vl = vcpu->arch.sve_max_vl;
 
@@ -106,10 +108,17 @@ static int kvm_vcpu_finalize_sve(struct kvm_vcpu *vcpu)
 		    vl > VL_ARCH_MAX))
 		return -EIO;
 
-	buf = kzalloc(SVE_SIG_REGS_SIZE(sve_vq_from_vl(vl)), GFP_KERNEL_ACCOUNT);
+	reg_sz = vcpu_sve_state_size(vcpu);
+	buf = kzalloc(reg_sz, GFP_KERNEL_ACCOUNT);
 	if (!buf)
 		return -ENOMEM;
 
+	ret = kvm_share_hyp(buf, buf + reg_sz);
+	if (ret) {
+		kfree(buf);
+		return ret;
+	}
+	
 	vcpu->arch.sve_state = buf;
 	vcpu->arch.flags |= KVM_ARM64_VCPU_SVE_FINALIZED;
 	return 0;
@@ -141,7 +150,13 @@ bool kvm_arm_vcpu_is_finalized(struct kvm_vcpu *vcpu)
 
 void kvm_arm_vcpu_destroy(struct kvm_vcpu *vcpu)
 {
-	kfree(vcpu->arch.sve_state);
+	void *sve_state = vcpu->arch.sve_state;
+
+	kvm_vcpu_unshare_task_fp(vcpu);
+	kvm_unshare_hyp(vcpu, vcpu + 1);
+	if (sve_state)
+		kvm_unshare_hyp(sve_state, sve_state + vcpu_sve_state_size(vcpu));
+	kfree(sve_state);
 }
 
 static void kvm_vcpu_reset_sve(struct kvm_vcpu *vcpu)
