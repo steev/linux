@@ -451,7 +451,7 @@ static int i8k_get_power_status(void)
 
 static long i8k_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 {
-	struct dell_smm_data *data = PDE_DATA(file_inode(fp));
+	struct dell_smm_data *data = pde_data(file_inode(fp));
 	int __user *argp = (int __user *)arg;
 	int speed, err;
 	int val = 0;
