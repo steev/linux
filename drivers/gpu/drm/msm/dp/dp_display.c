@@ -1451,36 +1451,41 @@ void msm_dp_debugfs_init(struct msm_dp *dp_display, struct drm_minor *minor)
 	}
 }
 
-int msm_dp_modeset_init(struct msm_dp *dp_display, struct drm_device *dev,
+int msm_dp_modeset_init(struct msm_dp *dp, struct drm_device *dev,
 			struct drm_encoder *encoder)
 {
 	struct msm_drm_private *priv;
+	struct dp_display_private *dp_display;
 	int ret;
 
-	if (WARN_ON(!encoder) || WARN_ON(!dp_display) || WARN_ON(!dev))
+	if (WARN_ON(!encoder) || WARN_ON(!dp) || WARN_ON(!dev))
 		return -EINVAL;
 
 	priv = dev->dev_private;
-	dp_display->drm_dev = dev;
+	dp->drm_dev = dev;
 
-	ret = dp_display_request_irq(dp_display);
+	dp_display = container_of(dp, struct dp_display_private, dp_display);
+
+	ret = dp_display_request_irq(dp);
 	if (ret) {
 		DRM_ERROR("request_irq failed, ret=%d\n", ret);
 		return ret;
 	}
 
-	dp_display->encoder = encoder;
+	dp->encoder = encoder;
 
-	dp_display->connector = dp_drm_connector_init(dp_display);
-	if (IS_ERR(dp_display->connector)) {
-		ret = PTR_ERR(dp_display->connector);
+	dp->connector = dp_drm_connector_init(dp);
+	if (IS_ERR(dp->connector)) {
+		ret = PTR_ERR(dp->connector);
 		DRM_DEV_ERROR(dev->dev,
 			"failed to create dp connector: %d\n", ret);
-		dp_display->connector = NULL;
+		dp->connector = NULL;
 		return ret;
 	}
 
-	priv->connectors[priv->num_connectors++] = dp_display->connector;
+	dp_display->panel->connector = dp->connector;
+
+	priv->connectors[priv->num_connectors++] = dp->connector;
 	return 0;
 }
 
