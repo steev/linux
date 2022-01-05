@@ -105,7 +105,6 @@ struct dpu_kms {
 	struct dpu_rm rm;
 	bool rm_init;
 
-	struct dpu_hw_vbif *hw_vbif[VBIF_MAX];
 	struct dpu_hw_mdp *hw_mdp;
 
 	bool has_danger_ctrl;

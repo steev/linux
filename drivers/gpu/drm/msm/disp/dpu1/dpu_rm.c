@@ -78,6 +78,10 @@ int dpu_rm_destroy(struct dpu_rm *rm)
 		if (rm->hw_intf[i])
 			dpu_hw_intf_destroy(rm->hw_intf[i]);
 	}
+	for (i = 0; i < ARRAY_SIZE(rm->hw_vbif); i++) {
+		if (rm->hw_vbif[i])
+			dpu_hw_vbif_destroy(rm->hw_vbif[i]);
+	}
 
 	return 0;
 }
@@ -210,6 +214,23 @@ int dpu_rm_init(struct dpu_rm *rm,
 			goto fail;
 		}
 		rm->dspp_blks[dspp->id - DSPP_0] = &hw->base;
+	}
+
+	for (i = 0; i < cat->vbif_count; i++) {
+		struct dpu_hw_vbif *hw;
+		const struct dpu_vbif_cfg *vbif = &cat->vbif[i];
+
+		if (vbif->id < VBIF_0 || vbif->id >= VBIF_MAX) {
+			DPU_ERROR("skip vbif %d with invalid id\n", vbif->id);
+			continue;
+		}
+		hw = dpu_hw_vbif_init(vbif->id, mmio, cat);
+		if (IS_ERR_OR_NULL(hw)) {
+			rc = PTR_ERR(hw);
+			DPU_ERROR("failed vbif object creation: err %d\n", rc);
+			goto fail;
+		}
+		rm->hw_vbif[vbif->id - VBIF_0] = hw;
 	}
 
 	return 0;
