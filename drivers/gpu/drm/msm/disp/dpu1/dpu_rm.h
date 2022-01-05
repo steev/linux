@@ -20,6 +20,7 @@ struct dpu_global_state;
  * @ctl_blks: array of ctl hardware resources
  * @hw_intf: array of intf hardware resources
  * @dspp_blks: array of dspp hardware resources
+ * @hw_vbif: array of vbif hardware resources
  */
 struct dpu_rm {
 	struct dpu_hw_blk *pingpong_blks[PINGPONG_MAX - PINGPONG_0];
@@ -28,6 +29,7 @@ struct dpu_rm {
 	struct dpu_hw_intf *hw_intf[INTF_MAX - INTF_0];
 	struct dpu_hw_blk *dspp_blks[DSPP_MAX - DSPP_0];
 	struct dpu_hw_blk *merge_3d_blks[MERGE_3D_MAX - MERGE_3D_0];
+	struct dpu_hw_vbif *hw_vbif[VBIF_MAX - VBIF_0];
 };
 
 /**
@@ -93,6 +95,16 @@ int dpu_rm_get_assigned_resources(struct dpu_rm *rm,
 static inline struct dpu_hw_intf *dpu_rm_get_intf(struct dpu_rm *rm, enum dpu_intf intf_idx)
 {
 	return rm->hw_intf[intf_idx - INTF_0];
+}
+
+/**
+ * dpu_rm_get_vbif - Return a struct dpu_hw_vbif instance given it's index.
+ * @rm: DPU Resource Manager handle
+ * @vbif_idx: VBIF's index
+ */
+static inline struct dpu_hw_vbif *dpu_rm_get_vbif(struct dpu_rm *rm, enum dpu_vbif vbif_idx)
+{
+	return rm->hw_vbif[vbif_idx - VBIF_0];
 }
 
 #endif /* __DPU_RM_H__ */
