@@ -1,0 +1,16 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	fragment@0 {
+		target = <&sd_emmc_a>;
+
+		__overlay__ {
+			/delete-node/ brcmf;
+
+			rtl8189etv: sdio_wifi@1 {
+				reg = <1>;
+			};
+		};
+	};
+};
