@@ -259,6 +259,7 @@ struct venc_controls {
 
 	u32 header_mode;
 	bool aud_enable;
+	u32 intra_refresh_mode;
 	u32 intra_refresh_period;
 
 	struct {

@@ -316,6 +316,9 @@ static int venc_op_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_COLORIMETRY_HDR10_MASTERING_DISPLAY:
 		ctr->mastering = *ctrl->p_new.p_hdr10_mastering;
 		break;
+	case V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_TYPE:
+		ctr->intra_refresh_mode = ctrl->val;
+		break;
 	case V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_PERIOD:
 		ctr->intra_refresh_period = ctrl->val;
 		break;
@@ -581,6 +584,13 @@ int venc_ctrl_init(struct venus_inst *inst)
 	v4l2_ctrl_new_std_compound(&inst->ctrl_handler, &venc_ctrl_ops,
 				   V4L2_CID_COLORIMETRY_HDR10_MASTERING_DISPLAY,
 				   v4l2_ctrl_ptr_create(NULL));
+
+	v4l2_ctrl_new_std_menu(&inst->ctrl_handler, &venc_ctrl_ops,
+		V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_NONE,
+		V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_RANDOM,
+		~((1 << V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_NONE) |
+		  (1 << V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_RANDOM)),
+		V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_RANDOM);
 
 	v4l2_ctrl_new_std(&inst->ctrl_handler, &venc_ctrl_ops,
 			  V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_PERIOD, 0,
