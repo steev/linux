@@ -70,6 +70,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
 			rc-manli.o \
 			rc-mecool-kii-pro.o \
 			rc-mecool-kiii-pro.o \
+			rc-mecool-m8s-pro-w.o \
 			rc-medion-x10.o \
 			rc-medion-x10-digitainer.o \
 			rc-medion-x10-or2x.o \
