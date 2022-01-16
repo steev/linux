@@ -94,6 +94,7 @@ properties:
       - rc-manli
       - rc-mecool-kii-pro
       - rc-mecool-kiii-pro
+      - rc-mecool-m8s-pro-w
       - rc-medion-x10
       - rc-medion-x10-digitainer
       - rc-medion-x10-or2x
