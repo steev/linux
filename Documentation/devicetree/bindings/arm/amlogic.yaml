@@ -89,6 +89,7 @@ properties:
               - amlogic,p281
               - oranth,tx3-mini
               - jethome,jethub-j80
+              - videostrong,gxl-m8s-pro-w
           - const: amlogic,s905w
           - const: amlogic,meson-gxl
 
