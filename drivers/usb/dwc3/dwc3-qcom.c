@@ -17,6 +17,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
+#include <linux/pm_domain.h>
 #include <linux/usb/of.h>
 #include <linux/reset.h>
 #include <linux/iopoll.h>
@@ -711,6 +712,7 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	struct resource		*res, *parent_res = NULL;
 	int			ret, i;
 	bool			ignore_pipe_clk;
+	struct generic_pm_domain *genpd;
 
 	qcom = devm_kzalloc(&pdev->dev, sizeof(*qcom), GFP_KERNEL);
 	if (!qcom)
@@ -718,6 +720,8 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, qcom);
 	qcom->dev = &pdev->dev;
+
+	genpd = pd_to_genpd(qcom->dev->pm_domain);
 
 	if (has_acpi_companion(dev)) {
 		qcom->acpi_pdata = acpi_device_get_match_data(dev);
@@ -825,6 +829,8 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	ret = dwc3_qcom_register_extcon(qcom);
 	if (ret)
 		goto interconnect_exit;
+
+	genpd->flags |= GENPD_FLAG_ALWAYS_ON;
 
 	device_init_wakeup(&pdev->dev, 1);
 	qcom->is_suspended = false;
