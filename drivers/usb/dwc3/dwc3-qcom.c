@@ -306,25 +306,7 @@ static void dwc3_qcom_enable_wakeup_irq(int irq)
 	enable_irq_wake(irq);
 }
 
-static void dwc3_qcom_disable_wakeup_irq(int irq)
-{
-	if (!irq)
-		return;
 
-	disable_irq_wake(irq);
-	disable_irq_nosync(irq);
-}
-
-static void dwc3_qcom_disable_interrupts(struct dwc3_qcom *qcom)
-{
-	dwc3_qcom_disable_wakeup_irq(qcom->hs_phy_irq);
-
-	dwc3_qcom_disable_wakeup_irq(qcom->dp_hs_phy_irq);
-
-	dwc3_qcom_disable_wakeup_irq(qcom->dm_hs_phy_irq);
-
-	dwc3_qcom_disable_wakeup_irq(qcom->ss_phy_irq);
-}
 
 static void dwc3_qcom_enable_interrupts(struct dwc3_qcom *qcom)
 {
@@ -356,9 +338,6 @@ static int dwc3_qcom_suspend(struct dwc3_qcom *qcom)
 	if (ret)
 		dev_warn(qcom->dev, "failed to disable interconnect: %d\n", ret);
 
-	if (device_may_wakeup(qcom->dev))
-		dwc3_qcom_enable_interrupts(qcom);
-
 	qcom->is_suspended = true;
 
 	return 0;
@@ -371,9 +350,6 @@ static int dwc3_qcom_resume(struct dwc3_qcom *qcom)
 
 	if (!qcom->is_suspended)
 		return 0;
-
-	if (device_may_wakeup(qcom->dev))
-		dwc3_qcom_disable_interrupts(qcom);
 
 	for (i = 0; i < qcom->num_clocks; i++) {
 		ret = clk_prepare_enable(qcom->clks[i]);
@@ -833,6 +809,10 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	genpd->flags |= GENPD_FLAG_ALWAYS_ON;
 
 	device_init_wakeup(&pdev->dev, 1);
+
+	if (device_may_wakeup(qcom->dev))
+		dwc3_qcom_enable_interrupts(qcom);
+
 	qcom->is_suspended = false;
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
