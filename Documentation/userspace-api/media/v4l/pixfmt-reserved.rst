@@ -245,6 +245,25 @@ please make a proposal on the linux-media mailing list.
       - Non-compressed, tiled two-planar format used by Mediatek MT8183.
 	This is an opaque intermediate format and the MDP3 hardware can be
 	used to convert it to other formats.
+    * .. _V4L2-PIX-FMT-QC08C:
+
+      - ``V4L2_PIX_FMT_QC08C``
+      - 'QC08C'
+      - Compressed Macro-tile 8-Bit YUV420 format used by Qualcomm platforms.
+        It is an opaque intermediate format. The used compression is lossless
+        and it is used by various multimedia hardware blocks like GPU, display
+        controllers, ISP and video accelerators.
+        It contains four planes for progressive video and eight planes for
+        interlaced video.
+    * .. _V4L2-PIX-FMT-QC10C:
+
+      - ``V4L2_PIX_FMT_QC10C``
+      - 'QC10C'
+      - Compressed Macro-tile 10-Bit YUV420 format used by Qualcomm platforms.
+        It is an opaque intermediate format. The used compression is lossless
+        and it is used by various multimedia hardware blocks like GPU, display
+        controllers, ISP and video accelerators.
+        It contains four planes for progressive video.
 
 .. raw:: latex
 
