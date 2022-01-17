@@ -431,6 +431,14 @@ static int xhci_plat_remove(struct platform_device *dev)
 	return 0;
 }
 
+static void xhci_dwc3_suspend_quirk(struct usb_hcd *hcd, struct device *dev)
+{
+	if (usb_wakeup_enabled_descendants(hcd->self.root_hub))
+		device_set_wakeup_enable(dev, true);
+	else
+		device_set_wakeup_enable(dev, false);
+}
+
 static int __maybe_unused xhci_plat_suspend(struct device *dev)
 {
 	struct usb_hcd	*hcd = dev_get_drvdata(dev);
@@ -443,6 +451,10 @@ static int __maybe_unused xhci_plat_suspend(struct device *dev)
 	ret = xhci_priv_suspend_quirk(hcd);
 	if (ret)
 		return ret;
+
+	if (of_device_is_compatible(dev->parent->of_node, "snps,dwc3"))
+		xhci_dwc3_suspend_quirk(hcd, dev);
+
 	/*
 	 * xhci_suspend() needs `do_wakeup` to know whether host is allowed
 	 * to do wakeup during suspend.
