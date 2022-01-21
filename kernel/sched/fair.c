@@ -5986,7 +5986,7 @@ static int wake_affine(struct sched_domain *sd, struct task_struct *p,
 }
 
 static struct sched_group *
-find_idlest_group(struct sched_domain *sd, struct task_struct *p, int this_cpu);
+find_idlest_group(struct sched_domain *sd, struct task_struct *p, int this_cpu, int sd_flag);
 
 /*
  * find_idlest_group_cpu - find the idlest CPU among the CPUs in the group.
@@ -6073,7 +6073,7 @@ static inline int find_idlest_cpu(struct sched_domain *sd, struct task_struct *p
 			continue;
 		}
 
-		group = find_idlest_group(sd, p, cpu);
+		group = find_idlest_group(sd, p, cpu, sd_flag);
 		if (!group) {
 			sd = sd->child;
 			continue;
@@ -9009,7 +9009,8 @@ static inline void update_sg_wakeup_stats(struct sched_domain *sd,
 static bool update_pick_idlest(struct sched_group *idlest,
 			       struct sg_lb_stats *idlest_sgs,
 			       struct sched_group *group,
-			       struct sg_lb_stats *sgs)
+			       struct sg_lb_stats *sgs,
+			       int sd_flag)
 {
 	if (sgs->group_type < idlest_sgs->group_type)
 		return true;
@@ -9046,6 +9047,13 @@ static bool update_pick_idlest(struct sched_group *idlest,
 		if (idlest_sgs->idle_cpus > sgs->idle_cpus)
 			return false;
 
+		if (sched_energy_enabled()) {
+		    /* Select smaller cpu group for newly woken up forkees */
+		    if ((sd_flag & SD_BALANCE_FORK) && (idlest_sgs->idle_cpus &&
+		        !capacity_greater(idlest->sgc->max_capacity, group->sgc->max_capacity)))
+			return false;
+		}
+
 		/* Select group with lowest group_util */
 		if (idlest_sgs->idle_cpus == sgs->idle_cpus &&
 			idlest_sgs->group_util <= sgs->group_util)
@@ -9074,7 +9082,7 @@ static inline bool allow_numa_imbalance(int dst_running, int dst_weight)
  * Assumes p is allowed on at least one CPU in sd.
  */
 static struct sched_group *
-find_idlest_group(struct sched_domain *sd, struct task_struct *p, int this_cpu)
+find_idlest_group(struct sched_domain *sd, struct task_struct *p, int this_cpu, int sd_flag)
 {
 	struct sched_group *idlest = NULL, *local = NULL, *group = sd->groups;
 	struct sg_lb_stats local_sgs, tmp_sgs;
@@ -9109,7 +9117,7 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p, int this_cpu)
 
 		update_sg_wakeup_stats(sd, group, sgs, p);
 
-		if (!local_group && update_pick_idlest(idlest, &idlest_sgs, group, sgs)) {
+		if (!local_group && update_pick_idlest(idlest, &idlest_sgs, group, sgs, sd_flag)) {
 			idlest = group;
 			idlest_sgs = *sgs;
 		}
