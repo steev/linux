@@ -25,6 +25,13 @@
 	linux,rc-map-name = "rc-tanix-tx3mini";
 };
 
+&sd_emmc_a {
+	/* SSV6051 */
+	ssv: wifi@1 {
+		reg = <1>;
+	};
+};
+
 &usb {
 	dr_mode = "host";
 };
