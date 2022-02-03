@@ -765,7 +765,7 @@ static int drm_sched_main(void *param)
 	struct drm_gpu_scheduler *sched = (struct drm_gpu_scheduler *)param;
 	int r;
 
-	sched_set_fifo_low(current);
+	sched_set_fifo(current);
 
 	while (!kthread_should_stop()) {
 		struct drm_sched_entity *entity = NULL;
