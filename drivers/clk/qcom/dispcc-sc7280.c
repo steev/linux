@@ -791,7 +791,7 @@ static struct gdsc disp_cc_mdss_core_gdsc = {
 		.name = "disp_cc_mdss_core_gdsc",
 	},
 	.pwrsts = PWRSTS_OFF_ON,
-	.flags = HW_CTRL | RETAIN_FF_ENABLE,
+	.flags = HW_CTRL | RETAIN_FF_ENABLE | DEFAULT_TRANSITION_DELAY,
 };
 
 static struct clk_regmap *disp_cc_sc7280_clocks[] = {
