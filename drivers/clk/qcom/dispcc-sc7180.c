@@ -629,7 +629,7 @@ static struct gdsc mdss_gdsc = {
 		.name = "mdss_gdsc",
 	},
 	.pwrsts = PWRSTS_OFF_ON,
-	.flags = HW_CTRL,
+	.flags = HW_CTRL |  DEFAULT_TRANSITION_DELAY,
 };
 
 static struct gdsc *disp_cc_sc7180_gdscs[] = {
