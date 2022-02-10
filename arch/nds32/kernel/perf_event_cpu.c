@@ -695,7 +695,7 @@ static void nds32_pmu_enable(struct pmu *pmu)
 {
 	struct nds32_pmu *nds32_pmu = to_nds32_pmu(pmu);
 	struct pmu_hw_events *hw_events = nds32_pmu->get_hw_events();
-	int enabled = bitmap_weight(hw_events->used_mask,
+	bool enabled = !bitmap_empty(hw_events->used_mask,
 				    nds32_pmu->num_events);
 
 	if (enabled)
