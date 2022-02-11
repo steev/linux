@@ -3232,6 +3232,7 @@ static int btusb_set_bdaddr_wcn6855(struct hci_dev *hdev,
 #define QCA_PATCH_UPDATED	0x80
 #define QCA_DFU_TIMEOUT		3000
 #define QCA_FLAG_MULTI_NVM      0x80
+#define QCA_BT_RESET_WAIT_MS    100
 
 struct qca_version {
 	__le32	rom_version;
@@ -3522,6 +3523,10 @@ static int btusb_setup_qca(struct hci_dev *hdev)
 		err = btusb_setup_qca_load_nvm(hdev, &ver, info);
 		if (err < 0)
 			return err;
+		/* Controller will reset after NVM is downloaded, so wait a moment
+		 * for reset Done, it will improve stability.
+		 */
+		msleep(QCA_BT_RESET_WAIT_MS);
 	}
 
 	return 0;
