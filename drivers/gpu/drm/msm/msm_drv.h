@@ -379,6 +379,7 @@ void msm_dp_irq_postinstall(struct msm_dp *dp_display);
 void msm_dp_snapshot(struct msm_disp_state *disp_state, struct msm_dp *dp_display);
 
 void msm_dp_debugfs_init(struct msm_dp *dp_display, struct drm_minor *minor);
+bool msm_dp_wide_bus_enable(struct msm_dp *dp_display);
 
 #else
 static inline int __init msm_dp_register(void)
@@ -427,6 +428,11 @@ static inline void msm_dp_snapshot(struct msm_disp_state *disp_state, struct msm
 static inline void msm_dp_debugfs_init(struct msm_dp *dp_display,
 		struct drm_minor *minor)
 {
+}
+
+bool msm_dp_wide_bus_enable(struct msm_dp *dp_display)
+{
+	return false;
 }
 
 #endif
