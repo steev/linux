@@ -160,6 +160,12 @@ struct dpu_hw_ctl_ops {
 	void (*clear_all_blendstages)(struct dpu_hw_ctl *ctx);
 
 	/**
+	 * Disable the configuration setup by the bootloader
+	 * @ctx	      : ctl path ctx pointer
+	 */
+	void (*disable_boot_config)(struct dpu_hw_ctl *ctx);
+
+	/**
 	 * Configure layer mixer to pipe configuration
 	 * @ctx       : ctl path ctx pointer
 	 * @lm        : layer mixer enumeration
