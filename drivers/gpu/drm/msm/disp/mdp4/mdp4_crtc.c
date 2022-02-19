@@ -19,6 +19,7 @@ struct mdp4_crtc {
 	int id;
 	int ovlp;
 	enum mdp4_dma dma;
+	enum mdp4_intf intf;
 	bool enabled;
 
 	/* which mixer/encoder we route output to: */
@@ -594,6 +595,7 @@ void mdp4_crtc_set_intf(struct drm_crtc *crtc, enum mdp4_intf intf, int mixer)
 		intf_sel |= MDP4_DISP_INTF_SEL_DSI_CMD;
 	}
 
+	mdp4_crtc->intf = intf;
 	mdp4_crtc->mixer = mixer;
 
 	blend_setup(crtc);
@@ -610,6 +612,13 @@ void mdp4_crtc_wait_for_commit_done(struct drm_crtc *crtc)
 	 * other event.
 	 */
 	mdp4_crtc_wait_for_flush_done(crtc);
+}
+
+bool mdp4_crtc_needs_dirtyfb(struct drm_crtc *crtc)
+{
+	struct mdp4_crtc *mdp4_crtc = to_mdp4_crtc(crtc);
+
+	return mdp4_crtc->intf == INTF_DSI_CMD;
 }
 
 static const char *dma_names[] = {

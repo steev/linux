@@ -262,6 +262,15 @@ void dpu_crtc_commit_kickoff(struct drm_crtc *crtc);
 void dpu_crtc_complete_commit(struct drm_crtc *crtc);
 
 /**
+ * dpu_crtc_needs_dirtyfb - do fb updates need to be flushed
+ * @crtc: Pointer to drm crtc object
+ *
+ * Return whether front-buffer updates need to be flushed, ie. is it
+ * a command-mode style of display
+ */
+bool dpu_crtc_needs_dirtyfb(struct drm_crtc *crtc);
+
+/**
  * dpu_crtc_init - create a new crtc object
  * @dev: dpu device
  * @plane: base plane

@@ -117,6 +117,8 @@ struct msm_kms_funcs {
 			struct drm_encoder *encoder,
 			struct drm_encoder *slave_encoder,
 			bool is_cmd_mode);
+	bool (*needs_dirtyfb)(struct drm_crtc *crtc);
+
 	/* cleanup: */
 	void (*destroy)(struct msm_kms *kms);
 

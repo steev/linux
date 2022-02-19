@@ -24,10 +24,72 @@ struct msm_framebuffer {
 static struct drm_framebuffer *msm_framebuffer_init(struct drm_device *dev,
 		const struct drm_mode_fb_cmd2 *mode_cmd, struct drm_gem_object **bos);
 
+static int msm_framebuffer_dirtyfb(struct drm_framebuffer *fb,
+				   struct drm_file *file_priv, unsigned int flags,
+				   unsigned int color, struct drm_clip_rect *clips,
+				   unsigned int num_clips)
+{
+	struct msm_drm_private *priv = fb->dev->dev_private;
+	struct drm_modeset_acquire_ctx ctx;
+	struct drm_plane *plane;
+	bool needs_flush = false;
+	int ret = 0;
+
+	/*
+	 * When called from ioctl, we are interruptible, but not when called
+	 * internally (ie. defio worker)
+	 */
+	drm_modeset_acquire_init(&ctx,
+		file_priv ? DRM_MODESET_ACQUIRE_INTERRUPTIBLE : 0);
+
+retry:
+	drm_for_each_plane(plane, fb->dev) {
+		struct drm_plane_state *plane_state;
+		struct drm_crtc *crtc;
+
+		ret = drm_modeset_lock(&plane->mutex, &ctx);
+		if (ret)
+			goto out;
+
+		if (plane->state->fb != fb) {
+			drm_modeset_unlock(&plane->mutex);
+			continue;
+		}
+
+		crtc = plane->state->crtc;
+
+		ret = drm_modeset_lock(&crtc->mutex, &ctx);
+		if (ret)
+			goto out;
+
+		if (priv->kms->funcs->needs_dirtyfb(crtc)) {
+			needs_flush = true;
+			break;
+		}
+	}
+
+out:
+	if (ret == -EDEADLK) {
+		ret = drm_modeset_backoff(&ctx);
+		if (!ret)
+			goto retry;
+	}
+
+	drm_modeset_drop_locks(&ctx);
+	drm_modeset_acquire_fini(&ctx);
+
+	if (needs_flush) {
+		ret = drm_atomic_helper_dirtyfb(fb, file_priv, flags,
+						color, clips, num_clips);
+	}
+
+	return ret;
+}
+
 static const struct drm_framebuffer_funcs msm_framebuffer_funcs = {
 	.create_handle = drm_gem_fb_create_handle,
 	.destroy = drm_gem_fb_destroy,
-	.dirty = drm_atomic_helper_dirtyfb,
+	.dirty = msm_framebuffer_dirtyfb,
 };
 
 #ifdef CONFIG_DEBUG_FS

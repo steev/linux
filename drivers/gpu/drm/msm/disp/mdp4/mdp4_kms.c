@@ -163,6 +163,7 @@ static const struct mdp_kms_funcs kms_funcs = {
 		.complete_commit = mdp4_complete_commit,
 		.get_format      = mdp_get_format,
 		.round_pixclk    = mdp4_round_pixclk,
+		.needs_dirtyfb   = mdp4_crtc_needs_dirtyfb,
 		.destroy         = mdp4_destroy,
 	},
 	.set_irqmask         = mdp4_set_irqmask,

@@ -1308,6 +1308,14 @@ void mdp5_crtc_wait_for_commit_done(struct drm_crtc *crtc)
 		mdp5_crtc_wait_for_flush_done(crtc);
 }
 
+bool mdp5_crtc_needs_dirtyfb(struct drm_crtc *crtc)
+{
+	struct mdp5_crtc_state *mdp5_cstate = to_mdp5_crtc_state(crtc->state);
+	struct mdp5_interface *intf = mdp5_cstate->pipeline.intf;
+
+	return intf->mode == MDP5_INTF_DSI_MODE_COMMAND;
+}
+
 /* initialize crtc */
 struct drm_crtc *mdp5_crtc_init(struct drm_device *dev,
 				struct drm_plane *plane,
