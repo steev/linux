@@ -5,6 +5,7 @@
  * Copyright (c) 2019 Andreas Färber
  */
 
+#include <linux/ctype.h>
 #include <linux/delay.h>
 #include <linux/leds.h>
 #include <linux/module.h>
@@ -334,10 +335,11 @@ no_leds:
 	return 0;
 }
 
-static void tm1628_spi_remove(struct spi_device *spi)
+static int tm1628_spi_remove(struct spi_device *spi)
 {
 	device_remove_file(&spi->dev, &dev_attr_display_text);
 	tm1628_set_display_ctrl(spi, false);
+	return 0;
 }
 
 static void tm1628_spi_shutdown(struct spi_device *spi)
