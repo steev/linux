@@ -1423,9 +1423,8 @@ static int hub_configure(struct usb_hub *hub,
 		ret = -ENODEV;
 		goto fail;
 	} else if (hub->descriptor->bNbrPorts == 0) {
-		message = "hub doesn't have any ports!";
-		ret = -ENODEV;
-		goto fail;
+		dev_info(hub_dev, "hub has no ports, exiting\n");
+		return -ENODEV;
 	}
 
 	/*
