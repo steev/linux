@@ -305,8 +305,8 @@
 	mode-switch;
 	svid = /bits/ 16 <0xff01>;
 	ports {
-		port@1 {
-			reg = <1>;
+		port@2 {
+			reg = <2>;
 			dp0_mode: endpoint {
 				remote-endpoint = <&ucsi_port_0_dp>;
 			};
@@ -325,8 +325,8 @@
 	mode-switch;
 	svid = /bits/ 16 <0xff01>;
 	ports {
-		port@1 {
-			reg = <1>;
+		port@2 {
+			reg = <2>;
 			dp1_mode: endpoint {
 				remote-endpoint = <&ucsi_port_1_dp>;
 			};

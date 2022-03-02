@@ -2616,6 +2616,8 @@
 //			assigned-clocks = <&dispcc DISP_CC_MDSS_MDP_CLK>;
 //			assigned-clock-rates = <460000000>;
 
+			resets = <&dispcc DISP_CC_MDSS_CORE_BCR>;
+
 			interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-controller;
 			#interrupt-cells = <1>;
