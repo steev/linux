@@ -297,6 +297,23 @@ static void qcom_lmh_dcvs_notify(struct qcom_cpufreq_data *data)
 	unsigned int freq;
 
 	/*
+	 * Synchronize against CPU going offline.
+	 * cpufreq_offline() will get the write lock on policy->rwsem.
+	 */
+retry:
+	if (unlikely(!down_read_trylock(&policy->rwsem))) {
+		mutex_lock(&data->throttle_lock);
+		if (data->cancel_throttle) {
+			mutex_unlock(&data->throttle_lock);
+			return;
+		}
+
+		mutex_unlock(&data->throttle_lock);
+
+		schedule();
+		goto retry;
+	}
+	/*
 	 * Get the h/w throttled frequency, normalize it using the
 	 * registered opp table and use it to calculate thermal pressure.
 	 */
@@ -314,9 +331,10 @@ static void qcom_lmh_dcvs_notify(struct qcom_cpufreq_data *data)
 
 	/*
 	 * In the unlikely case policy is unregistered do not enable
-	 * polling or h/w interrupt
+	 * polling or h/w interrupt.
+	 * If we are here, we have the policy->rwsem read lock,
+	 * cancel_throttle can be toggled only with the write lock.
 	 */
-	mutex_lock(&data->throttle_lock);
 	if (data->cancel_throttle)
 		goto out;
 
@@ -331,7 +349,7 @@ static void qcom_lmh_dcvs_notify(struct qcom_cpufreq_data *data)
 				 msecs_to_jiffies(10));
 
 out:
-	mutex_unlock(&data->throttle_lock);
+	up_read(&policy->rwsem);
 }
 
 static void qcom_lmh_dcvs_poll(struct work_struct *work)
