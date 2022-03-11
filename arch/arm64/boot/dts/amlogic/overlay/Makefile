@@ -14,6 +14,7 @@ dtbo-$(CONFIG_ARCH_MESON) += \
 	meson-g12a-uart-ao-b-on-gpioao-2-gpioao-3.dtbo \
 	meson-g12a-uart-ao-b-on-gpioao-8-gpioao-9.dtbo \
 	meson-g12a-uart-ee-c.dtbo \
+	meson-g12a-w1-gpioao-3.dtbo \
 	meson-g12b-i2c-ee-m0-gpioz-0-1.dtbo \
 	meson-g12b-i2c-ee-m0-gpioz-1-7.dtbo \
 	meson-g12b-i2c-ee-m1-gpioh-6-7.dtbo \
