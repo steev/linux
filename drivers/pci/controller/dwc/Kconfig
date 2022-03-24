@@ -173,7 +173,7 @@ config PCI_HISI
 	  Hip05 and Hip06 SoCs
 
 config PCIE_QCOM
-	bool "Qualcomm PCIe controller"
+	tristate "Qualcomm PCIe controller"
 	depends on ARCH_QCOM || COMPILE_TEST
 	depends on OF || COMPILE_TEST
 	depends on PCI_MSI
