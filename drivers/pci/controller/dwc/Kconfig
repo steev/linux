@@ -30,6 +30,10 @@ config PCIE_AL
 config PCI_MESON
 	tristate "Amlogic Meson PCIe controller"
 	default m if ARCH_MESON
+
+config PCIE_ARMADA_8K
+	bool "Marvell Armada-8K PCIe controller"
+	depends on ARCH_MVEBU || COMPILE_TEST
 	depends on PCI_MSI
 	select PCIE_DW_HOST
 	help
@@ -266,7 +270,7 @@ config PCIE_DW_PLAT_EP
 	  selected.
 
 config PCIE_QCOM
-	bool "Qualcomm PCIe controller (host mode)"
+	tristate "Qualcomm PCIe controller (host mode)"
 	depends on OF && (ARCH_QCOM || COMPILE_TEST)
 	depends on PCI_MSI
 	select PCIE_DW_HOST
