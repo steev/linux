@@ -17,7 +17,7 @@
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/kernel.h>
-#include <linux/init.h>
+#include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/pci.h>
@@ -1820,6 +1820,21 @@ err_pm_runtime_put:
 	return ret;
 }
 
+static int qcom_pcie_remove(struct platform_device *pdev)
+{
+	struct qcom_pcie *pcie = platform_get_drvdata(pdev);
+	struct device *dev = &pdev->dev;
+
+	dw_pcie_host_deinit(&pcie->pci->pp);
+
+	phy_exit(pcie->phy);
+
+	pm_runtime_put_sync(dev);
+	pm_runtime_disable(dev);
+
+	return 0;
+}
+
 static const struct of_device_id qcom_pcie_match[] = {
 	{ .compatible = "qcom,pcie-apq8064", .data = &cfg_2_1_0 },
 	{ .compatible = "qcom,pcie-apq8084", .data = &cfg_1_0_0 },
@@ -1841,6 +1856,7 @@ static const struct of_device_id qcom_pcie_match[] = {
 	{ .compatible = "qcom,pcie-sm8450-pcie1", .data = &cfg_1_9_0 },
 	{ }
 };
+MODULE_DEVICE_TABLE(of, qcom_pcie_match);
 
 static void qcom_fixup_class(struct pci_dev *dev)
 {
@@ -1856,10 +1872,14 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_QCOM, 0x1001, qcom_fixup_class);
 
 static struct platform_driver qcom_pcie_driver = {
 	.probe = qcom_pcie_probe,
+	.remove = qcom_pcie_remove,
 	.driver = {
 		.name = "qcom-pcie",
-		.suppress_bind_attrs = true,
 		.of_match_table = qcom_pcie_match,
 	},
 };
-builtin_platform_driver(qcom_pcie_driver);
+module_platform_driver(qcom_pcie_driver);
+
+MODULE_AUTHOR("Stanimir Varbanov <svarbanov@mm-sol.com>");
+MODULE_DESCRIPTION("Qualcomm PCIe root complex driver");
+MODULE_LICENSE("GPL");
