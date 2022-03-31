@@ -3412,6 +3412,10 @@ static const char * const qmp_v4_phy_clk_l[] = {
 	"aux", "ref_clk_src", "ref", "com_aux",
 };
 
+static const char * const qmp_v4_lahaina_phy_clk_l[] = {
+	"ref_clk_src", "ref", "ref_aux", "ref_clk_parent",
+};
+
 /* the primary usb3 phy on sm8250 doesn't have a ref clock */
 static const char * const qmp_v4_sm8250_usbphy_clk_l[] = {
 	"aux", "ref_clk_src", "com_aux"
@@ -4416,8 +4420,8 @@ static const struct qmp_phy_cfg sm8350_ufsphy_cfg = {
 	.rx_tbl_num		= ARRAY_SIZE(sm8350_ufsphy_rx_tbl),
 	.pcs_tbl		= sm8350_ufsphy_pcs_tbl,
 	.pcs_tbl_num		= ARRAY_SIZE(sm8350_ufsphy_pcs_tbl),
-	.clk_list		= sdm845_ufs_phy_clk_l,
-	.num_clks		= ARRAY_SIZE(sdm845_ufs_phy_clk_l),
+	.clk_list		= qmp_v4_lahaina_phy_clk_l,
+	.num_clks		= ARRAY_SIZE(qmp_v4_lahaina_phy_clk_l),
 	.vreg_list		= qmp_phy_vreg_l,
 	.num_vregs		= ARRAY_SIZE(qmp_phy_vreg_l),
 	.regs			= sm8150_ufsphy_regs_layout,

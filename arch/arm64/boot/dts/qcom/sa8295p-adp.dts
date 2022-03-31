@@ -194,7 +194,7 @@
 	vcc-supply = <&vreg_l17c>;
 	vcc-max-microamp = <800000>;
 	vccq-supply = <&vreg_l6c>;
-	vccq-max-microamp = <900000>;
+	vccq-max-microamp = <750000>;
 };
 
 &ufs_mem_phy {
@@ -212,7 +212,7 @@
 	vcc-supply = <&vreg_l10c>;
 	vcc-max-microamp = <800000>;
 	vccq-supply = <&vreg_l3c>;
-	vccq-max-microamp = <900000>;
+	vccq-max-microamp = <750000>;
 };
 
 &ufs_card_phy {

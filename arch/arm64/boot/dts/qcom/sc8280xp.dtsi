@@ -1215,10 +1215,14 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
-			clock-names = "ref",
-				      "ref_aux";
+			clock-names = "ref_clk_src",
+				      "ref",
+				      "ref_aux",
+				      "ref_clk_parent";
 			clocks = <&rpmhcc RPMH_CXO_CLK>,
-				 <&gcc GCC_UFS_PHY_PHY_AUX_CLK>;
+				 <&gcc GCC_UFS_CARD_CLKREF_CLK>,
+				 <&gcc GCC_UFS_PHY_PHY_AUX_CLK>,
+				 <&gcc GCC_UFS_REF_CLKREF_CLK>;
 
 			resets = <&ufs_mem_hc 0>;
 			reset-names = "ufsphy";
@@ -1284,10 +1288,14 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
-			clock-names = "ref",
-				      "ref_aux";
-			clocks = <&gcc GCC_UFS_1_CARD_CLKREF_CLK>,
-				 <&gcc GCC_UFS_CARD_PHY_AUX_CLK>;
+			clock-names = "ref_clk_src",
+				      "ref",
+				      "ref_aux",
+				      "ref_clk_parent";
+			clocks = <&rpmhcc RPMH_CXO_CLK>,
+				 <&gcc GCC_UFS_1_CARD_CLKREF_CLK>,
+				 <&gcc GCC_UFS_PHY_PHY_AUX_CLK>,
+				 <&gcc GCC_UFS_REF_CLKREF_CLK>;
 
 			resets = <&ufs_card_hc 0>;
 			reset-names = "ufsphy";
