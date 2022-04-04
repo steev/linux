@@ -27,6 +27,7 @@
 #include <linux/reset.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/interconnect.h>
 
 #include "../../pci.h"
 #include "pcie-designware.h"
@@ -200,6 +201,7 @@ struct qcom_pcie {
 	union qcom_pcie_resources res;
 	struct phy *phy;
 	struct gpio_desc *reset;
+	struct icc_path *icc_path;
 	const struct qcom_pcie_cfg *cfg;
 };
 
@@ -1325,9 +1327,16 @@ static int qcom_pcie_host_init(struct pcie_port *pp)
 	if (ret)
 		return ret;
 
+	ret = icc_enable(pcie->icc_path);
+	if (ret) {
+		dev_err(pci->dev, "failed to enable interconnect path: %d\n",
+			ret);
+		goto err_deinit;
+	}
+
 	ret = phy_power_on(pcie->phy);
 	if (ret)
-		goto err_deinit;
+		goto err_disable_icc;
 
 	qcom_ep_reset_deassert(pcie);
 
@@ -1342,6 +1351,8 @@ static int qcom_pcie_host_init(struct pcie_port *pp)
 err_assert_reset:
 	qcom_ep_reset_assert(pcie);
 	phy_power_off(pcie->phy);
+err_disable_icc:
+	icc_disable(pcie->icc_path);
 err_deinit:
 	pcie->cfg->ops->deinit(pcie);
 
@@ -1352,6 +1363,7 @@ static void qcom_pcie_host_deinit(struct qcom_pcie *pcie)
 {
 	qcom_ep_reset_assert(pcie);
 	phy_power_off(pcie->phy);
+	icc_disable(pcie->icc_path);
 	pcie->cfg->ops->deinit(pcie);
 }
 
@@ -1539,6 +1551,12 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 	pcie->phy = devm_phy_optional_get(dev, "pciephy");
 	if (IS_ERR(pcie->phy)) {
 		ret = PTR_ERR(pcie->phy);
+		goto err_pm_runtime_put;
+	}
+
+	pcie->icc_path = devm_of_icc_get(&pdev->dev, "pcie-mem");
+	if (IS_ERR(pcie->icc_path)) {
+		ret = PTR_ERR(pcie->icc_path);
 		goto err_pm_runtime_put;
 	}
 
