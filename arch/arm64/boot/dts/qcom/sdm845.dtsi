@@ -414,9 +414,9 @@
 				compatible = "arm,idle-state";
 				idle-state-name = "little-power-down";
 				arm,psci-suspend-param = <0x40000003>;
-				entry-latency-us = <350>;
-				exit-latency-us = <461>;
-				min-residency-us = <1890>;
+				entry-latency-us = <800>;
+				exit-latency-us = <750>;
+				min-residency-us = <4090>;
 				local-timer-stop;
 			};
 
@@ -424,9 +424,9 @@
 				compatible = "arm,idle-state";
 				idle-state-name = "little-rail-power-down";
 				arm,psci-suspend-param = <0x40000004>;
-				entry-latency-us = <360>;
-				exit-latency-us = <531>;
-				min-residency-us = <3934>;
+				entry-latency-us = <800>;
+				exit-latency-us = <750>;
+				min-residency-us = <4090>;
 				local-timer-stop;
 			};
 
@@ -434,9 +434,9 @@
 				compatible = "arm,idle-state";
 				idle-state-name = "big-power-down";
 				arm,psci-suspend-param = <0x40000003>;
-				entry-latency-us = <264>;
-				exit-latency-us = <621>;
-				min-residency-us = <952>;
+				entry-latency-us = <600>;
+				exit-latency-us = <1550>;
+				min-residency-us = <4791>;
 				local-timer-stop;
 			};
 
@@ -444,9 +444,9 @@
 				compatible = "arm,idle-state";
 				idle-state-name = "big-rail-power-down";
 				arm,psci-suspend-param = <0x40000004>;
-				entry-latency-us = <702>;
-				exit-latency-us = <1061>;
-				min-residency-us = <4488>;
+				entry-latency-us = <600>;
+				exit-latency-us = <1550>;
+				min-residency-us = <4791>;
 				local-timer-stop;
 			};
 
@@ -454,11 +454,12 @@
 				compatible = "arm,idle-state";
 				idle-state-name = "cluster-power-down";
 				arm,psci-suspend-param = <0x400000F4>;
-				entry-latency-us = <3263>;
-				exit-latency-us = <6562>;
-				min-residency-us = <9987>;
+				entry-latency-us = <1050>;
+				exit-latency-us = <2500>;
+				min-residency-us = <5309>;
 				local-timer-stop;
 			};
+
 		};
 	};
 
