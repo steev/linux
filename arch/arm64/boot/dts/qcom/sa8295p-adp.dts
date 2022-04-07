@@ -148,6 +148,19 @@
 			regulator-allow-set-load;
 		};
 
+		vreg_l7g: ldo7 {
+			regulator-name = "vreg_l7g";
+			/* This LDO is pretty similar to ld08. Bjorns appears to have
+			   just cut the min/max from downstream and took the midpoint,
+			   so I will do similar here. He also opted for HPM by default which
+			   I shall also blindly do!
+			 */
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-allow-set-load;
+		};
+
 		vreg_l8g: ldo8 {
 			regulator-name = "vreg_l8g";
 			regulator-min-microvolt = <880000>;
@@ -223,7 +236,7 @@
 };
 
 &usb_0 {
-	status = "okay";
+	//status = "okay";
 };
 
 &usb_0_dwc3 {
@@ -232,7 +245,7 @@
 };
 
 &usb_0_hsphy {
-	status = "okay";
+	//status = "okay";
 
 	vdda-pll-supply = <&vreg_l5a>;
 	vdda18-supply = <&vreg_l7a>;
@@ -240,14 +253,14 @@
 };
 
 &usb_0_qmpphy {
-	status = "okay";
+	//status = "okay";
 
 	vdda-phy-supply = <&vreg_l3a>;
 	vdda-pll-supply = <&vreg_l5a>;
 };
 
 &usb_1 {
-	status = "okay";
+	//status = "okay";
 };
 
 &usb_1_dwc3 {
@@ -256,7 +269,7 @@
 };
 
 &usb_1_hsphy {
-	status = "okay";
+	//status = "okay";
 
 	vdda-pll-supply = <&vreg_l1c>;
 	vdda18-supply = <&vreg_l7c>;
@@ -264,8 +277,66 @@
 };
 
 &usb_1_qmpphy {
-	status = "okay";
+	//status = "okay";
 
 	vdda-phy-supply = <&vreg_l4c>;
 	vdda-pll-supply = <&vreg_l1c>;
+};
+
+&usb_2 {
+	status = "okay";
+};
+
+&usb_2_dwc3 {
+	dr_mode = "host";
+};
+
+&usb_nop_phy {
+	status = "okay";
+};
+
+&usb2_phy2 {
+	status = "okay";
+
+	vdda-pll-supply = <&vreg_l5a>;
+	vdda18-supply = <&vreg_l7g>;
+	vdda33-supply = <&vreg_l13a>;
+};
+
+&usb_qmp_phy0 {
+	status = "okay";
+
+	vdda-phy-supply = <&vreg_l3a>;
+	vdda-pll-supply = <&vreg_l5a>;
+};
+
+&usb2_phy3 {
+	status = "okay";
+
+	vdda-pll-supply = <&vreg_l5a>;
+	vdda18-supply = <&vreg_l7g>;
+	vdda33-supply = <&vreg_l13a>;
+};
+
+&usb_qmp_phy1 {
+	status = "okay";
+
+	vdda-phy-supply = <&vreg_l3a>;
+	vdda-pll-supply = <&vreg_l5a>;
+};
+
+&usb2_phy4 {
+	status = "okay";
+
+	vdda-pll-supply = <&vreg_l5a>;
+	vdda18-supply = <&vreg_l7g>;
+	vdda33-supply = <&vreg_l13a>;
+};
+
+&usb2_phy5 {
+	status = "okay";
+
+	vdda-pll-supply = <&vreg_l5a>;
+	vdda18-supply = <&vreg_l7g>;
+	vdda33-supply = <&vreg_l13a>;
 };

@@ -706,11 +706,15 @@
 			clocks = <&rpmhcc RPMH_CXO_CLK>,
 				 <&sleep_clk>,
 				 <&usb_0_ssphy>,
-				 <&usb_1_ssphy>;
+				 <&usb_1_ssphy>,
+				 <&usb_2_ssphy>,
+				 <&usb_2_ssphy1>;
 			clock-names = "bi_tcxo",
 				      "sleep_clk",
 				      "usb3_phy_wrapper_gcc_usb30_pipe_clk",
-				      "usb3_uni_phy_sec_gcc_usb30_pipe_clk";
+				      "usb3_uni_phy_sec_gcc_usb30_pipe_clk",
+				      "usb3_uni_phy_mp_gcc_usb30_pipe_0_clk",
+				      "usb3_uni_phy_mp_gcc_usb30_pipe_1_clk";
 			power-domain = <&rpmhpd SC8280XP_CX>;
 		};
 
@@ -1495,6 +1499,454 @@
 				phys = <&usb_1_hsphy>, <&usb_1_ssphy>;
 				phy-names = "usb2-phy", "usb3-phy";
 			};
+		};
+
+		usb_2: usb@a4f8800 {
+			compatible = "qcom,sc8280xp-dwc3", "qcom,dwc3";
+			reg = <0 0x0a4f8800 0 0x400>;
+			status = "disabled";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			clocks = <&gcc GCC_USB30_MP_MASTER_CLK>,
+				<&gcc GCC_CFG_NOC_USB3_MP_AXI_CLK>,
+				<&gcc GCC_AGGRE_USB3_MP_AXI_CLK>,
+				<&gcc GCC_USB30_MP_MOCK_UTMI_CLK>,
+				<&gcc GCC_USB30_MP_SLEEP_CLK>,
+				<&gcc GCC_AGGRE_USB_NOC_AXI_CLK>,
+				<&gcc GCC_AGGRE_USB_NOC_NORTH_AXI_CLK>,
+				<&gcc GCC_AGGRE_USB_NOC_SOUTH_AXI_CLK>,
+				<&gcc GCC_SYS_NOC_USB_AXI_CLK>;
+			clock-names = "core", "iface", "bus_aggr",
+					"utmi", "sleep", "noc_aggr",
+					"noc_aggr_north", "noc_aggr_south",
+					"noc_sys";
+
+			/* No idea where bjorn got the below for the other usbs...
+			   for now comment out but who knows if it will work.
+			assigned-clocks = <&gcc gcc_usb30_sec_mock_utmi_clk>,
+					  <&gcc gcc_usb30_sec_master_clk>;
+			assigned-clock-rates = <19200000>, <200000000>;
+            */
+
+			interrupts-extended = <&pdc 127 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 126 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 129 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 128 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 131 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 130 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 133 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 132 IRQ_TYPE_EDGE_RISING>,
+					<&pdc 16 IRQ_TYPE_LEVEL_HIGH>,
+					<&pdc 17 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "dp_hs_phy_irq", "dm_hs_phy_irq",
+					"dp_hs_phy_irq1", "dm_hs_phy_irq1",
+					"dp_hs_phy_irq2", "dm_hs_phy_irq2",
+					"dp_hs_phy_irq3", "dm_hs_phy_irq3",
+					"ss_phy_irq", "ss_phy_irq1";
+
+			power-domains = <&gcc USB30_MP_GDSC>;
+
+			resets = <&gcc GCC_USB30_MP_BCR>;
+
+			/* TODO: just assuming the 0 tag that I copy-pasted from Bjorn's uSB is correct; downstream lacks them */
+			interconnects = <&aggre1_noc MASTER_USB3_MP 0 &mc_virt SLAVE_EBI1 0>,
+				        <&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_USB3_MP 0>;
+			interconnect-names = "usb-ddr", "apps-usb";
+
+			usb_2_dwc3: usb@a400000 {
+				compatible = "snps,dwc3";
+				reg = <0 0x0a400000 0 0xcd00>;
+				interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>;
+				iommus = <&apps_smmu 0x800 0x0>;
+				phys = <&usb2_phy2>, <&usb_2_ssphy>,
+					<&usb2_phy3>, <&usb_2_ssphy1>,
+					<&usb2_phy4>, <&usb_nop_phy>,
+					<&usb2_phy5>, <&usb_nop_phy>;
+			};
+		};
+
+		usb_nop_phy: usb_nop_phy {
+			compatible = "usb-nop-xceiv";
+			status = "disabled";
+            #phy-cells = <0>;
+		};
+
+		/* Tertiary USB port 0 related High Speed PHY */
+		usb2_phy2: hsphy@88e7000 {
+			compatible = "qcom,sc8280xp-usb-hs-phy",
+				     "qcom,usb-snps-hs-5nm-phy";
+			reg = <0 0x88e7000 0 0x400>;
+			status = "disabled";
+			#phy-cells = <0>;
+
+			clocks = <&gcc GCC_USB2_HS0_CLKREF_CLK>;
+			clock-names = "ref";
+
+			resets = <&gcc GCC_QUSB2PHY_HS0_MP_BCR>;
+
+			/* TODO: this isn't an upstream thing... bjorn omitted in 88e5000 so hopefully safe.*/
+			//qcom,param-override-seq =
+			//	<0xe6 0x6c	/* override_x0 */
+			//	 0x0b 0x70	/* override_x1 */
+			//	 0x17 0x74>;	/* override x2 */
+		};
+
+		/* Tertiary USB port 0 related QMP PHY */
+		usb_qmp_phy0: phy-wrapper@88ef000 {
+			/* TODO: should we get our own compatible here? Gotta check both upstream and downstream drivers */
+			compatible = "qcom,sm8150-qmp-usb3-uni-phy";
+			reg = <0 0x088ef000 0 0x200>;
+			status = "disabled";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			clocks = <&gcc GCC_USB3_MP_PHY_AUX_CLK>,
+				 //<&gcc GCC_USB3_MP_PHY_PIPE_0_CLK>, // this is in the phy node itself, not the wrapper, at least how bjorn did it
+				 //<&gcc GCC_USB3_MP_PHY_PIPE_0_CLK_SRC>, bjorn does these as output clocks instead of a clock requirement here
+				 //<&usb3_uni_phy_mp_gcc_usb30_pipe_0_clk>, iiuc the phy node below provides this clock, and its refereneced by the gcc as a clock it needs..
+				 <&rpmhcc RPMH_CXO_CLK>,
+				 <&gcc GCC_USB3_MP0_CLKREF_CLK>,
+				 <&gcc GCC_USB3_MP_PHY_COM_AUX_CLK>;
+			clock-names = "aux", "ref_clk_src", "ref", "com_aux";
+
+			resets = <&gcc GCC_USB3_UNIPHY_MP0_BCR>,
+					<&gcc GCC_USB3UNIPHY_PHY_MP0_BCR>; /* TODO: this is supposed to be the common
+                                                          reset, something _like_ GCC_USB3_DP_PHY_PRIM_BCR
+                                                          if things fail look for that, start
+                                                          with downstream definition though.
+                                                        */
+			reset-names = "phy", "common";
+
+			usb_2_ssphy: phy@88ef200 {
+				reg = <0 0x088ef200 0 0x200>,
+				      <0 0x088ef400 0 0x200>,
+				      <0 0x088ef800 0 0x800>,
+				      <0 0x088ef600 0 0x200>;
+				#phy-cells = <0>;
+				#clock-cells = <0>;
+				clocks = <&gcc GCC_USB3_MP_PHY_PIPE_0_CLK>;
+				clock-names = "pipe0";
+				/* TODO: not so sure about this name.., above's right tho. */
+				clock-output-names = "usb2_phy_pipe_0_clk_src";
+			};
+			/* not an upstream thing...
+			qcom,qmp-phy-reg-offset =
+					<USB3_UNI_PCS_PCS_STATUS1
+					USB3_UNI_PCS_USB3_AUTONOMOUS_MODE_CTRL
+					USB3_UNI_PCS_USB3_LFPS_RXTERM_IRQ_CLEAR
+					USB3_UNI_PCS_POWER_DOWN_CONTROL
+					USB3_UNI_PCS_SW_RESET
+					USB3_UNI_PCS_START_CONTROL>;
+			*/
+
+			//qcom,qmp-phy-init-seq =
+					/* <reg_offset, value, delay> */
+					/*
+					<USB3_UNI_QSERDES_COM_SYSCLK_EN_SEL 0x1A 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_HSCLK_SEL 0x11 0
+					USB3_UNI_QSERDES_COM_HSCLK_SEL 0x01 0
+					USB3_UNI_QSERDES_COM_DEC_START_MODE0 0x82 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START1_MODE0 0xAB 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START2_MODE0 0xEA 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START3_MODE0 0x02 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE1_MODE0 0xCA 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE2_MODE0 0x1E 0
+					USB3_UNI_QSERDES_COM_CP_CTRL_MODE0 0x06 0
+					USB3_UNI_QSERDES_COM_PLL_RCTRL_MODE0 0x16 0
+					USB3_UNI_QSERDES_COM_PLL_CCTRL_MODE0 0x36 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE1_MODE0 0x24 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP2_MODE0 0x34 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP1_MODE0 0x14 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP_EN 0x04 0
+					USB3_UNI_QSERDES_COM_SYSCLK_BUF_ENABLE 0x0A 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE2_MODE1 0x02 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE1_MODE1 0x24 0
+					USB3_UNI_QSERDES_COM_CORECLK_DIV_MODE1 0x08 0
+					USB3_UNI_QSERDES_COM_DEC_START_MODE1 0x82 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START1_MODE1 0xAB 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START2_MODE1 0xEA 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START3_MODE1 0x02 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP2_MODE1 0x82 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP1_MODE1 0x34 0
+					USB3_UNI_QSERDES_COM_CP_CTRL_MODE1 0x06 0
+					USB3_UNI_QSERDES_COM_PLL_RCTRL_MODE1 0x16 0
+					USB3_UNI_QSERDES_COM_PLL_CCTRL_MODE1 0x36 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE1_MODE1 0xCA 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE2_MODE1 0x1E 0
+					USB3_UNI_QSERDES_COM_SSC_EN_CENTER 0x01 0
+					USB3_UNI_QSERDES_COM_SSC_PER1 0x31 0
+					USB3_UNI_QSERDES_COM_SSC_PER2 0x01 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE1_MODE1 0xDE 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE2_MODE1 0x07 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE1_MODE0 0xDE 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE2_MODE0 0x07 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE_MAP 0x02 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH4 0xDC 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH3 0xBD 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH2 0xFF 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH 0x7F 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_LOW 0xFF 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH4 0xA9 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH3 0x7B 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH2 0xE4 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH 0x24 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_LOW 0x64 0
+					USB3_UNI_QSERDES_RX_UCDR_PI_CONTROLS 0x99 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_THRESH1 0x08 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_THRESH2 0x08 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_GAIN1 0x00 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_GAIN2 0x04 0
+					USB3_UNI_QSERDES_RX_UCDR_FASTLOCK_FO_GAIN 0x2F 0
+					USB3_UNI_QSERDES_RX_UCDR_FASTLOCK_COUNT_LOW 0xFF 0
+					USB3_UNI_QSERDES_RX_UCDR_FASTLOCK_COUNT_HIGH 0x0F 0
+					USB3_UNI_QSERDES_RX_UCDR_FO_GAIN 0x0A 0
+					USB3_UNI_QSERDES_RX_VGA_CAL_CNTRL1 0x54 0
+					USB3_UNI_QSERDES_RX_VGA_CAL_CNTRL2 0x0F 0
+					USB3_UNI_QSERDES_RX_RX_EQU_ADAPTOR_CNTRL2 0x0F 0
+					USB3_UNI_QSERDES_RX_RX_EQU_ADAPTOR_CNTRL4 0x0A 0
+					USB3_UNI_QSERDES_RX_RX_EQ_OFFSET_ADAPTOR_CNTRL1 0x47 0
+					USB3_UNI_QSERDES_RX_RX_OFFSET_ADAPTOR_CNTRL2 0x80 0
+					USB3_UNI_QSERDES_RX_SIGDET_CNTRL 0x04 0
+					USB3_UNI_QSERDES_RX_SIGDET_DEGLITCH_CNTRL 0x0E 0
+					USB3_UNI_QSERDES_RX_DFE_CTLE_POST_CAL_OFFSET 0x38 0
+					USB3_UNI_QSERDES_RX_UCDR_SO_GAIN 0x05 0
+					USB3_UNI_QSERDES_RX_GM_CAL 0x00 0
+					USB3_UNI_QSERDES_RX_SIGDET_ENABLES 0x00 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_1 0xA5 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_2 0x82 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_3 0x3F 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_4 0x3F 0
+					USB3_UNI_QSERDES_TX_PI_QEC_CTRL 0x21 0
+					USB3_UNI_QSERDES_TX_RES_CODE_LANE_OFFSET_TX 0x10 0
+					USB3_UNI_QSERDES_TX_RES_CODE_LANE_OFFSET_RX 0x0E 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG1 0xD0 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG2 0x07 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG3 0x20 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG6 0x13 0
+					USB3_UNI_PCS_RCVR_DTCT_DLY_P1U2_L 0xE7 0
+					USB3_UNI_PCS_RCVR_DTCT_DLY_P1U2_H 0x03 0
+					USB3_UNI_PCS_RX_SIGDET_LVL 0xAA 0
+					USB3_UNI_PCS_PCS_TX_RX_CONFIG 0x0C 0
+					USB3_UNI_PCS_USB3_RXEQTRAINING_DFE_TIME_S2 0x07 0
+					USB3_UNI_PCS_USB3_LFPS_DET_HIGH_COUNT_VAL 0xF8 0
+					USB3_UNI_PCS_CDR_RESET_TIME 0x0A 0
+					USB3_UNI_PCS_ALIGN_DETECT_CONFIG1 0x88 0
+					USB3_UNI_PCS_ALIGN_DETECT_CONFIG2 0x13 0
+					USB3_UNI_PCS_EQ_CONFIG1 0x4B 0
+					USB3_UNI_PCS_EQ_CONFIG5 0x10 0
+					USB3_UNI_PCS_REFGEN_REQ_CONFIG1 0x21 0
+					0xffffffff 0xffffffff 0x00>;
+					*/
+		};
+
+		/* Tertiary USB port 1 related High Speed PHY */
+		usb2_phy3: hsphy@88e8000 {
+			compatible = "qcom,sc8280xp-usb-hs-phy",
+				     "qcom,usb-snps-hs-5nm-phy";
+			reg = <0 0x88e8000 0 0x400>;
+			status = "disabled";
+			#phy-cells = <0>;
+
+			clocks = <&gcc GCC_USB2_HS1_CLKREF_CLK>;
+			clock-names = "ref";
+
+			resets = <&gcc GCC_QUSB2PHY_HS1_MP_BCR>;
+			/* TODO: this isn't an upstream thing... bjorn omitted in 88e5000 so hopefully safe.*/
+			//qcom,param-override-seq =
+			//	<0xe6 0x6c	/* override_x0 */
+			//	 0x0b 0x70	/* override_x1 */
+			//	 0x17 0x74>;	/* override x2 */
+		};
+
+		/* Tertiary USB port 1 related QMP PHY */
+		//usb_qmp_phy1: ssphy@88f1000 {
+		usb_qmp_phy1: phy-wrapper@88f1000 {
+			compatible = "qcom,sm8150-qmp-usb3-uni-phy";
+			reg = <0 0x088f1000 0 0x200>;
+			status = "disabled";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			clocks = <&gcc GCC_USB3_MP_PHY_AUX_CLK>,
+				 // <&gcc GCC_USB3_MP_PHY_PIPE_1_CLK>, goes in the phy node
+				 // <&gcc GCC_USB3_MP_PHY_PIPE_1_CLK_SRC>, bjorn does these as outputs in phy node
+				 // <&usb3_uni_phy_mp_gcc_usb30_pipe_1_clk>, iiuc the phy node  below provides this clock, and its refereneced by the gcc as a clock it needs..
+				 <&rpmhcc RPMH_CXO_CLK>,
+				 <&gcc GCC_USB3_MP1_CLKREF_CLK>,
+				 <&gcc GCC_USB3_MP_PHY_COM_AUX_CLK>;
+			clock-names = "aux", "ref_clk_src", "ref", "com_aux";
+
+			resets = <&gcc GCC_USB3_UNIPHY_MP1_BCR>,
+					<&gcc GCC_USB3UNIPHY_PHY_MP1_BCR>;
+			reset-names = "phy", "common"; // TODO: I really think this is not the common one, it was titled phy_phy downstream...
+
+			/* All register offsets here are just relative to what
+			   was done with 88e9200/usb_0_ssphy */
+			/* phandle name is my own */
+			usb_2_ssphy1: phy@88f1200 {
+				reg = <0 0x088f1200 0 0x200>,
+				      <0 0x088f1400 0 0x200>,
+				      <0 0x088f1800 0 0x800>,
+				      <0 0x088f1600 0 0x200>;
+				#phy-cells = <0>;
+				#clock-cells = <0>;
+				clocks = <&gcc GCC_USB3_MP_PHY_PIPE_1_CLK>;
+				clock-names = "pipe0";
+				/* TODO: don't know about the below name, the above def needs to be pipe0... */
+				clock-output-names = "usb2_phy1_pipe_0_clk_src";
+			};
+
+			/* not an upstream thing.
+			qcom,qmp-phy-reg-offset =
+					<USB3_UNI_PCS_PCS_STATUS1
+					USB3_UNI_PCS_USB3_AUTONOMOUS_MODE_CTRL
+					USB3_UNI_PCS_USB3_LFPS_RXTERM_IRQ_CLEAR
+					USB3_UNI_PCS_POWER_DOWN_CONTROL
+					USB3_UNI_PCS_SW_RESET
+					USB3_UNI_PCS_START_CONTROL>;
+			*/
+
+			//qcom,qmp-phy-init-seq =
+					/* <reg_offset, value, delay> */
+					/*
+					<USB3_UNI_QSERDES_COM_SYSCLK_EN_SEL 0x1A 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_HSCLK_SEL 0x11 0
+					USB3_UNI_QSERDES_COM_HSCLK_SEL 0x01 0
+					USB3_UNI_QSERDES_COM_DEC_START_MODE0 0x82 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START1_MODE0 0xAB 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START2_MODE0 0xEA 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START3_MODE0 0x02 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE1_MODE0 0xCA 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE2_MODE0 0x1E 0
+					USB3_UNI_QSERDES_COM_CP_CTRL_MODE0 0x06 0
+					USB3_UNI_QSERDES_COM_PLL_RCTRL_MODE0 0x16 0
+					USB3_UNI_QSERDES_COM_PLL_CCTRL_MODE0 0x36 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE1_MODE0 0x24 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP2_MODE0 0x34 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP1_MODE0 0x14 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP_EN 0x04 0
+					USB3_UNI_QSERDES_COM_SYSCLK_BUF_ENABLE 0x0A 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE2_MODE1 0x02 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE1_MODE1 0x24 0
+					USB3_UNI_QSERDES_COM_CORECLK_DIV_MODE1 0x08 0
+					USB3_UNI_QSERDES_COM_DEC_START_MODE1 0x82 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START1_MODE1 0xAB 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START2_MODE1 0xEA 0
+					USB3_UNI_QSERDES_COM_DIV_FRAC_START3_MODE1 0x02 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP2_MODE1 0x82 0
+					USB3_UNI_QSERDES_COM_LOCK_CMP1_MODE1 0x34 0
+					USB3_UNI_QSERDES_COM_CP_CTRL_MODE1 0x06 0
+					USB3_UNI_QSERDES_COM_PLL_RCTRL_MODE1 0x16 0
+					USB3_UNI_QSERDES_COM_PLL_CCTRL_MODE1 0x36 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE1_MODE1 0xCA 0
+					USB3_UNI_QSERDES_COM_BIN_VCOCAL_CMP_CODE2_MODE1 0x1E 0
+					USB3_UNI_QSERDES_COM_SSC_EN_CENTER 0x01 0
+					USB3_UNI_QSERDES_COM_SSC_PER1 0x31 0
+					USB3_UNI_QSERDES_COM_SSC_PER2 0x01 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE1_MODE1 0xDE 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE2_MODE1 0x07 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE1_MODE0 0xDE 0
+					USB3_UNI_QSERDES_COM_SSC_STEP_SIZE2_MODE0 0x07 0
+					USB3_UNI_QSERDES_COM_VCO_TUNE_MAP 0x02 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH4 0xDC 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH3 0xBD 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH2 0xFF 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_HIGH 0x7F 0
+					USB3_UNI_QSERDES_RX_RX_MODE_00_LOW 0xFF 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH4 0xA9 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH3 0x7B 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH2 0xE4 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_HIGH 0x24 0
+					USB3_UNI_QSERDES_RX_RX_MODE_01_LOW 0x64 0
+					USB3_UNI_QSERDES_RX_UCDR_PI_CONTROLS 0x99 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_THRESH1 0x08 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_THRESH2 0x08 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_GAIN1 0x00 0
+					USB3_UNI_QSERDES_RX_UCDR_SB2_GAIN2 0x04 0
+					USB3_UNI_QSERDES_RX_UCDR_FASTLOCK_FO_GAIN 0x2F 0
+					USB3_UNI_QSERDES_RX_UCDR_FASTLOCK_COUNT_LOW 0xFF 0
+					USB3_UNI_QSERDES_RX_UCDR_FASTLOCK_COUNT_HIGH 0x0F 0
+					USB3_UNI_QSERDES_RX_UCDR_FO_GAIN 0x0A 0
+					USB3_UNI_QSERDES_RX_VGA_CAL_CNTRL1 0x54 0
+					USB3_UNI_QSERDES_RX_VGA_CAL_CNTRL2 0x0F 0
+					USB3_UNI_QSERDES_RX_RX_EQU_ADAPTOR_CNTRL2 0x0F 0
+					USB3_UNI_QSERDES_RX_RX_EQU_ADAPTOR_CNTRL4 0x0A 0
+					USB3_UNI_QSERDES_RX_RX_EQ_OFFSET_ADAPTOR_CNTRL1 0x47 0
+					USB3_UNI_QSERDES_RX_RX_OFFSET_ADAPTOR_CNTRL2 0x80 0
+					USB3_UNI_QSERDES_RX_SIGDET_CNTRL 0x04 0
+					USB3_UNI_QSERDES_RX_SIGDET_DEGLITCH_CNTRL 0x0E 0
+					USB3_UNI_QSERDES_RX_DFE_CTLE_POST_CAL_OFFSET 0x38 0
+					USB3_UNI_QSERDES_RX_UCDR_SO_GAIN 0x05 0
+					USB3_UNI_QSERDES_RX_GM_CAL 0x00 0
+					USB3_UNI_QSERDES_RX_SIGDET_ENABLES 0x00 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_1 0xA5 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_2 0x82 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_3 0x3F 0
+					USB3_UNI_QSERDES_TX_LANE_MODE_4 0x3F 0
+					USB3_UNI_QSERDES_TX_PI_QEC_CTRL 0x21 0
+					USB3_UNI_QSERDES_TX_RES_CODE_LANE_OFFSET_TX 0x10 0
+					USB3_UNI_QSERDES_TX_RES_CODE_LANE_OFFSET_RX 0x0E 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG1 0xD0 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG2 0x07 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG3 0x20 0
+					USB3_UNI_PCS_LOCK_DETECT_CONFIG6 0x13 0
+					USB3_UNI_PCS_RCVR_DTCT_DLY_P1U2_L 0xE7 0
+					USB3_UNI_PCS_RCVR_DTCT_DLY_P1U2_H 0x03 0
+					USB3_UNI_PCS_RX_SIGDET_LVL 0xAA 0
+					USB3_UNI_PCS_PCS_TX_RX_CONFIG 0x0C 0
+					USB3_UNI_PCS_USB3_RXEQTRAINING_DFE_TIME_S2 0x07 0
+					USB3_UNI_PCS_USB3_LFPS_DET_HIGH_COUNT_VAL 0xF8 0
+					USB3_UNI_PCS_CDR_RESET_TIME 0x0A 0
+					USB3_UNI_PCS_ALIGN_DETECT_CONFIG1 0x88 0
+					USB3_UNI_PCS_ALIGN_DETECT_CONFIG2 0x13 0
+					USB3_UNI_PCS_EQ_CONFIG1 0x4B 0
+					USB3_UNI_PCS_EQ_CONFIG5 0x10 0
+					USB3_UNI_PCS_REFGEN_REQ_CONFIG1 0x21 0
+					0xffffffff 0xffffffff 0x00>;
+					*/
+		};
+
+		/* Tertiary USB port 2 related High Speed PHY */
+		usb2_phy4: hsphy@88e9000 {
+			compatible = "qcom,sc8280xp-usb-hs-phy",
+				     "qcom,usb-snps-hs-5nm-phy";
+			reg = <0 0x88e9000 0 0x400>;
+			status = "disabled";
+			#phy-cells = <0>;
+
+			clocks = <&gcc GCC_USB2_HS2_CLKREF_CLK>;
+			clock-names = "ref";
+
+			resets = <&gcc GCC_QUSB2PHY_HS2_MP_BCR>;
+			/* TODO: this isn't an upstream thing... bjorn omitted in 88e5000 so hopefully safe.*/
+			//qcom,param-override-seq =
+			//	<0xe6 0x6c	/* override_x0 */
+			//	 0x0b 0x70	/* override_x1 */
+			//	 0x17 0x74>;	/* override x2 */
+		};
+
+		/* Tertiary USB port 3 related High Speed PHY */
+		usb2_phy5: hsphy@88ea000 {
+			compatible = "qcom,sc8280xp-usb-hs-phy",
+				     "qcom,usb-snps-hs-5nm-phy";
+			reg = <0 0x88ea000 0 0x400>;
+			status = "disabled";
+			#phy-cells = <0>;
+
+			clocks = <&gcc GCC_USB2_HS3_CLKREF_CLK>;
+			clock-names = "ref";
+
+			resets = <&gcc GCC_QUSB2PHY_HS3_MP_BCR>;
+
+			/* TODO: this isn't an upstream thing... bjorn omitted in 88e5000 so hopefully safe.*/
+			//qcom,param-override-seq =
+			//	<0xe6 0x6c	/* override_x0 */
+			//	 0x0b 0x70	/* override_x1 */
+			//	 0x17 0x74>;	/* override x2 */
 		};
 
 		usb_0_hsphy: phy@88e5000 {
