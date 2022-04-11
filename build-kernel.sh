@@ -33,7 +33,7 @@ cat arch/arm64/boot/Image.gz "${DTB}" > "${ZIMAGE_DTB}"
 
 #abootimg --create "${ABOOT_IMG}" -f "${BOOT_CFG}" -k "${ZIMAGE_DTB}" -r "${INITRD}"
 
-~/git/android/mkbootimg/mkbootimg.py --output "${ABOOT_IMG}" --kernel "${ZIMAGE_DTB}" --dtb "${DTB}" --pagesize 2048 --kernel_offset 0x80208000 --second_offset 0x81100000 --tags_offset 0x7d00000 --base 0x1208800 --cmdline "root=/dev/sda1 rw rootwait console=ttyMSM0,115200,n8 no_console_suspend=1 androidboot.hardware=qcom androidboot.console=ttyMSM0  lpm_levels.sleep_disabled=1 msm_rtb.filter=0x237 earlycon=qcom_geni,0xa90000 fips=0 notests nokaslr ignore_loglevel"
+~/git/android/mkbootimg/mkbootimg.py --output "${ABOOT_IMG}" --kernel "${ZIMAGE_DTB}" --dtb "${DTB}" --pagesize 2048 --kernel_offset 0x80208000 --second_offset 0x81100000 --tags_offset 0x7d00000 --base 0x1208800 --cmdline "root=/dev/sda1 rw rootwait console=ttyMSM0,115200,n8 no_console_suspend=1 androidboot.hardware=qcom androidboot.console=ttyMSM0  lpm_levels.sleep_disabled=1 msm_rtb.filter=0x237 earlycon=qcom_geni,0x884000 fips=0 notests nokaslr ignore_loglevel"
 
 rm -f "${INITRD}" "${ZIMAGE_DTB}"
 
