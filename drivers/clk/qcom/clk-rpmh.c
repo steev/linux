@@ -260,6 +260,7 @@ static int clk_rpmh_bcm_send_cmd(struct clk_rpmh *c, bool enable)
 	struct tcs_cmd cmd = { 0 };
 	u32 cmd_state;
 	int ret = 0;
+	enum rpmh_state state;
 
 	mutex_lock(&rpmh_clk_lock);
 	if (enable) {
@@ -279,15 +280,19 @@ static int clk_rpmh_bcm_send_cmd(struct clk_rpmh *c, bool enable)
 		 * use the active state when we're in sleep/wake state as long
 		 * as the sleep/wake state has never been set.
 		 */
-		ret = clk_rpmh_send(c, RPMH_ACTIVE_ONLY_STATE, &cmd, enable);
-		if (ret) {
-			dev_err(c->dev, "set active state of %s failed: (%d)\n",
-				c->res_name, ret);
-		} else {
-			c->last_sent_aggr_state = cmd_state;
+		for (state = RPMH_SLEEP_STATE; state <= RPMH_ACTIVE_ONLY_STATE; state++) {
+			ret = clk_rpmh_send(c, state, &cmd, enable);
+			if (ret) {
+				dev_err(c->dev, "set %s state of %s failed: (%d)\n",
+					!state ? "sleep" :
+					state == RPMH_WAKE_ONLY_STATE	?
+					"wake" : "active", c->res_name, ret);
+				goto out;
+			}
 		}
+		c->last_sent_aggr_state = cmd_state;
 	}
-
+out:
 	mutex_unlock(&rpmh_clk_lock);
 
 	return ret;
