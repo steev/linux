@@ -57,7 +57,7 @@ struct adreno_reglist {
 	u32 value;
 };
 
-extern const struct adreno_reglist a615_hwcg[], a630_hwcg[], a640_hwcg[], a650_hwcg[], a660_hwcg[];
+extern const struct adreno_reglist a615_hwcg[], a630_hwcg[], a640_hwcg[], a650_hwcg[], a660_hwcg[], a690_hwcg[];
 
 struct adreno_info {
 	struct adreno_rev rev;
@@ -255,7 +255,7 @@ static inline int adreno_is_a630(struct adreno_gpu *gpu)
 
 static inline int adreno_is_a640_family(struct adreno_gpu *gpu)
 {
-	return (gpu->revn == 640) || (gpu->revn == 680);
+	return (gpu->revn == 640) || (gpu->revn == 680) || (gpu->revn == 690);
 }
 
 static inline int adreno_is_a650(struct adreno_gpu *gpu)
@@ -290,6 +290,11 @@ static inline int adreno_is_a650_family(struct adreno_gpu *gpu)
 {
 	return gpu->revn == 650 || gpu->revn == 620 || adreno_is_a660_family(gpu);
 }
+
+static inline int adreno_is_a690(struct adreno_gpu *gpu)
+{
+	return gpu->revn == 690;
+};
 
 u64 adreno_private_address_space_size(struct msm_gpu *gpu);
 int adreno_get_param(struct msm_gpu *gpu, struct msm_file_private *ctx,
