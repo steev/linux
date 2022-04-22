@@ -16,24 +16,22 @@ description: |
 
 properties:
   compatible:
-    items:
-      - enum:
-          - qcom,pcie-ipq8064
-          - qcom,pcie-ipq8064-v2
-          - qcom,pcie-apq8064
-          - qcom,pcie-apq8084
-          - qcom,pcie-msm8996
-          - qcom,pcie-ipq4019
-          - qcom,pcie-ipq8074
-          - qcom,pcie-qcs404
-          - qcom,pcie-sc7280
-          - qcom,pcie-sc8180x
-          - qcom,pcie-sdm845
-          - qcom,pcie-sm8250
-          - qcom,pcie-sm8450-pcie0
-          - qcom,pcie-sm8450-pcie1
-          - qcom,pcie-ipq6018
-      - const: snps,dw-pcie
+    enum:
+      - qcom,pcie-ipq8064
+      - qcom,pcie-ipq8064-v2
+      - qcom,pcie-apq8064
+      - qcom,pcie-apq8084
+      - qcom,pcie-msm8996
+      - qcom,pcie-ipq4019
+      - qcom,pcie-ipq8074
+      - qcom,pcie-qcs404
+      - qcom,pcie-sc7280
+      - qcom,pcie-sc8180x
+      - qcom,pcie-sdm845
+      - qcom,pcie-sm8250
+      - qcom,pcie-sm8450-pcie0
+      - qcom,pcie-sm8450-pcie1
+      - qcom,pcie-ipq6018
 
   interrupts:
     maxItems: 1
@@ -618,7 +616,7 @@ examples:
   - |
     #include <dt-bindings/interrupt-controller/arm-gic.h>
     pcie@1b500000 {
-      compatible = "qcom,pcie-ipq8064", "snps,dw-pcie";
+      compatible = "qcom,pcie-ipq8064";
       reg = <0x1b500000 0x1000
              0x1b502000 0x80
              0x1b600000 0x100
@@ -663,7 +661,7 @@ examples:
     #include <dt-bindings/interrupt-controller/arm-gic.h>
     #include <dt-bindings/gpio/gpio.h>
     pcie@fc520000 {
-      compatible = "qcom,pcie-apq8084", "snps,dw-pcie";
+      compatible = "qcom,pcie-apq8084";
       reg = <0xfc520000 0x2000>,
             <0xff000000 0x1000>,
             <0xff001000 0x1000>,
