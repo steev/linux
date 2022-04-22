@@ -682,6 +682,12 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 		readl(host->dev_ref_clk_ctrl_mmio);
 
 		/*
+		 * Make sure the write to ref_clk reaches the destination and
+		 * not stored in a Write Buffer (WB).
+		 */
+		readl(host->dev_ref_clk_ctrl_mmio);
+
+		/*
 		 * If we call hibern8 exit after this, we need to make sure that
 		 * device ref_clk is stable for at least 1us before the hibern8
 		 * exit command.
