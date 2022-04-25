@@ -950,8 +950,15 @@ static void dpu_kms_mdp_snapshot(struct msm_disp_state *disp_state, struct msm_k
 		msm_disp_snapshot_add_block(disp_state, cat->wb[i].len,
 				dpu_kms->mmio + cat->wb[i].base, "wb_%d", i);
 
-	msm_disp_snapshot_add_block(disp_state, top->hw.length,
-			dpu_kms->mmio + top->hw.blk_off, "top");
+	if (top->caps->features & BIT(DPU_MDP_PERIPH_0_REMOVED)) {
+		msm_disp_snapshot_add_block(disp_state, 0x380,
+				dpu_kms->mmio + top->hw.blk_off, "top");
+		msm_disp_snapshot_add_block(disp_state, top->hw.length - 0x3a8,
+				dpu_kms->mmio + top->hw.blk_off + 0x3a8, "top_2");
+	} else {
+		msm_disp_snapshot_add_block(disp_state, top->hw.length,
+				dpu_kms->mmio + top->hw.blk_off, "top");
+	}
 
 	pm_runtime_put_sync(&dpu_kms->pdev->dev);
 }
