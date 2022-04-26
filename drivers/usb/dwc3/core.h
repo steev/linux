@@ -1016,8 +1016,10 @@ struct dwc3_scratchpad_array {
  * @role_switch_default_mode: default operation mode of controller while
  *			usb role is USB_ROLE_NONE.
  * @usb_psy: pointer to power supply interface.
- * @usb2_phy: pointer to USB2 PHY
- * @usb3_phy: pointer to USB3 PHY
+ * @usb2_phy: array of pointers to USB2 PHYs
+ * @usb3_phy: array of pointers to USB3 PHYs
+ * @num_hsphy: Number of HS ports controlled by the core
+ * @num_ssphy: Number of SS ports controlled by the core
  * @usb2_generic_phy: pointer to USB2 PHY
  * @usb3_generic_phy: pointer to USB3 PHY
  * @phys_ready: flag to indicate that PHYs are ready
@@ -1147,8 +1149,10 @@ struct dwc3 {
 	struct usb_phy		*usb2_phy;
 	struct usb_phy		*usb3_phy;
 
-	struct phy		*usb2_generic_phy;
-	struct phy		*usb3_generic_phy;
+	u32			num_hsphy;
+	u32			num_ssphy;
+	struct phy		**usb2_generic_phy;
+	struct phy		**usb3_generic_phy;
 
 	bool			phys_ready;
 
