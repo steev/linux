@@ -1564,6 +1564,8 @@
 					<&usb2_phy3>, <&usb_2_ssphy1>,
 					<&usb2_phy4>, <&usb_nop_phy>,
 					<&usb2_phy5>, <&usb_nop_phy>;
+				phy-names = "usb2-phy", "usb3-phy", "usb2-phy1", "usb3-phy1",
+							"usb2-phy2", "nop-phy", "usb2-phy3", "nop-phy1";
 			};
 		};
 
