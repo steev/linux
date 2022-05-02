@@ -1622,11 +1622,10 @@
                                                         */
 			reset-names = "phy", "common";
 
-			usb_2_ssphy: phy@88ef200 {
-				reg = <0 0x088ef200 0 0x200>,
-				      <0 0x088ef400 0 0x200>,
-				      <0 0x088ef800 0 0x800>,
-				      <0 0x088ef600 0 0x200>;
+			usb_2_ssphy: phy@88efe00 {
+				reg = <0 0x088efe00 0 0x200>,
+				      <0 0x088f0000 0 0x200>,
+				      <0 0x088ef200 0 0x1100>;
 				#phy-cells = <0>;
 				#clock-cells = <0>;
 				clocks = <&gcc GCC_USB3_MP_PHY_PIPE_0_CLK>;
@@ -1789,11 +1788,10 @@
 			/* All register offsets here are just relative to what
 			   was done with 88e9200/usb_0_ssphy */
 			/* phandle name is my own */
-			usb_2_ssphy1: phy@88f1200 {
-				reg = <0 0x088f1200 0 0x200>,
-				      <0 0x088f1400 0 0x200>,
-				      <0 0x088f1800 0 0x800>,
-				      <0 0x088f1600 0 0x200>;
+			usb_2_ssphy1: phy@88f1e00 {
+				reg = <0 0x088f1e00 0 0x200>,
+				      <0 0x088f2000 0 0x200>,
+				      <0 0x088f1200 0 0x1100>;
 				#phy-cells = <0>;
 				#clock-cells = <0>;
 				clocks = <&gcc GCC_USB3_MP_PHY_PIPE_1_CLK>;
