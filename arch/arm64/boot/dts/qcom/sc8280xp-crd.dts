@@ -344,7 +344,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&qup0_i2c4_default>, <&ts0_default>;
 
-	hid@10 {
+	touchscreen@10 {
 		compatible = "hid-over-i2c";
 		reg = <0x10>;
 		hid-descr-addr = <0x1>;
@@ -368,7 +368,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&qup2_i2c5_default>, <&kybd_default>, <&tpad_default>;
 
-	hid@15 {
+	touchpad@15 {
 		compatible = "hid-over-i2c";
 		reg = <0x15>;
 		hid-descr-addr = <0x1>;
@@ -376,7 +376,7 @@
 		interrupts-extended = <&tlmm 182 IRQ_TYPE_LEVEL_LOW>;
 	};
 
-	hid@68 {
+	keyboard@68 {
 		compatible = "hid-over-i2c";
 		reg = <0x68>;
 		hid-descr-addr = <0x1>;
