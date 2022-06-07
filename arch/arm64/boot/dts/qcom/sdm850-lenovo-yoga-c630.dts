@@ -372,7 +372,7 @@
 
 		interrupts-extended = <&tlmm 37 IRQ_TYPE_LEVEL_HIGH>;
 	};
-
+/*
 	tsc2: hid@2c {
 		compatible = "hid-over-i2c";
 		reg = <0x2c>;
@@ -380,6 +380,7 @@
 
 		interrupts-extended = <&tlmm 37 IRQ_TYPE_LEVEL_HIGH>;
 	};
+*/
 };
 
 &i2c5 {
