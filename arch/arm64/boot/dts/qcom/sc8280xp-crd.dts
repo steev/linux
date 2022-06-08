@@ -38,7 +38,7 @@
 
 	vreg_edp_bl: edp-bl-regulator {
 		compatible = "regulator-fixed";
-		regulator-name = "VREG_EDP_BL";
+		regulator-name = "VBL9";
 
 		regulator-min-microvolt = <3600000>;
 		regulator-max-microvolt = <3600000>;
@@ -54,7 +54,7 @@
 
 	vreg_misc_3p3: misc-3p3-regulator {
 		compatible = "regulator-fixed";
-		regulator-name = "VREG_MISC_3P3";
+		regulator-name = "VCC3B";
 
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
