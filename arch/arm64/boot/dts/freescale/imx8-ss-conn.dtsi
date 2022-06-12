@@ -54,7 +54,7 @@ conn_subsys: bus@5b000000 {
 		clock-names = "ipg", "per", "ahb";
 		power-domains = <&pd IMX_SC_R_SDHC_1>;
 		fsl,tuning-start-tap = <20>;
-		fsl,tuning-step= <2>;
+		fsl,tuning-step = <2>;
 		status = "disabled";
 	};
 
