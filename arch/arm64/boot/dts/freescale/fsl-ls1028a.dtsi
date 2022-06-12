@@ -120,13 +120,13 @@
 	};
 
 	gic: interrupt-controller@6000000 {
-		compatible= "arm,gic-v3";
+		compatible = "arm,gic-v3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		reg= <0x0 0x06000000 0 0x10000>, /* GIC Dist */
+		reg = <0x0 0x06000000 0 0x10000>, /* GIC Dist */
 			<0x0 0x06040000 0 0x40000>; /* GIC Redistributor */
-		#interrupt-cells= <3>;
+		#interrupt-cells = <3>;
 		interrupt-controller;
 		interrupts = <GIC_PPI 9 (GIC_CPU_MASK_RAW(0xf) |
 					 IRQ_TYPE_LEVEL_LOW)>;
