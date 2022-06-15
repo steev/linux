@@ -35,7 +35,6 @@ struct msm_mdss {
 	void __iomem *mmio;
 	struct clk_bulk_data *clocks;
 	size_t num_clocks;
-	bool is_mdp5;
 	struct {
 		unsigned long enabled_mask;
 		struct irq_domain *domain;
@@ -228,6 +227,19 @@ static void msm_mdss_setup_ubwc_dec_40(struct msm_mdss *msm_mdss,
 	}
 }
 
+static bool msm_mdss_has_clock(struct msm_mdss *msm_mdss, const char *name)
+{
+	unsigned int i;
+
+	for (i = 0; i < msm_mdss->num_clocks; i++) {
+		if (!strcmp(msm_mdss->clocks[i].id, name) &&
+		    msm_mdss->clocks[i].clk)
+			return true;
+	}
+
+	return false;
+}
+
 static int msm_mdss_enable(struct msm_mdss *msm_mdss)
 {
 	int ret;
@@ -247,10 +259,11 @@ static int msm_mdss_enable(struct msm_mdss *msm_mdss)
 	}
 
 	/*
-	 * HW_REV requires MDSS_MDP_CLK, which is not enabled by the mdss on
-	 * mdp5 hardware. Skip reading it for now.
+	 * HW_REV requires MDSS_MDP_CLK, which is not used for MDSS device in
+	 * older device trees. Skip accessing registers if the clock is not
+	 * present.
 	 */
-	if (msm_mdss->is_mdp5)
+	if (!msm_mdss_has_clock(msm_mdss, "core"))
 		return 0;
 
 	hw_rev = readl_relaxed(msm_mdss->mmio + HW_REV);
@@ -405,7 +418,6 @@ static struct msm_mdss *msm_mdss_init(struct platform_device *pdev, bool is_mdp5
 		return ERR_PTR(ret);
 	}
 	msm_mdss->num_clocks = ret;
-	msm_mdss->is_mdp5 = is_mdp5;
 
 	msm_mdss->dev = &pdev->dev;
 
