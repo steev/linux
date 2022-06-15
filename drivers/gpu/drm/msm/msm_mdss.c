@@ -341,7 +341,7 @@ static int msm_mdss_reset(struct device *dev)
 /*
  * MDP5 MDSS uses at most three specified clocks.
  */
-#define MDP5_MDSS_NUM_CLOCKS 3
+#define MDP5_MDSS_NUM_CLOCKS 4
 static int mdp5_mdss_parse_clock(struct platform_device *pdev, struct clk_bulk_data **clocks)
 {
 	struct clk_bulk_data *bulk;
@@ -358,6 +358,7 @@ static int mdp5_mdss_parse_clock(struct platform_device *pdev, struct clk_bulk_d
 	bulk[num_clocks++].id = "iface";
 	bulk[num_clocks++].id = "bus";
 	bulk[num_clocks++].id = "vsync";
+	bulk[num_clocks++].id = "core"; /* for hw_rev access */
 
 	ret = devm_clk_bulk_get_optional(&pdev->dev, num_clocks, bulk);
 	if (ret)
