@@ -346,7 +346,7 @@
 
 	bus-width = <4>;
 	cap-sd-highspeed;
-	sd-uhs-sdr50;
+	cap-mmc-highspeed;
 	max-frequency = <80000000>;
 
 	non-removable;
