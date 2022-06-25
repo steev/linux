@@ -261,7 +261,7 @@
 
 	zap-shader {
 		memory-region = <&gpu_mem>;
-		firmware-name = "qcom/sc8180x/qcdxkmsuc8180.mbn";
+		firmware-name = "qcom/LENOVO/82AK/qcdxkmsuc8180.mbn";
 	};
 };
 
@@ -380,21 +380,21 @@
 
 &remoteproc_adsp {
 	memory-region = <&adsp_mem>;
-	firmware-name = "qcom/sc8180x/qcadsp8180.mbn";
+	firmware-name = "qcom/LENOVO/82AK/qcadsp8180.mbn";
 
 	status = "okay";
 };
 
 &remoteproc_cdsp {
 	memory-region = <&cdsp_mem>;
-	firmware-name = "qcom/sc8180x/qccdsp8180.mbn";
+	firmware-name = "qcom/LENOVO/82AK/qccdsp8180.mbn";
 
 	status = "okay";
 };
 
 &remoteproc_mpss {
 	memory-region = <&mpss_mem>;
-	firmware-name = "qcom/sc8180x/qcmpss8180_nm.mbn";
+	firmware-name = "qcom/LENOVO/82AK/qcmpss8180_nm.mbn";
 
 	status = "okay";
 };
@@ -478,6 +478,40 @@
 };
 
 &usb_sec_dwc3 {
+	dr_mode = "host";
+};
+
+&usb_mp0_hsphy {
+	status = "okay";
+	vdda-pll-supply = <&vreg_l5e_0p88>;
+	vdda18-supply = <&vreg_l12a_1p8>;
+	vdda33-supply = <&vreg_l16e_3p0>;
+};
+
+&usb_mp1_hsphy {
+	status = "okay";
+	vdda-pll-supply = <&vreg_l5e_0p88>;
+	vdda18-supply = <&vreg_l12a_1p8>;
+	vdda33-supply = <&vreg_l16e_3p0>;
+};
+
+&usb_mp0_qmpphy {
+	status = "okay";
+	vdda-phy-supply = <&vreg_l3c_1p2>;
+	vdda-pll-supply = <&vreg_l5e_0p88>;
+};
+
+&usb_mp1_qmpphy {
+	status = "okay";
+	vdda-phy-supply = <&vreg_l3c_1p2>;
+	vdda-pll-supply = <&vreg_l5e_0p88>;
+};
+
+&usb_mp {
+	status = "okay";
+};
+
+&usb_mp_dwc3 {
 	dr_mode = "host";
 };
 
