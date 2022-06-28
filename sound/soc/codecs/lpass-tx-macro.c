@@ -2013,7 +2013,7 @@ static int tx_macro_probe(struct platform_device *pdev)
 	tx->dev = dev;
 
 	/* set MCLK and NPL rates */
-	clk_set_rate(tx->mclk, MCLK_FREQ);
+	clk_set_rate(tx->mclk, 2 * MCLK_FREQ);
 	clk_set_rate(tx->npl, 2 * MCLK_FREQ);
 
 	ret = clk_prepare_enable(tx->macro);
