@@ -5,6 +5,8 @@
 
 /* Toplevel file. Relies on dhd_linux.c to send commands to the dongle. */
 
+#define NEXMON_MON_IF
+
 #include <linux/kernel.h>
 #include <linux/etherdevice.h>
 #include <linux/module.h>
@@ -453,6 +455,20 @@ static int brcmf_vif_add_validate(struct brcmf_cfg80211_info *cfg,
 		params.iftype_num[pos->wdev.iftype]++;
 
 	params.iftype_num[new_type]++;
+
+#ifdef NEXMON_MON_IF
+	//Return not supported if hostapd tries to add a second monitor interface
+	if (new_type == NL80211_IFTYPE_MONITOR)
+	{
+		brcmf_err("Attempt to add a MONITOR interface...\n");
+		if (params.iftype_num[new_type] > 1)
+		{
+			brcmf_err("... there is already a monitor interface, returning EOPNOTSUPP\n");
+			return -EOPNOTSUPP;
+		}
+	}
+#endif
+
 	return cfg80211_check_combinations(cfg->wiphy, &params);
 }
 
@@ -627,80 +643,77 @@ static bool brcmf_is_ibssmode(struct brcmf_cfg80211_vif *vif)
 	return vif->wdev.iftype == NL80211_IFTYPE_ADHOC;
 }
 
+/* NEXMON */
+/* This replace upstream brcmf_mon_add_vif implementation that doesn't create a new iface in firmware */
 /**
  * brcmf_mon_add_vif() - create monitor mode virtual interface
  *
  * @wiphy: wiphy device of new interface.
  * @name: name of the new interface.
+ * @params: contains mac address for MONITOR device.
  */
-static struct wireless_dev *brcmf_mon_add_vif(struct wiphy *wiphy,
-					      const char *name)
+static struct wireless_dev *brcmf_mon_add_vif(struct wiphy *wiphy, const char *name,
+				      struct vif_params *params)
 {
 	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(wiphy);
+	struct brcmf_if *ifp = netdev_priv(cfg_to_ndev(cfg));
 	struct brcmf_cfg80211_vif *vif;
-	struct net_device *ndev;
-	struct brcmf_if *ifp;
 	int err;
 
-	if (cfg->pub->mon_if) {
-		err = -EEXIST;
-		goto err_out;
-	}
+	brcmf_err("brcmf_mon_add_vif called\n");
+
+	if (brcmf_cfg80211_vif_event_armed(cfg))
+		return ERR_PTR(-EBUSY);
+
+	brcmf_err("Adding vif \"%s\"\n", name);
 
 	vif = brcmf_alloc_vif(cfg, NL80211_IFTYPE_MONITOR);
-	if (IS_ERR(vif)) {
-		err = PTR_ERR(vif);
-		goto err_out;
+	if (IS_ERR(vif))
+		return (struct wireless_dev *)vif;
+
+	brcmf_cfg80211_arm_vif_event(cfg, vif);
+
+	err = brcmf_cfg80211_request_ap_if(ifp); // ????? analyze
+	if (err) {
+		brcmf_cfg80211_arm_vif_event(cfg, NULL);
+		goto fail;
 	}
 
-	ndev = alloc_netdev(sizeof(*ifp), name, NET_NAME_UNKNOWN, ether_setup);
-	if (!ndev) {
-		err = -ENOMEM;
-		goto err_free_vif;
+	/* wait for firmware event */
+	err = brcmf_cfg80211_wait_vif_event(cfg, BRCMF_E_IF_ADD,
+					    BRCMF_VIF_EVENT_TIMEOUT);
+	brcmf_cfg80211_arm_vif_event(cfg, NULL);
+	if (!err) {
+		brcmf_err("timeout occurred\n");
+		err = -EIO;
+		goto fail;
 	}
-	ndev->type = ARPHRD_IEEE80211_RADIOTAP;
-	ndev->ieee80211_ptr = &vif->wdev;
-	ndev->needs_free_netdev = true;
-	ndev->priv_destructor = brcmf_cfg80211_free_netdev;
-	SET_NETDEV_DEV(ndev, wiphy_dev(cfg->wiphy));
 
-	ifp = netdev_priv(ndev);
-	ifp->vif = vif;
-	ifp->ndev = ndev;
-	ifp->drvr = cfg->pub;
+	/* interface created in firmware */
+	ifp = vif->ifp;
+	if (!ifp) {
+		brcmf_err("no if pointer provided\n");
+		err = -ENOENT;
+		goto fail;
+	}
 
-	vif->ifp = ifp;
-	vif->wdev.netdev = ndev;
-
+	strncpy(ifp->ndev->name, name, sizeof(ifp->ndev->name) - 1);
 	err = brcmf_net_mon_attach(ifp);
 	if (err) {
-		brcmf_err("Failed to attach %s device\n", ndev->name);
-		free_netdev(ndev);
-		goto err_free_vif;
+		brcmf_err("Registering netdevice failed\n");
+		goto fail;
 	}
 
-	cfg->pub->mon_if = ifp;
 
-	return &vif->wdev;
+	//Try to change the ndev to be flagged with "monitor mode"  before going on
+	ifp->ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+	ifp->ndev->ieee80211_ptr->iftype = NL80211_IFTYPE_MONITOR;
 
-err_free_vif:
+	return &ifp->vif->wdev;
+
+ fail:
 	brcmf_free_vif(vif);
-err_out:
 	return ERR_PTR(err);
-}
-
-static int brcmf_mon_del_vif(struct wiphy *wiphy, struct wireless_dev *wdev)
-{
-	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(wiphy);
-	struct net_device *ndev = wdev->netdev;
-
-	ndev->netdev_ops->ndo_stop(ndev);
-
-	brcmf_net_detach(ndev, true);
-
-	cfg->pub->mon_if = NULL;
-
-	return 0;
 }
 
 static struct wireless_dev *brcmf_cfg80211_add_iface(struct wiphy *wiphy,
@@ -728,7 +741,7 @@ static struct wireless_dev *brcmf_cfg80211_add_iface(struct wiphy *wiphy,
 	case NL80211_IFTYPE_MESH_POINT:
 		return ERR_PTR(-EOPNOTSUPP);
 	case NL80211_IFTYPE_MONITOR:
-		return brcmf_mon_add_vif(wiphy, name);
+		return brcmf_mon_add_vif(wiphy, name, params);
 	case NL80211_IFTYPE_AP:
 		wdev = brcmf_ap_add_vif(wiphy, name, params);
 		break;
@@ -750,6 +763,24 @@ static struct wireless_dev *brcmf_cfg80211_add_iface(struct wiphy *wiphy,
 
 	return wdev;
 }
+
+#ifdef NEXMON_MON_IF
+static s32
+brcmf_cfg80211_nexmon_set_channel(struct wiphy *wiphy,struct cfg80211_chan_def *chandef) {
+	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(wiphy);
+	struct brcmf_if *ifp = netdev_priv(cfg_to_ndev(cfg));
+	s32 err = 0;
+	u16 chanspec;
+
+	//brcmf_err("DEBUG NexMon: brcmf_cfg80211_nexmon_set_channel() called!\n");
+	chanspec = chandef_to_chanspec(&cfg->d11inf, chandef);
+	err = brcmf_fil_iovar_int_set(ifp, "chanspec", chanspec);
+	if (err < 0) {
+		brcmf_err("Set Channel failed: chspec=%d, %d\n", chanspec, err);
+	}
+	return 0;
+}
+#endif
 
 static void brcmf_scan_config_mpc(struct brcmf_if *ifp, int mpc)
 {
@@ -913,7 +944,6 @@ int brcmf_cfg80211_del_iface(struct wiphy *wiphy, struct wireless_dev *wdev)
 	case NL80211_IFTYPE_MESH_POINT:
 		return -EOPNOTSUPP;
 	case NL80211_IFTYPE_MONITOR:
-		return brcmf_mon_del_vif(wiphy, wdev);
 	case NL80211_IFTYPE_AP:
 		return brcmf_cfg80211_del_ap_iface(wiphy, wdev);
 	case NL80211_IFTYPE_P2P_CLIENT:
@@ -980,6 +1010,10 @@ brcmf_cfg80211_change_iface(struct wiphy *wiphy, struct net_device *ndev,
 	}
 	switch (type) {
 	case NL80211_IFTYPE_MONITOR:
+#ifdef NEXMON_MON_IF
+		infra = 1;
+		break;
+#endif
 	case NL80211_IFTYPE_WDS:
 		bphy_err(drvr, "type (%d) : currently we do not support this type\n",
 			 type);
@@ -5516,6 +5550,9 @@ static struct cfg80211_ops brcmf_cfg80211_ops = {
 	.crit_proto_start = brcmf_cfg80211_crit_proto_start,
 	.crit_proto_stop = brcmf_cfg80211_crit_proto_stop,
 	.tdls_oper = brcmf_cfg80211_tdls_oper,
+#ifdef NEXMON_MON_IF
+	.set_monitor_channel = brcmf_cfg80211_nexmon_set_channel,
+#endif
 	.update_connect_params = brcmf_cfg80211_update_conn_params,
 	.set_pmk = brcmf_cfg80211_set_pmk,
 	.del_pmk = brcmf_cfg80211_del_pmk,
@@ -6910,7 +6947,13 @@ static int brcmf_setup_ifmodes(struct wiphy *wiphy, struct brcmf_if *ifp)
 	bool mon_flag, mbss, p2p, rsdb, mchan;
 	int i, c, n_combos, n_limits;
 
+/* NEXMON */
+#ifdef NEXMON_MON_IF
+	mon_flag = true;
+#else
 	mon_flag = brcmf_feat_is_enabled(ifp, BRCMF_FEAT_MONITOR_FLAG);
+#endif
+
 	mbss = brcmf_feat_is_enabled(ifp, BRCMF_FEAT_MBSS);
 	p2p = brcmf_feat_is_enabled(ifp, BRCMF_FEAT_P2P);
 	rsdb = brcmf_feat_is_enabled(ifp, BRCMF_FEAT_RSDB);
