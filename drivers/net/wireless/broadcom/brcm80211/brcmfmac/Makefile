@@ -6,10 +6,11 @@
 #
 
 ccflags-y += \
-	-I $(srctree)/$(src) \
-	-I $(srctree)/$(src)/../include
+    -I $(srctree)/$(src) \
+    -I $(srctree)/$(src)/../include \
+	-DDEBUG
 
-obj-$(CONFIG_BRCMFMAC) += brcmfmac.o
+obj-$(CONFIG_BRCMFMAC) += brcmfmac.o 
 brcmfmac-objs += \
 		cfg80211.o \
 		chip.o \
