@@ -32,21 +32,6 @@
 	chosen {
 	};
 
-	panel {
-		compatible = "auo,b140han06";
-		no-hpd;
-
-		backlight = <&backlight>;
-
-		ports {
-			port {
-				auo_b140han06_in: endpoint {
-					remote-endpoint = <&mdss_edp_out>;
-				};
-			};
-		};
-	};
-
 	reserved-memory {
 		rmtfs_mem: memory@85500000 {
 			compatible = "qcom,rmtfs-mem";
@@ -290,6 +275,26 @@
 
 	pinctrl-names = "default";
 	pinctrl-0 = <&edp_hpd_active>;
+
+	aux-bus {
+		edp_panel: panel {
+			compatible = "auo,b140han06";
+			no-hpd;
+
+			backlight = <&backlight>;
+			
+			ports {
+			    #address-cells = <1>;
+			    #size-cells = <0>;
+			    port@0 {
+				    reg = <0>;
+				    auo_b140han06_in: endpoint {
+					    remote-endpoint = <&mdss_edp_out>;
+				    };
+			    };
+			};
+		};
+	};
 
 	ports {
 		port@1 {
