@@ -8,6 +8,8 @@
 
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 
+static LIST_HEAD(sugov_list);
+
 struct sugov_tunables {
 	struct gov_attr_set	attr_set;
 	unsigned int		rate_limit_us;
@@ -15,6 +17,7 @@ struct sugov_tunables {
 
 struct sugov_policy {
 	struct cpufreq_policy	*policy;
+	struct list_head	sg_policy_list;
 
 	struct sugov_tunables	*tunables;
 	struct list_head	tunables_hook;
@@ -657,12 +660,20 @@ static int sugov_init(struct cpufreq_policy *policy)
 	struct sugov_policy *sg_policy;
 	struct sugov_tunables *tunables;
 	int ret = 0;
+	int sugov_init = 0;
 
 	/* State should be equivalent to EXIT */
 	if (policy->governor_data)
 		return -EBUSY;
 
 	cpufreq_enable_fast_switch(policy);
+
+	list_for_each_entry(sg_policy, &sugov_list, sg_policy_list) {
+		if (sg_policy->policy == policy) {
+			sugov_init = 1;
+			goto tunables_lock;
+		}
+	}
 
 	sg_policy = sugov_policy_alloc(policy);
 	if (!sg_policy) {
@@ -673,6 +684,10 @@ static int sugov_init(struct cpufreq_policy *policy)
 	ret = sugov_kthread_create(sg_policy);
 	if (ret)
 		goto free_sg_policy;
+
+	list_add(&sg_policy->sg_policy_list, &sugov_list);
+
+tunables_lock:
 
 	mutex_lock(&global_tunables_lock);
 
@@ -715,7 +730,8 @@ fail:
 	sugov_clear_global_tunables();
 
 stop_kthread:
-	sugov_kthread_stop(sg_policy);
+	if (!sugov_init)
+		sugov_kthread_stop(sg_policy);
 	mutex_unlock(&global_tunables_lock);
 
 free_sg_policy:
@@ -743,8 +759,14 @@ static void sugov_exit(struct cpufreq_policy *policy)
 
 	mutex_unlock(&global_tunables_lock);
 
+	list_for_each_entry(sg_policy, &sugov_list, sg_policy_list) {
+		if (sg_policy->policy == policy) {
+			goto out;
+		}
+	}
 	sugov_kthread_stop(sg_policy);
 	sugov_policy_free(sg_policy);
+out:
 	cpufreq_disable_fast_switch(policy);
 }
 
