@@ -1369,14 +1369,18 @@ endif
 
 ifneq ($(dtstree),)
 
-%.dtb: include/config/kernel.release scripts_dtc
+ifneq ($(CHECK_DTBS),)
+DT_TMP_BINDING := dt_binding
+endif
+
+%.dtb: include/config/kernel.release scripts_dtc $(DT_TMP_BINDING)
 	$(Q)$(MAKE) $(build)=$(dtstree) $(dtstree)/$@
 
-%.dtbo: include/config/kernel.release scripts_dtc
+%.dtbo: include/config/kernel.release scripts_dtc $(DT_TMP_BINDING)
 	$(Q)$(MAKE) $(build)=$(dtstree) $(dtstree)/$@
 
 PHONY += dtbs dtbs_install dtbs_check
-dtbs: include/config/kernel.release scripts_dtc
+dtbs: include/config/kernel.release scripts_dtc $(DT_TMP_BINDING)
 	$(Q)$(MAKE) $(build)=$(dtstree)
 
 ifneq ($(filter dtbs_check, $(MAKECMDGOALS)),)
@@ -1403,8 +1407,10 @@ ifneq ($(filter dt_binding_check, $(MAKECMDGOALS)),)
 export CHECK_DT_BINDING=y
 endif
 
-PHONY += dt_binding_check
-dt_binding_check: scripts_dtc
+dt_binding_check: dt_binding
+
+PHONY += dt_binding
+dt_binding: scripts_dtc
 	$(Q)$(MAKE) $(build)=Documentation/devicetree/bindings
 
 # ---------------------------------------------------------------------------
@@ -1658,6 +1664,10 @@ help:
 	@echo  '		3: more obscure warnings, can most likely be ignored'
 	@echo  '		e: warnings are being treated as errors'
 	@echo  '		Multiple levels can be combined with W=12 or W=123'
+	@$(if $(dtstree), \
+		echo '  make CHECK_DTBS=1 [targets] Check all generated dtb files against schema'; \
+		echo '         This can be applied both to "dtbs" and to individual "foo.dtb" targets' ; \
+		)
 	@echo  ''
 	@echo  'Execute "make" or "make all" to build all targets marked with [*] '
 	@echo  'For further info see the ./README file'
