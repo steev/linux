@@ -1229,6 +1229,8 @@ patternProperties:
   "^synopsys,.*":
     description: Synopsys, Inc. (deprecated, use snps)
     deprecated: true
+  "^tbee,.*":
+    description: QUIDBox Lda.
   "^tbs,.*":
     description: TBS Technologies
   "^tbs-biometrics,.*":
