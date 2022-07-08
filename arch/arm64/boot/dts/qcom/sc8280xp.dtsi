@@ -1518,7 +1518,7 @@
 			status = "disabled";
 			#phy-cells = <0>;
 
-			clocks = <&gcc GCC_USB2_HS0_CLKREF_CLK>;
+			clocks = <&rpmhcc RPMH_CXO_CLK>;
 			clock-names = "ref";
 
 			resets = <&gcc GCC_QUSB2PHY_PRIM_BCR>;
