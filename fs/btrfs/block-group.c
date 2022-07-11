@@ -2000,6 +2000,7 @@ static int read_one_block_group(struct btrfs_fs_info *info,
 
 	cache->length = key->offset;
 	cache->used = btrfs_stack_block_group_used(bgi);
+	cache->commit_used = cache->used;
 	cache->flags = btrfs_stack_block_group_flags(bgi);
 	cache->global_root_id = btrfs_stack_block_group_chunk_objectid(bgi);
 
@@ -2683,6 +2684,10 @@ static int update_block_group_item(struct btrfs_trans_handle *trans,
 	struct btrfs_block_group_item bgi;
 	struct btrfs_key key;
 
+	/* No change in used bytes, can safely skip it. */
+	if (cache->commit_used == cache->used)
+		return 0;
+
 	key.objectid = cache->start;
 	key.type = BTRFS_BLOCK_GROUP_ITEM_KEY;
 	key.offset = cache->length;
@@ -2702,6 +2707,7 @@ static int update_block_group_item(struct btrfs_trans_handle *trans,
 	btrfs_set_stack_block_group_flags(&bgi, cache->flags);
 	write_extent_buffer(leaf, &bgi, bi, sizeof(bgi));
 	btrfs_mark_buffer_dirty(leaf);
+	cache->commit_used = cache->used;
 fail:
 	btrfs_release_path(path);
 	return ret;
