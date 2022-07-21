@@ -17,6 +17,7 @@
 / {
 	model = "Lenovo ThinkPad X13s";
 	compatible = "lenovo,thinkpad-x13s", "qcom,sc8280xp";
+	chassis-type = "laptop";
 
 	backlight {
 		compatible = "pwm-backlight";
