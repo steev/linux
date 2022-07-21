@@ -398,6 +398,10 @@
 		scm: scm {
 			compatible = "qcom,scm-sc8280xp", "qcom,scm";
 		};
+
+		tee-uefisecapp {
+			compatible = "qcom,tee-uefisecapp";
+		};
 	};
 
 	aggre1_noc: interconnect-aggre1-noc {
