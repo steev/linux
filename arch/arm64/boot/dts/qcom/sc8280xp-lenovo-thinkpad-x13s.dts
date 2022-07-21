@@ -20,6 +20,7 @@
 / {
 	model = "Lenovo ThinkPad X13s";
 	compatible = "lenovo,thinkpad-x13s", "qcom,sc8280xp";
+	chassis-type = "laptop";
 
 	aliases {
 		i2c4 = &i2c4;
