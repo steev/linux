@@ -728,6 +728,10 @@
 		scm {
 			compatible = "qcom,scm-sdm845", "qcom,scm";
 		};
+
+		tee-uefisecapp {
+			compatible = "qcom,tee-uefisecapp";
+		};
 	};
 
 	adsp_pas: remoteproc-adsp {
