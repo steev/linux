@@ -232,6 +232,15 @@
 	status = "okay";
 };
 
+&gpu {
+	status = "okay";
+
+	zap-shader {
+		memory-region = <&gfxsuc_mem>;
+		firmware-name = "qcom/sc8280xp/qcdxkmsuc8280xp.mbn";
+	};
+};
+
 &mdss0 {
 	status = "okay";
 };
