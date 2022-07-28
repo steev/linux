@@ -215,6 +215,7 @@ struct irq_domain *__irq_domain_add(struct fwnode_handle *fwnode, unsigned int s
 	/* Fill structure */
 	INIT_RADIX_TREE(&domain->revmap_tree, GFP_KERNEL);
 	mutex_init(&domain->revmap_mutex);
+	mutex_init(&domain->map_mutex);
 	domain->ops = ops;
 	domain->host_data = host_data;
 	domain->hwirq_max = hwirq_max;
@@ -721,14 +722,20 @@ unsigned int irq_create_mapping_affinity(struct irq_domain *domain,
 		return 0;
 	}
 
+	mutex_lock(&domain->map_mutex);
+
 	/* Check if mapping already exists */
 	virq = irq_find_mapping(domain, hwirq);
 	if (virq) {
 		pr_debug("existing mapping on virq %d\n", virq);
-		return virq;
+		goto out;
 	}
 
-	return __irq_create_mapping_affinity(domain, hwirq, affinity);
+	virq = __irq_create_mapping_affinity(domain, hwirq, affinity);
+out:
+	mutex_unlock(&domain->map_mutex);
+
+	return virq;
 }
 EXPORT_SYMBOL_GPL(irq_create_mapping_affinity);
 
@@ -795,6 +802,8 @@ unsigned int irq_create_fwspec_mapping(struct irq_fwspec *fwspec)
 	if (WARN_ON(type & ~IRQ_TYPE_SENSE_MASK))
 		type &= IRQ_TYPE_SENSE_MASK;
 
+	mutex_lock(&domain->map_mutex);
+
 	/*
 	 * If we've already configured this interrupt,
 	 * don't do it again, or hell will break loose.
@@ -807,7 +816,7 @@ unsigned int irq_create_fwspec_mapping(struct irq_fwspec *fwspec)
 		 * interrupt number.
 		 */
 		if (type == IRQ_TYPE_NONE || type == irq_get_trigger_type(virq))
-			return virq;
+			goto out;
 
 		/*
 		 * If the trigger type has not been set yet, then set
@@ -816,26 +825,26 @@ unsigned int irq_create_fwspec_mapping(struct irq_fwspec *fwspec)
 		if (irq_get_trigger_type(virq) == IRQ_TYPE_NONE) {
 			irq_data = irq_get_irq_data(virq);
 			if (!irq_data)
-				return 0;
+				goto err;
 
 			irqd_set_trigger_type(irq_data, type);
-			return virq;
+			goto out;
 		}
 
 		pr_warn("type mismatch, failed to map hwirq-%lu for %s!\n",
 			hwirq, of_node_full_name(to_of_node(fwspec->fwnode)));
-		return 0;
+		goto err;
 	}
 
 	if (irq_domain_is_hierarchy(domain)) {
 		virq = irq_domain_alloc_irqs(domain, 1, NUMA_NO_NODE, fwspec);
 		if (virq <= 0)
-			return 0;
+			goto err;
 	} else {
 		/* Create mapping */
 		virq = __irq_create_mapping_affinity(domain, hwirq, NULL);
 		if (!virq)
-			return virq;
+			goto err;
 	}
 
 	irq_data = irq_get_irq_data(virq);
@@ -844,13 +853,19 @@ unsigned int irq_create_fwspec_mapping(struct irq_fwspec *fwspec)
 			irq_domain_free_irqs(virq, 1);
 		else
 			irq_dispose_mapping(virq);
-		return 0;
+		goto err;
 	}
 
 	/* Store trigger type */
 	irqd_set_trigger_type(irq_data, type);
+out:
+	mutex_unlock(&domain->map_mutex);
 
 	return virq;
+err:
+	mutex_unlock(&domain->map_mutex);
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(irq_create_fwspec_mapping);
 
