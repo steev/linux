@@ -29,6 +29,21 @@
 		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
 	};
 
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&hall_int_state>;
+
+		switch-lid {
+			gpios = <&tlmm 107 GPIO_ACTIVE_LOW>;
+			linux,input-type = <EV_SW>;
+			linux,code = <SW_LID>;
+			wakeup-source;
+			wakeup-event-action = <EV_ACT_DEASSERTED>;
+		};
+	};
+
 	vreg_edp_bl: edp-bl-regulator {
 		compatible = "regulator-fixed";
 
@@ -635,6 +650,14 @@
 			drive-strength = <2>;
 			bias-pull-up;
 		};
+	};
+
+	hall_int_state: hall-int-state {
+		pins = "gpio107";
+		function = "gpio";
+
+		input-enable;
+		bias-disable;
 	};
 
 	qup0_i2c4_default: qup0-i2c4-default-state {
