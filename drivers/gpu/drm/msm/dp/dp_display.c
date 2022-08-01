@@ -178,6 +178,7 @@ static const struct of_device_id dp_dt_match[] = {
 	{ .compatible = "qcom,sc7280-edp", .data = &sc7280_dp_cfg },
 	{ .compatible = "qcom,sc8180x-dp", .data = &sc8180x_dp_cfg },
 	{ .compatible = "qcom,sc8180x-edp", .data = &sc8180x_dp_cfg },
+	{ .compatible = "qcom,sdm845-dp", .data = &sc7180_dp_cfg },
 	{ .compatible = "qcom,sm8350-dp", .data = &sm8350_dp_cfg },
 	{}
 };
