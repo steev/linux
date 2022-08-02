@@ -108,6 +108,8 @@ properties:
       HS/FS/LS modes are supported.
     type: boolean
 
+  wakeup-source: true
+
 # Required child node:
 
 patternProperties:
