@@ -959,12 +959,11 @@ static int __maybe_unused dwc3_qcom_pm_suspend(struct device *dev)
 {
 	struct dwc3_qcom *qcom = dev_get_drvdata(dev);
 	bool wakeup = device_may_wakeup(dev);
-	int ret = 0;
-
+	int ret;
 
 	ret = dwc3_qcom_suspend(qcom, wakeup);
-	if (!ret)
-		qcom->pm_suspended = true;
+	if (ret)
+		return ret;
 
 	qcom->pm_suspended = true;
 
@@ -978,8 +977,8 @@ static int __maybe_unused dwc3_qcom_pm_resume(struct device *dev)
 	int ret;
 
 	ret = dwc3_qcom_resume(qcom, wakeup);
-	if (!ret)
-		qcom->pm_suspended = false;
+	if (ret)
+		return ret;
 
 	qcom->pm_suspended = false;
 
