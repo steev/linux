@@ -1177,8 +1177,10 @@ static int hw_init(struct msm_gpu *gpu)
 		gpu_write(gpu, REG_A6XX_CP_ROQ_THRESHOLDS_2, 0x010000c0);
 	gpu_write(gpu, REG_A6XX_CP_ROQ_THRESHOLDS_1, 0x8040362c);
 
-	if (adreno_is_a660_family(adreno_gpu))
+	if (adreno_is_a660_family(adreno_gpu)) {
 		gpu_write(gpu, REG_A6XX_CP_LPAC_PROG_FIFO_SIZE, 0x00000020);
+		gpu_write(gpu, A6XX_RBBM_LPAC_GBIF_CLIENT_QOS_CNTL, 0x0);
+	}
 
 	/* Setting the mem pool size */
 	gpu_write(gpu, REG_A6XX_CP_MEM_POOL_SIZE, 128);
