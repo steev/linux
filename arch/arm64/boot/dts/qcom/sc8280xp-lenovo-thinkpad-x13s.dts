@@ -360,7 +360,7 @@
 };
 
 &gpu {
-	status = "okay";
+	status = "disabled";
 
 	zap-shader {
 		memory-region = <&gpu_mem>;
