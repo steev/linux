@@ -1699,10 +1699,10 @@
 			clock-names = "aux", "ref_clk_src", "ref", "com_aux";
 
 			resets = <&gcc GCC_USB3_PHY_PRIM_BCR>,
-				 <&gcc GCC_USB3_DP_PHY_PRIM_BCR>;
+				 <&gcc GCC_USB4_DP_PHY_PRIM_BCR>;
 			reset-names = "phy", "common";
 
-			power-domains = <&gcc USB30_PRIM_GDSC>;
+			power-domains = <&gcc USB4_GDSC>;
 
 			status = "disabled";
 
@@ -1712,7 +1712,7 @@
 				      <0 0x088ec400 0 0x1f0>,
 				      <0 0x088eba00 0 0x100>,
 				      <0 0x088ebc00 0 0x3ec>,
-				      <0 0x088ec700 0 0x64>;
+				      <0 0x088ec200 0 0x18>;
 				#phy-cells = <0>;
 				#clock-cells = <0>;
 				clocks = <&gcc GCC_USB3_PRIM_PHY_PIPE_CLK>;
@@ -1720,11 +1720,12 @@
 			};
 
 			usb_0_dpphy: dp-phy@88ed200 {
-				reg = <0 0x088ed200 0 0x200>,
-				      <0 0x088ed400 0 0x200>,
-				      <0 0x088eda00 0 0x200>,
-				      <0 0x088ea600 0 0x200>,
-				      <0 0x088ea800 0 0x200>;
+				reg = <0 0x088eb400 0 0x100>,
+				      <0 0x088eb600 0 0x3ec>,
+				      <0 0x088ed200 0 0x198>,
+				      <0 0x088eba00 0 0x100>,
+				      <0 0x088ebc00 0 0x3ec>,
+				      <0 0x088ec200 0 0x18>;
 				#clock-cells = <1>;
 				#phy-cells = <0>;
 			};
@@ -1763,13 +1764,13 @@
 				 <&gcc GCC_USB4_1_DP_PHY_PRIM_BCR>;
 			reset-names = "phy", "common";
 
-			power-domains = <&gcc USB30_SEC_GDSC>;
+			power-domains = <&gcc USB4_GDSC>;
 
 			status = "disabled";
 
 			usb_1_ssphy: usb3-phy@8903400 {
 				reg = <0 0x08903400 0 0x100>,
-				      <0 0x08903c00 0 0x3ec>,
+				      <0 0x08903600 0 0x3ec>,
 				      <0 0x08904400 0 0x1f0>,
 				      <0 0x08903a00 0 0x100>,
 				      <0 0x08903c00 0 0x3ec>,
@@ -1781,11 +1782,12 @@
 			};
 
 			usb_1_dpphy: dp-phy@8904200 {
-				reg = <0 0x08904200 0 0x200>,
-				      <0 0x08904400 0 0x200>,
-				      <0 0x08904a00 0 0x200>,
-				      <0 0x08904600 0 0x200>,
-				      <0 0x08904800 0 0x200>;
+				reg = <0 0x08903400 0 0x100>,
+				      <0 0x08903600 0 0x3ec>,
+				      <0 0x08905200 0 0x198>,
+				      <0 0x08903a00 0 0x100>,
+				      <0 0x08903c00 0 0x3ec>,
+				      <0 0x08904200 0 0x18>;
 				#clock-cells = <1>;
 				#phy-cells = <0>;
 			};
