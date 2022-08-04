@@ -389,7 +389,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie2a_default>;
 
-	status = "okay";
+//	status = "okay";
 };
 
 &pcie2a_phy {
@@ -408,7 +408,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie3a_default>;
 
-	status = "okay";
+//	status = "okay";
 };
 
 &pcie3a_phy {
@@ -428,7 +428,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie4_default>;
 
-	status = "okay";
+//	status = "okay";
 };
 
 &pcie4_phy {
