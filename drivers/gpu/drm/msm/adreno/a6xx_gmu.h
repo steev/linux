@@ -41,6 +41,8 @@ struct a6xx_gmu_bo {
 /* The GMU does automatic IFPC (intra-frame power collapse) */
 #define GMU_IDLE_STATE_IFPC 3
 
+struct qmp;
+
 struct a6xx_gmu {
 	struct device *dev;
 
@@ -89,6 +91,8 @@ struct a6xx_gmu {
 	bool initialized;
 	bool hung;
 	bool legacy; /* a618 or a630 */
+
+	struct qmp *qmp;
 };
 
 static inline u32 gmu_read(struct a6xx_gmu *gmu, u32 offset)
