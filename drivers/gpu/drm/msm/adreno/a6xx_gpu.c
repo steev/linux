@@ -639,10 +639,6 @@ const struct adreno_reglist a690_hwcg[] = {
 	{REG_A6XX_RBBM_CLOCK_CNTL_GMU_GX, 0x00000222},
 	{REG_A6XX_RBBM_CLOCK_DELAY_GMU_GX, 0x00000111},
 	{REG_A6XX_RBBM_CLOCK_HYST_GMU_GX, 0x00000555},
-	{REG_A6XX_GPU_GMU_AO_GMU_CGC_MODE_CNTL, 0x00020200}, /* XXX */
-	{REG_A6XX_GPU_GMU_AO_GMU_CGC_DELAY_CNTL, 0x00010111}, /* XXX */
-	{REG_A6XX_GPU_GMU_AO_GMU_CGC_HYST_CNTL, 0x00005555}, /* XXX */
-//	{REG_A6XX_GMUCX_GMU_WFI_CONFIG, 0x00000000},
 };
 
 static void a6xx_set_hwcg(struct msm_gpu *gpu, bool state)
@@ -673,6 +669,13 @@ static void a6xx_set_hwcg(struct msm_gpu *gpu, bool state)
 
 	for (i = 0; (reg = &adreno_gpu->info->hwcg[i], reg->offset); i++)
 		gpu_write(gpu, reg->offset, state ? reg->value : 0);
+
+	if (adreno_is_a690(adreno_gpu)) {
+		gmu_write(gmu, REG_A6XX_GPU_GMU_AO_GMU_CGC_MODE_CNTL, 0x00020200);
+		gmu_write(gmu, REG_A6XX_GPU_GMU_AO_GMU_CGC_DELAY_CNTL, 0x00010111);
+		gmu_write(gmu, REG_A6XX_GPU_GMU_AO_GMU_CGC_HYST_CNTL, 0x00005555);
+		gmu_write(gmu, 0x5002, 0x0);
+	}
 
 	/* Enable SP clock */
 	gmu_rmw(gmu, REG_A6XX_GPU_GMU_GX_SPTPRAC_CLOCK_CONTROL, 0, 1);
@@ -868,16 +871,16 @@ static void a6xx_set_cp_protect(struct msm_gpu *gpu)
 		count = ARRAY_SIZE(a650_protect);
 		count_max = 48;
 		BUILD_BUG_ON(ARRAY_SIZE(a650_protect) > 48);
-	} else if (adreno_is_a660_family(adreno_gpu)) {
-		regs = a660_protect;
-		count = ARRAY_SIZE(a660_protect);
-		count_max = 48;
-		BUILD_BUG_ON(ARRAY_SIZE(a660_protect) > 48);
 	} else if (adreno_is_a690(adreno_gpu)) {
 		regs = a690_protect;
 		count = ARRAY_SIZE(a690_protect);
 		count_max = 48;
 		BUILD_BUG_ON(ARRAY_SIZE(a690_protect) > 48);
+	} else if (adreno_is_a660_family(adreno_gpu)) {
+		regs = a660_protect;
+		count = ARRAY_SIZE(a660_protect);
+		count_max = 48;
+		BUILD_BUG_ON(ARRAY_SIZE(a660_protect) > 48);
 	} else {
 		regs = a6xx_protect;
 		count = ARRAY_SIZE(a6xx_protect);
@@ -1179,6 +1182,13 @@ static int hw_init(struct msm_gpu *gpu)
 
 	if (adreno_is_a660_family(adreno_gpu))
 		gpu_write(gpu, REG_A6XX_CP_LPAC_PROG_FIFO_SIZE, 0x00000020);
+
+#define REG_A6XX_RBBM_LPAC_GBIF_CLIENT_QOS_CNTL      0x5ff
+	if (adreno_is_a690(adreno_gpu)) {
+		gpu_write(gpu, REG_A6XX_RBBM_GBIF_CLIENT_QOS_CNTL, 0x0);
+		gpu_write(gpu, REG_A6XX_RBBM_LPAC_GBIF_CLIENT_QOS_CNTL, 0x0);
+		gpu_write(gpu, REG_A6XX_CP_LPAC_PROG_FIFO_SIZE, 0x00000020);
+	}
 
 	/* Setting the mem pool size */
 	gpu_write(gpu, REG_A6XX_CP_MEM_POOL_SIZE, 128);
