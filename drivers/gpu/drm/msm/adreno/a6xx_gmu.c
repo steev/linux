@@ -7,6 +7,7 @@
 #include <linux/pm_opp.h>
 #include <soc/qcom/cmd-db.h>
 #include <drm/drm_gem.h>
+#include <linux/soc/qcom/qcom_aoss.h>
 
 #include "a6xx_gpu.h"
 #include "a6xx_gmu.xml.h"
@@ -84,6 +85,20 @@ bool a6xx_gmu_sptprac_is_on(struct a6xx_gmu *gmu)
 	return !(val &
 		(A6XX_GMU_SPTPRAC_PWR_CLK_STATUS_SPTPRAC_GDSC_POWER_OFF |
 		A6XX_GMU_SPTPRAC_PWR_CLK_STATUS_SP_CLOCK_OFF));
+}
+
+static void a6xx_gmu_aop_send_acd_state(struct a6xx_gmu *gmu, bool flag)
+{
+	char msg_buf[36];
+	u32 size;
+
+	if (!gmu->qmp)
+		return;
+
+	size = scnprintf(msg_buf, sizeof(msg_buf),
+			"{class: gpu, res: acd, val: %d}", flag);
+
+	qmp_send(gmu->qmp, msg_buf, ALIGN(size, 4));
 }
 
 /* Check to see if the GX rail is still powered */
@@ -986,6 +1001,8 @@ int a6xx_gmu_resume(struct a6xx_gpu *a6xx_gpu)
 	if (!IS_ERR_OR_NULL(gmu->gxpd))
 		pm_runtime_get_sync(gmu->gxpd);
 
+	a6xx_gmu_aop_send_acd_state(gmu, true);
+
 	/* Use a known rate to bring up the GMU */
 	clk_set_rate(gmu->core_clk, 200000000);
 	clk_set_rate(gmu->hub_clk, 150000000);
@@ -1495,6 +1512,9 @@ void a6xx_gmu_remove(struct a6xx_gpu *a6xx_gpu)
 	free_irq(gmu->gmu_irq, gmu);
 	free_irq(gmu->hfi_irq, gmu);
 
+	if (gmu->qmp)
+		qmp_put(gmu->qmp);
+
 	/* Drop reference taken in of_find_device_by_node */
 	put_device(gmu->dev);
 
@@ -1531,6 +1551,13 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
 	if (ret)
 		goto err_put_device;
 
+	gmu->qmp = qmp_get(gmu->dev);
+	if (IS_ERR(gmu->qmp)) {
+		ret = PTR_ERR(gmu->qmp);
+		if (ret != -ENODEV)
+			goto err_put_device;
+		gmu->qmp = NULL;
+	}
 
 	/* A660 now requires handling "prealloc requests" in GMU firmware
 	 * For now just hardcode allocations based on the known firmware.
