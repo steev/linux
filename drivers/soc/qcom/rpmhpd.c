@@ -805,7 +805,7 @@ static struct platform_driver rpmhpd_driver = {
 		.name = "qcom-rpmhpd",
 		.of_match_table = rpmhpd_match_table,
 		.suppress_bind_attrs = true,
-		.sync_state = rpmhpd_sync_state,
+//		.sync_state = rpmhpd_sync_state,
 	},
 	.probe = rpmhpd_probe,
 };
