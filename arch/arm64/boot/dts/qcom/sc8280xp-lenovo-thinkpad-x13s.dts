@@ -300,6 +300,18 @@
 		regulator-max-microvolt = <3900000>;
 		regulator-always-on;
 	};
+
+	reserved-memory {
+		gpu_mem: gpu-mem@8bf00000 {
+			reg = <0  0x8bf00000 0 0x2000>;
+			no-map;
+		};
+	};
+
+};
+
+&adreno_smmu {
+	status = "okay";
 };
 
 &apps_rsc {
@@ -433,6 +445,23 @@
 
 &dispcc0 {
 	status = "okay";
+};
+
+&gpucc {
+	status = "okay";
+};
+
+&gmu {
+	status = "okay";
+};
+
+&gpu {
+	status = "okay";
+
+	zap-shader {
+		memory-region = <&gpu_mem>;
+		firmware-name = "qcom/sc8280xp/qcdxkmsuc8280.mbn";
+	};
 };
 
 &mdss0 {
