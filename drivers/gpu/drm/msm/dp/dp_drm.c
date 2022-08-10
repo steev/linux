@@ -68,6 +68,7 @@ static const struct drm_bridge_funcs dp_bridge_ops = {
 	.mode_valid   = dp_bridge_mode_valid,
 	.get_modes    = dp_bridge_get_modes,
 	.detect       = dp_bridge_detect,
+	.hpd_notify   = dp_bridge_hpd_notify,
 };
 
 struct drm_bridge *dp_bridge_init(struct msm_dp *dp_display, struct drm_device *dev,
@@ -137,6 +138,8 @@ struct drm_connector *dp_drm_connector_init(struct msm_dp *dp_display, struct dr
 	connector = drm_bridge_connector_init(dp_display->drm_dev, encoder);
 	if (IS_ERR(connector))
 		return connector;
+
+	connector->fwnode = fwnode_handle_get(dev_fwnode(dp_display->dev));
 
 	drm_connector_attach_encoder(connector, encoder);
 
