@@ -1953,11 +1953,12 @@
 
 			power-domains = <&dispcc0 MDSS_GDSC>;
 
-			clocks = <&dispcc0 DISP_CC_MDSS_AHB_CLK>,
-				 <&gcc GCC_DISP_HF_AXI_CLK>,
-				 <&gcc GCC_DISP_SF_AXI_CLK>,
+                        clocks = <&gcc GCC_DISP_AHB_CLK>,
+			         <&dispcc0 DISP_CC_MDSS_AHB_CLK>,
 				 <&dispcc0 DISP_CC_MDSS_MDP_CLK>;
-			clock-names = "iface", "bus", "nrt_bus", "core";
+			clock-names = "iface",
+				      "ahb",
+				      "core";
 
 			assigned-clocks = <&dispcc0 DISP_CC_MDSS_MDP_CLK>;
 			assigned-clock-rates = <460000000>;
@@ -1986,11 +1987,18 @@
 				      <0 0x0aeb0000 0 0x2008>;
 				reg-names = "mdp", "vbif";
 
-				clocks = <&dispcc0 DISP_CC_MDSS_AHB_CLK>,
-					 <&gcc GCC_DISP_HF_AXI_CLK>,
+				clocks = <&gcc GCC_DISP_HF_AXI_CLK>,
+				         <&gcc GCC_DISP_SF_AXI_CLK>,
+					 <&dispcc0 DISP_CC_MDSS_AHB_CLK>,
+					 <&dispcc0 DISP_CC_MDSS_MDP_LUT_CLK>,
 					 <&dispcc0 DISP_CC_MDSS_MDP_CLK>,
 					 <&dispcc0 DISP_CC_MDSS_VSYNC_CLK>;
-				clock-names = "iface", "bus", "core", "vsync";
+				clock-names = "bus",
+					      "nrt_bus",
+					      "iface",
+					      "lut",
+					      "core",
+					      "vsync";
 
 				assigned-clocks = <&dispcc0 DISP_CC_MDSS_MDP_CLK>,
 						  <&dispcc0 DISP_CC_MDSS_VSYNC_CLK>;
@@ -3035,11 +3043,12 @@
 
 			power-domains = <&dispcc1 MDSS_GDSC>;
 
-			clocks = <&dispcc1 DISP_CC_MDSS_AHB_CLK>,
-				 <&gcc GCC_DISP1_HF_AXI_CLK>,
-				 <&gcc GCC_DISP1_SF_AXI_CLK>,
+                        clocks = <&gcc GCC_DISP_AHB_CLK>,
+			         <&dispcc1 DISP_CC_MDSS_AHB_CLK>,
 				 <&dispcc1 DISP_CC_MDSS_MDP_CLK>;
-			clock-names = "iface", "bus", "nrt_bus", "core";
+			clock-names = "iface",
+				      "ahb",
+				      "core";
 
 			assigned-clocks = <&dispcc1 DISP_CC_MDSS_MDP_CLK>;
 			assigned-clock-rates = <460000000>;
@@ -3068,11 +3077,19 @@
 				      <0 0x220b0000 0 0x2008>;
 				reg-names = "mdp", "vbif";
 
-				clocks = <&dispcc1 DISP_CC_MDSS_AHB_CLK>,
-					 <&gcc GCC_DISP_HF_AXI_CLK>,
+				clocks = <&gcc GCC_DISP_HF_AXI_CLK>,
+				         <&gcc GCC_DISP_SF_AXI_CLK>,
+					 <&dispcc1 DISP_CC_MDSS_AHB_CLK>,
+					 <&dispcc1 DISP_CC_MDSS_MDP_LUT_CLK>,
 					 <&dispcc1 DISP_CC_MDSS_MDP_CLK>,
 					 <&dispcc1 DISP_CC_MDSS_VSYNC_CLK>;
-				clock-names = "iface", "bus", "core", "vsync";
+				clock-names = "bus",
+					      "nrt_bus",
+					      "iface",
+					      "lut",
+					      "core",
+					      "vsync";
+
 
 				assigned-clocks = <&dispcc1 DISP_CC_MDSS_MDP_CLK>,
 						  <&dispcc1 DISP_CC_MDSS_VSYNC_CLK>;
