@@ -3759,7 +3759,7 @@ again:
 	if (ret > 0)
 		read = ret;
 
-	if (iov_iter_count(to) > 0 && (ret == -EFAULT || ret > 0)) {
+	if (iov_iter_count(to) > 0 && (ret == -EFAULT || ret >= 0)) {
 		const size_t left = iov_iter_count(to);
 
 		if (left == prev_left) {
