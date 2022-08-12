@@ -166,6 +166,8 @@ no_valid_dev_replace_entry_found:
 		if (btrfs_find_device(fs_info->fs_devices, &args)) {
 			btrfs_err(fs_info,
 			"replace devid present without an active replace item");
+			btrfs_info(fs_info,
+	"mount after the command 'btrfs deivce scan --forget <devpath-of-id-0>'");
 			ret = -EUCLEAN;
 		} else {
 			dev_replace->srcdev = NULL;
