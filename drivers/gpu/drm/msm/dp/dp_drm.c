@@ -31,6 +31,25 @@ static enum drm_connector_status dp_bridge_detect(struct drm_bridge *bridge)
 					connector_status_disconnected;
 }
 
+static int dp_bridge_atomic_check(struct drm_bridge *bridge,
+			    struct drm_bridge_state *bridge_state,
+			    struct drm_crtc_state *crtc_state,
+			    struct drm_connector_state *conn_state)
+{
+	struct msm_dp *dp;
+
+	dp = to_dp_bridge(bridge)->dp_display;
+
+	drm_dbg_dp(dp->drm_dev, "is_connected = %s\n",
+		(dp->is_connected) ? "true" : "false");
+
+	if (bridge->ops & DRM_BRIDGE_OP_HPD)
+		return (dp->is_connected) ? 0 : -ENOTCONN;
+
+	return 0;
+}
+
+
 /**
  * dp_bridge_get_modes - callback to add drm modes via drm_mode_probed_add()
  * @bridge: Poiner to drm bridge
@@ -61,6 +80,9 @@ static int dp_bridge_get_modes(struct drm_bridge *bridge, struct drm_connector *
 }
 
 static const struct drm_bridge_funcs dp_bridge_ops = {
+	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
+	.atomic_destroy_state   = drm_atomic_helper_bridge_destroy_state,
+	.atomic_reset           = drm_atomic_helper_bridge_reset,
 	.enable       = dp_bridge_enable,
 	.disable      = dp_bridge_disable,
 	.post_disable = dp_bridge_post_disable,
@@ -69,6 +91,7 @@ static const struct drm_bridge_funcs dp_bridge_ops = {
 	.get_modes    = dp_bridge_get_modes,
 	.detect       = dp_bridge_detect,
 	.hpd_notify   = dp_bridge_hpd_notify,
+	.atomic_check = dp_bridge_atomic_check,
 };
 
 struct drm_bridge *dp_bridge_init(struct msm_dp *dp_display, struct drm_device *dev,
