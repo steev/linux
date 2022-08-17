@@ -29,6 +29,10 @@
 #define ASM_ENDBR	"endbr32\n\t"
 #endif
 
+#define ASM_ENDBR_NOSEAL	\
+	ANNOTATE_NOSEAL		\
+	ASM_ENDBR
+
 #define __noendbr	__attribute__((nocf_check))
 
 static inline __attribute_const__ u32 gen_endbr(void)
@@ -84,6 +88,7 @@ extern __noendbr void ibt_restore(u64 save);
 #ifndef __ASSEMBLY__
 
 #define ASM_ENDBR
+#define ASM_ENDBR_NOSEAL
 
 #define __noendbr
 

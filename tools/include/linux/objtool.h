@@ -90,6 +90,12 @@ struct unwind_hint {
 	_ASM_PTR " 986b\n\t"					\
 	".popsection\n\t"
 
+#define ANNOTATE_NOSEAL						\
+	"986: \n\t"						\
+	".pushsection .discard.noseal\n\t"			\
+	_ASM_PTR " 986b\n\t"					\
+	".popsection\n\t"
+
 #define ASM_REACHABLE							\
 	"998:\n\t"							\
 	".pushsection .discard.reachable\n\t"				\

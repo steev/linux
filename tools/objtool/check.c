@@ -2111,6 +2111,40 @@ static int read_noendbr_hints(struct objtool_file *file)
 	return 0;
 }
 
+static void mark_endbr_used(struct instruction *insn)
+{
+	if (!list_empty(&insn->call_node))
+		list_del_init(&insn->call_node);
+}
+
+static int read_noseal_hints(struct objtool_file *file)
+{
+	struct section *sec;
+	struct instruction *insn;
+	struct reloc *reloc;
+
+	sec = find_section_by_name(file->elf, ".rela.discard.noseal");
+	if (!sec)
+		return 0;
+
+	list_for_each_entry(reloc, &sec->reloc_list, list) {
+		insn = find_insn(file, reloc->sym->sec, reloc->sym->offset + reloc->addend);
+		if (!insn) {
+			WARN("bad .discard.noseal entry");
+			return -1;
+		}
+
+		if (insn->type != INSN_ENDBR) {
+			WARN_FUNC("ANNOTATE_NOSEAL not on ENDBR", insn->sec, insn->offset);
+			continue;
+		}
+
+		mark_endbr_used(insn);
+	}
+
+	return 0;
+}
+
 static int read_retpoline_hints(struct objtool_file *file)
 {
 	struct section *sec;
@@ -2353,6 +2387,10 @@ static int decode_sections(struct objtool_file *file)
 	 * Must be before read_unwind_hints() since that needs insn->noendbr.
 	 */
 	ret = read_noendbr_hints(file);
+	if (ret)
+		return ret;
+
+	ret = read_noseal_hints(file);
 	if (ret)
 		return ret;
 
@@ -3950,12 +3988,6 @@ static int validate_functions(struct objtool_file *file)
 	}
 
 	return warnings;
-}
-
-static void mark_endbr_used(struct instruction *insn)
-{
-	if (!list_empty(&insn->call_node))
-		list_del_init(&insn->call_node);
 }
 
 static int validate_ibt_insn(struct objtool_file *file, struct instruction *insn)

@@ -326,7 +326,7 @@ static int fastop(struct x86_emulate_ctxt *ctxt, fastop_t fop);
 	".align " __stringify(FASTOP_SIZE) " \n\t" \
 	".type " name ", @function \n\t" \
 	name ":\n\t" \
-	ASM_ENDBR
+	ASM_ENDBR_NOSEAL
 
 #define FOP_FUNC(name) \
 	__FOP_FUNC(#name)
@@ -461,7 +461,7 @@ static int fastop(struct x86_emulate_ctxt *ctxt, fastop_t fop);
 	".align " __stringify(SETCC_ALIGN) " \n\t" \
 	".type " #op ", @function \n\t" \
 	#op ": \n\t" \
-	ASM_ENDBR \
+	ASM_ENDBR_NOSEAL \
 	#op " %al \n\t" \
 	__FOP_RET(#op) \
 	".skip " __stringify(SETCC_ALIGN) " - (.-" #op "), 0xcc \n\t"
