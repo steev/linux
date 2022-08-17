@@ -762,10 +762,7 @@ int btrfs_cache_block_group(struct btrfs_block_group *cache, bool wait)
 	}
 	WARN_ON(cache->caching_ctl);
 	cache->caching_ctl = caching_ctl;
-	if (btrfs_test_opt(fs_info, SPACE_CACHE))
-		cache->cached = BTRFS_CACHE_FAST;
-	else
-		cache->cached = BTRFS_CACHE_STARTED;
+	cache->cached = BTRFS_CACHE_STARTED;
 	spin_unlock(&cache->lock);
 
 	write_lock(&fs_info->block_group_cache_lock);
