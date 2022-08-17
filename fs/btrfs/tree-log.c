@@ -1146,7 +1146,9 @@ again:
 	extref = btrfs_lookup_inode_extref(NULL, root, path, name, namelen,
 					   inode_objectid, parent_objectid, 0,
 					   0);
-	if (!IS_ERR_OR_NULL(extref)) {
+	if (IS_ERR(extref)) {
+		return PTR_ERR(extref);
+	} else if (extref) {
 		u32 item_size;
 		u32 cur_offset = 0;
 		unsigned long base;
@@ -1457,7 +1459,7 @@ static int add_link(struct btrfs_trans_handle *trans,
 	 * on the inode will not free it. We will fixup the link count later.
 	 */
 	if (other_inode->i_nlink == 0)
-		inc_nlink(other_inode);
+		set_nlink(other_inode, 1);
 add_link:
 	ret = btrfs_add_link(trans, BTRFS_I(dir), BTRFS_I(inode),
 			     name, namelen, 0, ref_index);
@@ -1600,7 +1602,7 @@ static noinline int add_inode_ref(struct btrfs_trans_handle *trans,
 				 * free it. We will fixup the link count later.
 				 */
 				if (!ret && inode->i_nlink == 0)
-					inc_nlink(inode);
+					set_nlink(inode, 1);
 			}
 			if (ret < 0)
 				goto out;
@@ -5219,10 +5221,9 @@ static int btrfs_log_holes(struct btrfs_trans_handle *trans,
 			 * leafs from the log root.
 			 */
 			btrfs_release_path(path);
-			ret = btrfs_insert_file_extent(trans, root->log_root,
-						       ino, prev_extent_end, 0,
-						       0, hole_len, 0, hole_len,
-						       0, 0, 0);
+			ret = btrfs_insert_hole_extent(trans, root->log_root,
+						       ino, prev_extent_end,
+						       hole_len);
 			if (ret < 0)
 				return ret;
 
@@ -5251,10 +5252,8 @@ static int btrfs_log_holes(struct btrfs_trans_handle *trans,
 
 		btrfs_release_path(path);
 		hole_len = ALIGN(i_size - prev_extent_end, fs_info->sectorsize);
-		ret = btrfs_insert_file_extent(trans, root->log_root,
-					       ino, prev_extent_end, 0, 0,
-					       hole_len, 0, hole_len,
-					       0, 0, 0);
+		ret = btrfs_insert_hole_extent(trans, root->log_root, ino,
+					       prev_extent_end, hole_len);
 		if (ret < 0)
 			return ret;
 	}

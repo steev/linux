@@ -46,6 +46,17 @@ enum btrfs_chunk_alloc_enum {
 	CHUNK_ALLOC_FORCE_FOR_EXTENT,
 };
 
+/* Block group flags set at runtime */
+enum btrfs_block_group_flags {
+	BLOCK_GROUP_FLAG_IREF,
+	BLOCK_GROUP_FLAG_REMOVED,
+	BLOCK_GROUP_FLAG_TO_COPY,
+	BLOCK_GROUP_FLAG_RELOCATING_REPAIR,
+	BLOCK_GROUP_FLAG_CHUNK_ITEM_INSERTED,
+	BLOCK_GROUP_FLAG_ZONE_IS_ACTIVE,
+	BLOCK_GROUP_FLAG_ZONED_DATA_RELOC,
+};
+
 struct btrfs_caching_control {
 	struct list_head list;
 	struct mutex mutex;
@@ -95,16 +106,9 @@ struct btrfs_block_group {
 
 	/* For raid56, this is a full stripe, without parity */
 	unsigned long full_stripe_len;
+	unsigned long runtime_flags;
 
 	unsigned int ro;
-	unsigned int iref:1;
-	unsigned int has_caching_ctl:1;
-	unsigned int removed:1;
-	unsigned int to_copy:1;
-	unsigned int relocating_repair:1;
-	unsigned int chunk_item_inserted:1;
-	unsigned int zone_is_active:1;
-	unsigned int zoned_data_reloc_ongoing:1;
 
 	int disk_cache_state;
 
@@ -307,8 +311,6 @@ void btrfs_reserve_chunk_metadata(struct btrfs_trans_handle *trans,
 u64 btrfs_get_alloc_profile(struct btrfs_fs_info *fs_info, u64 orig_flags);
 void btrfs_put_block_group_cache(struct btrfs_fs_info *info);
 int btrfs_free_block_groups(struct btrfs_fs_info *info);
-void btrfs_wait_space_cache_v1_finished(struct btrfs_block_group *cache,
-				struct btrfs_caching_control *caching_ctl);
 int btrfs_rmap_block(struct btrfs_fs_info *fs_info, u64 chunk_start,
 		       struct block_device *bdev, u64 physical, u64 **logical,
 		       int *naddrs, int *stripe_len);

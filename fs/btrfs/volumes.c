@@ -2345,8 +2345,11 @@ int btrfs_get_dev_args_from_path(struct btrfs_fs_info *fs_info,
 
 	ret = btrfs_get_bdev_and_sb(path, FMODE_READ, fs_info->bdev_holder, 0,
 				    &bdev, &disk_super);
-	if (ret)
+	if (ret) {
+		btrfs_put_dev_args_from_path(args);
 		return ret;
+	}
+
 	args->devid = btrfs_stack_device_id(&disk_super->dev_item);
 	memcpy(args->uuid, disk_super->dev_item.uuid, BTRFS_UUID_SIZE);
 	if (btrfs_fs_incompat(fs_info, METADATA_UUID))
@@ -5589,7 +5592,7 @@ int btrfs_chunk_alloc_add_chunk_item(struct btrfs_trans_handle *trans,
 	if (ret)
 		goto out;
 
-	bg->chunk_item_inserted = 1;
+	set_bit(BLOCK_GROUP_FLAG_CHUNK_ITEM_INSERTED, &bg->runtime_flags);
 
 	if (map->type & BTRFS_BLOCK_GROUP_SYSTEM) {
 		ret = btrfs_add_system_chunk(fs_info, &key, chunk, item_size);
@@ -6147,9 +6150,7 @@ static bool is_block_group_to_copy(struct btrfs_fs_info *fs_info, u64 logical)
 
 	cache = btrfs_lookup_block_group(fs_info, logical);
 
-	spin_lock(&cache->lock);
-	ret = cache->to_copy;
-	spin_unlock(&cache->lock);
+	ret = test_bit(BLOCK_GROUP_FLAG_TO_COPY, &cache->runtime_flags);
 
 	btrfs_put_block_group(cache);
 	return ret;
@@ -8238,7 +8239,7 @@ static int relocating_repair_kthread(void *data)
 	if (!cache)
 		goto out;
 
-	if (!cache->relocating_repair)
+	if (!test_bit(BLOCK_GROUP_FLAG_RELOCATING_REPAIR, &cache->runtime_flags))
 		goto out;
 
 	ret = btrfs_may_alloc_data_chunk(fs_info, target);
@@ -8275,14 +8276,10 @@ bool btrfs_repair_one_zone(struct btrfs_fs_info *fs_info, u64 logical)
 	if (!cache)
 		return true;
 
-	spin_lock(&cache->lock);
-	if (cache->relocating_repair) {
-		spin_unlock(&cache->lock);
+	if (test_and_set_bit(BLOCK_GROUP_FLAG_RELOCATING_REPAIR, &cache->runtime_flags)) {
 		btrfs_put_block_group(cache);
 		return true;
 	}
-	cache->relocating_repair = 1;
-	spin_unlock(&cache->lock);
 
 	kthread_run(relocating_repair_kthread, cache,
 		    "btrfs-relocating-repair");
