@@ -4136,6 +4136,56 @@ done:
 }
 
 /*
+ * If the inode was logged before and it was evicted, then its
+ * last_dir_index_offset is (u64)-1, so we don't the value of the last index
+ * key offset. If that's the case, search for it and update the inode. This
+ * is to avoid lookups in the log tree every time we try to insert a dir index
+ * key from a leaf changed in the current transaction, and to allow us to always
+ * do batch insertions of dir index keys.
+ */
+static int update_last_dir_index_offset(struct btrfs_inode *inode,
+					struct btrfs_path *path,
+					const struct btrfs_log_ctx *ctx)
+{
+	const u64 ino = btrfs_ino(inode);
+	struct btrfs_key key;
+	int ret;
+
+	lockdep_assert_held(&inode->log_mutex);
+
+	if (inode->last_dir_index_offset != (u64)-1)
+		return 0;
+
+	if (!ctx->logged_before) {
+		inode->last_dir_index_offset = BTRFS_DIR_START_INDEX - 1;
+		return 0;
+	}
+
+	key.objectid = ino;
+	key.type = BTRFS_DIR_INDEX_KEY;
+	key.offset = (u64)-1;
+
+	ret = btrfs_search_slot(NULL, inode->root->log_root, &key, path, 0, 0);
+	if (ret <= 0)
+		goto out;
+
+	ret = 0;
+	inode->last_dir_index_offset = BTRFS_DIR_START_INDEX - 1;
+
+	if (path->slots[0] == 0)
+		goto out;
+
+	btrfs_item_key_to_cpu(path->nodes[0], &key, path->slots[0] - 1);
+	if (key.objectid == ino && key.type == BTRFS_DIR_INDEX_KEY)
+		inode->last_dir_index_offset = key.offset;
+
+out:
+	btrfs_release_path(path);
+
+	return ret;
+}
+
+/*
  * logging directories is very similar to logging inodes, We find all the items
  * from the current transaction and write them to the log.
  *
@@ -4156,6 +4206,10 @@ static noinline int log_directory_changes(struct btrfs_trans_handle *trans,
 	u64 min_key;
 	u64 max_key;
 	int ret;
+
+	ret = update_last_dir_index_offset(inode, path, ctx);
+	if (ret)
+		return ret;
 
 	min_key = BTRFS_DIR_START_INDEX;
 	max_key = 0;
