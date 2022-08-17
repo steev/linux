@@ -78,10 +78,21 @@ struct btrfs_delayed_item {
 	u64 index;
 	struct list_head tree_list;	/* used for batch insert/delete items */
 	struct list_head readdir_list;	/* used for readdir items */
+	/*
+	 * Used when logging a directory.
+	 * Insertions and deletions to this list are protected by the parent
+	 * delayed node's mutex.
+	 */
+	struct list_head log_list;
 	u64 bytes_reserved;
 	struct btrfs_delayed_node *delayed_node;
 	refcount_t refs;
 	enum btrfs_delayed_item_type type:1;
+	/*
+	 * Track if this delayed item was already logged.
+	 * Protected by the mutex of the parent delayed inode.
+	 */
+	bool logged;
 	/* The maximum leaf size is 64K, so u16 is more than enough. */
 	u16 data_len;
 	char data[];
@@ -115,8 +126,6 @@ int btrfs_run_delayed_items_nr(struct btrfs_trans_handle *trans, int nr);
 
 void btrfs_balance_delayed_items(struct btrfs_fs_info *fs_info);
 
-int btrfs_commit_inode_delayed_items(struct btrfs_trans_handle *trans,
-				     struct btrfs_inode *inode);
 /* Used for evicting the inode. */
 void btrfs_remove_delayed_node(struct btrfs_inode *inode);
 void btrfs_kill_delayed_inode_items(struct btrfs_inode *inode);
@@ -146,6 +155,14 @@ int btrfs_should_delete_dir_index(struct list_head *del_list,
 				  u64 index);
 int btrfs_readdir_delayed_dir_index(struct dir_context *ctx,
 				    struct list_head *ins_list);
+
+/* Used during directory logging. */
+void btrfs_log_get_delayed_items(struct btrfs_inode *inode,
+				 struct list_head *ins_list,
+				 struct list_head *del_list);
+void btrfs_log_put_delayed_items(struct btrfs_inode *inode,
+				 struct list_head *ins_list,
+				 struct list_head *del_list);
 
 /* for init */
 int __init btrfs_delayed_inode_init(void);
