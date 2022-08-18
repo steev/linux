@@ -37,6 +37,69 @@ void _rtw_init_sta_recv_priv(struct sta_recv_priv *psta_recvpriv)
 
 }
 
+static int rtl8188eu_init_recv_priv(struct adapter *padapter)
+{
+	struct recv_priv *precvpriv = &padapter->recvpriv;
+	int i, res = _SUCCESS;
+	struct recv_buf *precvbuf;
+
+	tasklet_init(&precvpriv->recv_tasklet,
+		     rtl8188eu_recv_tasklet,
+		     (unsigned long)padapter);
+
+	/* init recv_buf */
+	rtw_init_queue(&precvpriv->free_recv_buf_queue);
+
+	precvpriv->pallocated_recv_buf = kzalloc(NR_RECVBUFF * sizeof(struct recv_buf) + 4,
+						 GFP_KERNEL);
+	if (!precvpriv->pallocated_recv_buf) {
+		res = _FAIL;
+		goto exit;
+	}
+
+	precvpriv->precv_buf = (u8 *)ALIGN((size_t)(precvpriv->pallocated_recv_buf), 4);
+
+	precvbuf = (struct recv_buf *)precvpriv->precv_buf;
+
+	for (i = 0; i < NR_RECVBUFF; i++) {
+		precvbuf->pskb = NULL;
+		precvbuf->reuse = false;
+		precvbuf->purb = usb_alloc_urb(0, GFP_KERNEL);
+		if (!precvbuf->purb) {
+			res = _FAIL;
+			break;
+		}
+		precvbuf->adapter = padapter;
+		precvbuf++;
+	}
+	precvpriv->free_recv_buf_queue_cnt = NR_RECVBUFF;
+	skb_queue_head_init(&precvpriv->rx_skb_queue);
+	{
+		int i;
+		size_t tmpaddr = 0;
+		size_t alignment = 0;
+		struct sk_buff *pskb = NULL;
+
+		skb_queue_head_init(&precvpriv->free_recv_skb_queue);
+
+		for (i = 0; i < NR_PREALLOC_RECV_SKB; i++) {
+			pskb = __netdev_alloc_skb(padapter->pnetdev,
+						  MAX_RECVBUF_SZ + RECVBUFF_ALIGN_SZ, GFP_KERNEL);
+			if (pskb) {
+				pskb->dev = padapter->pnetdev;
+				tmpaddr = (size_t)pskb->data;
+				alignment = tmpaddr & (RECVBUFF_ALIGN_SZ - 1);
+				skb_reserve(pskb, (RECVBUFF_ALIGN_SZ - alignment));
+
+				skb_queue_tail(&precvpriv->free_recv_skb_queue, pskb);
+			}
+			pskb = NULL;
+		}
+	}
+exit:
+	return res;
+}
+
 int _rtw_init_recv_priv(struct recv_priv *precvpriv, struct adapter *padapter)
 {
 	int i;
@@ -89,6 +152,26 @@ int _rtw_init_recv_priv(struct recv_priv *precvpriv, struct adapter *padapter)
 exit:
 
 	return res;
+}
+
+static void rtl8188eu_free_recv_priv(struct adapter *padapter)
+{
+	int i;
+	struct recv_buf *precvbuf;
+	struct recv_priv *precvpriv = &padapter->recvpriv;
+
+	precvbuf = (struct recv_buf *)precvpriv->precv_buf;
+
+	for (i = 0; i < NR_RECVBUFF; i++) {
+		usb_free_urb(precvbuf->purb);
+		precvbuf++;
+	}
+
+	kfree(precvpriv->pallocated_recv_buf);
+
+	skb_queue_purge(&precvpriv->rx_skb_queue);
+
+	skb_queue_purge(&precvpriv->free_recv_skb_queue);
 }
 
 void _rtw_free_recv_priv(struct recv_priv *precvpriv)
@@ -242,6 +325,42 @@ u32 rtw_free_uc_swdec_pending_queue(struct adapter *adapter)
 	}
 
 	return cnt;
+}
+
+static void rtw_handle_tkip_mic_err(struct adapter *padapter, u8 bgroup)
+{
+	union iwreq_data wrqu;
+	struct iw_michaelmicfailure ev;
+	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
+	struct security_priv *psecuritypriv = &padapter->securitypriv;
+	u32 cur_time = 0;
+
+	if (psecuritypriv->last_mic_err_time == 0) {
+		psecuritypriv->last_mic_err_time = jiffies;
+	} else {
+		cur_time = jiffies;
+
+		if (cur_time - psecuritypriv->last_mic_err_time < 60 * HZ) {
+			psecuritypriv->btkip_countermeasure = true;
+			psecuritypriv->last_mic_err_time = 0;
+			psecuritypriv->btkip_countermeasure_time = cur_time;
+		} else {
+			psecuritypriv->last_mic_err_time = jiffies;
+		}
+	}
+
+	memset(&ev, 0x00, sizeof(ev));
+	if (bgroup)
+		ev.flags |= IW_MICFAILURE_GROUP;
+	else
+		ev.flags |= IW_MICFAILURE_PAIRWISE;
+
+	ev.src_addr.sa_family = ARPHRD_ETHER;
+	memcpy(ev.src_addr.sa_data, &pmlmepriv->assoc_bssid[0], ETH_ALEN);
+	memset(&wrqu, 0x00, sizeof(wrqu));
+	wrqu.data.length = sizeof(ev);
+	wireless_send_event(padapter->pnetdev, IWEVMICHAELMICFAILURE,
+			    &wrqu, (char *)&ev);
 }
 
 static int recvframe_chkmic(struct adapter *adapter,  struct recv_frame *precvframe)
@@ -1458,6 +1577,85 @@ static bool enqueue_reorder_recvframe(struct recv_reorder_ctrl *preorder_ctrl, s
 
 	list_add_tail(&prframe->list, plist);
 	return true;
+}
+
+static int rtw_recv_indicatepkt(struct adapter *padapter, struct recv_frame *precv_frame)
+{
+	struct recv_priv *precvpriv;
+	struct __queue *pfree_recv_queue;
+	struct sk_buff *skb;
+	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
+
+	precvpriv = &padapter->recvpriv;
+	pfree_recv_queue = &precvpriv->free_recv_queue;
+
+	skb = precv_frame->pkt;
+	if (!skb)
+		goto _recv_indicatepkt_drop;
+
+	skb->data = precv_frame->rx_data;
+
+	skb_set_tail_pointer(skb, precv_frame->len);
+
+	skb->len = precv_frame->len;
+
+	if (check_fwstate(pmlmepriv, WIFI_AP_STATE)) {
+		struct sk_buff *pskb2 = NULL;
+		struct sta_info *psta = NULL;
+		struct sta_priv *pstapriv = &padapter->stapriv;
+		struct rx_pkt_attrib *pattrib = &precv_frame->attrib;
+		bool bmcast = is_multicast_ether_addr(pattrib->dst);
+
+		if (memcmp(pattrib->dst, myid(&padapter->eeprompriv), ETH_ALEN)) {
+			if (bmcast) {
+				psta = rtw_get_bcmc_stainfo(padapter);
+				pskb2 = skb_clone(skb, GFP_ATOMIC);
+			} else {
+				psta = rtw_get_stainfo(pstapriv, pattrib->dst);
+			}
+
+			if (psta) {
+				struct net_device *pnetdev;
+
+				pnetdev = (struct net_device *)padapter->pnetdev;
+				skb->dev = pnetdev;
+				skb_set_queue_mapping(skb, rtw_recv_select_queue(skb));
+
+				rtw_xmit_entry(skb, pnetdev);
+
+				if (bmcast)
+					skb = pskb2;
+				else
+					goto _recv_indicatepkt_end;
+			}
+		}
+	}
+
+	rcu_read_lock();
+	rcu_dereference(padapter->pnetdev->rx_handler_data);
+	rcu_read_unlock();
+
+	skb->ip_summed = CHECKSUM_NONE;
+	skb->dev = padapter->pnetdev;
+	skb->protocol = eth_type_trans(skb, padapter->pnetdev);
+
+	netif_rx(skb);
+
+_recv_indicatepkt_end:
+
+	/*  pointers to NULL before rtw_free_recvframe() */
+	precv_frame->pkt = NULL;
+
+	rtw_free_recvframe(precv_frame, pfree_recv_queue);
+
+	return _SUCCESS;
+
+_recv_indicatepkt_drop:
+
+	/* enqueue back to free_recv_queue */
+	rtw_free_recvframe(precv_frame, pfree_recv_queue);
+
+	return _FAIL;
 }
 
 static bool recv_indicatepkts_in_order(struct adapter *padapter, struct recv_reorder_ctrl *preorder_ctrl, int bforced)

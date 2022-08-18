@@ -10,8 +10,8 @@
 
 typedef s32 (*c2h_id_filter)(u8 id);
 
-void rtl8188eu_interface_configure(struct adapter *adapt);
-void ReadAdapterInfo8188EU(struct adapter *Adapter);
+int rtl8188eu_interface_configure(struct adapter *adapt);
+int ReadAdapterInfo8188EU(struct adapter *Adapter);
 void rtl8188eu_init_default_value(struct adapter *adapt);
 void rtl8188e_SetHalODMVar(struct adapter *Adapter, void *pValue1, bool bSet);
 u32 rtl8188eu_InitPowerOn(struct adapter *adapt);

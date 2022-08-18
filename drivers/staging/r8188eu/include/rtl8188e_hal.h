@@ -36,7 +36,6 @@
       0x2400 /* 9k for 88E nornal chip , MaxRxBuff=10k-max(TxReportSize(64*8),
 	      * WOLPattern(16*24)) */
 
-#define TX_SELE_HQ			BIT(0)		/*  High Queue */
 #define TX_SELE_LQ			BIT(1)		/*  Low Queue */
 #define TX_SELE_NQ			BIT(2)		/*  Normal Queue */
 
@@ -50,12 +49,6 @@
 #define TX_TOTAL_PAGE_NUMBER_88E		0xA9/*   169 (21632=> 21k) */
 
 #define TX_PAGE_BOUNDARY_88E (TX_TOTAL_PAGE_NUMBER_88E + 1)
-
-/* Note: For Normal Chip Setting ,modify later */
-#define WMM_NORMAL_TX_TOTAL_PAGE_NUMBER			\
-	TX_TOTAL_PAGE_NUMBER_88E  /* 0xA9 , 0xb0=>176=>22k */
-#define WMM_NORMAL_TX_PAGE_BOUNDARY_88E			\
-	(WMM_NORMAL_TX_TOTAL_PAGE_NUMBER + 1) /* 0xA9 */
 
 #include "HalVerDef.h"
 #include "hal_com.h"
@@ -155,8 +148,7 @@ struct hal_data_8188e {
 	u8	AntDivCfg;
 	u8	TRxAntDivType;
 
-	u8	OutEpQueueSel;
-	u8	OutEpNumber;
+	u8	out_ep_extra_queues;
 
 	struct P2P_PS_Offload_t	p2p_ps_offload;
 
