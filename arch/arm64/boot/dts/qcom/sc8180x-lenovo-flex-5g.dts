@@ -48,6 +48,27 @@
 		};
 	};
 
+	pmic-glink {
+		compatible = "qcom,sc8180x-pmic-glink", "qcom,pmic-glink";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		connector@0 {
+			compatible = "usb-c-connector";
+			reg = <0>;
+			power-role = "dual";
+			data-role = "dual";
+		};
+
+		connector@1 {
+			compatible = "usb-c-connector";
+			reg = <1>;
+			power-role = "dual";
+			data-role = "dual";
+		};
+	};
+
 	reserved-memory {
 		rmtfs_mem: rmtfs-region@85500000 {
 			compatible = "qcom,rmtfs-mem";
