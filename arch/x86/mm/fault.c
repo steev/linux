@@ -784,6 +784,8 @@ show_signal_msg(struct pt_regs *regs, unsigned long error_code,
 
 	printk(KERN_CONT "\n");
 
+	dump_stack_print_cmdline(loglvl);
+
 	show_opcodes(regs, loglvl);
 }
 

@@ -850,10 +850,10 @@ int folio_mapcount(struct folio *folio)
 		return atomic_read(&folio->_mapcount) + 1;
 
 	compound = folio_entire_mapcount(folio);
-	nr = folio_nr_pages(folio);
 	if (folio_test_hugetlb(folio))
 		return compound;
 	ret = compound;
+	nr = folio_nr_pages(folio);
 	for (i = 0; i < nr; i++)
 		ret += atomic_read(&folio_page(folio, i)->_mapcount) + 1;
 	/* File pages has compound_mapcount included in _mapcount */
@@ -1052,6 +1052,8 @@ int __vm_enough_memory(struct mm_struct *mm, long pages, int cap_sys_admin)
 	if (percpu_counter_read_positive(&vm_committed_as) < allowed)
 		return 0;
 error:
+	pr_warn_ratelimited("%s: pid: %d, comm: %s, no enough memory for the allocation\n",
+			    __func__, current->pid, current->comm);
 	vm_unacct_memory(pages);
 
 	return -ENOMEM;

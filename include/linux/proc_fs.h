@@ -158,6 +158,9 @@ int proc_pid_arch_status(struct seq_file *m, struct pid_namespace *ns,
 			struct pid *pid, struct task_struct *task);
 #endif /* CONFIG_PROC_PID_ARCH_STATUS */
 
+void get_task_cmdline_kernel(struct task_struct *task,
+			char *cmdline, size_t maxcount);
+
 #else /* CONFIG_PROC_FS */
 
 static inline void proc_root_init(void)
@@ -215,6 +218,8 @@ static inline struct pid *tgid_pidfd_to_pid(const struct file *file)
 {
 	return ERR_PTR(-EBADF);
 }
+
+static inline void get_task_cmdline_kernel(struct task_struct *task, char *cmdl, size_t m) { }
 
 #endif /* CONFIG_PROC_FS */
 

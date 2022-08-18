@@ -51,29 +51,6 @@ static void print_regs_callee(struct callee_regs *regs)
 		regs->r24, regs->r25);
 }
 
-static void print_task_path_n_nm(struct task_struct *tsk)
-{
-	char *path_nm = NULL;
-	struct mm_struct *mm;
-	struct file *exe_file;
-	char buf[ARC_PATH_MAX];
-
-	mm = get_task_mm(tsk);
-	if (!mm)
-		goto done;
-
-	exe_file = get_mm_exe_file(mm);
-	mmput(mm);
-
-	if (exe_file) {
-		path_nm = file_path(exe_file, buf, ARC_PATH_MAX-1);
-		fput(exe_file);
-	}
-
-done:
-	pr_info("Path: %s\n", !IS_ERR(path_nm) ? path_nm : "?");
-}
-
 static void show_faulting_vma(unsigned long address)
 {
 	struct vm_area_struct *vma;
@@ -176,7 +153,6 @@ void show_regs(struct pt_regs *regs)
 	 */
 	preempt_enable();
 
-	print_task_path_n_nm(tsk);
 	show_regs_print_info(KERN_INFO);
 
 	show_ecr_verbose(regs);

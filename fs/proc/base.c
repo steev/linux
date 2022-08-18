@@ -217,20 +217,17 @@ static int proc_root_link(struct dentry *dentry, struct path *path)
  */
 static ssize_t get_mm_proctitle(struct mm_struct *mm, char __user *buf,
 				size_t count, unsigned long pos,
-				unsigned long arg_start)
+				unsigned long arg_start, char *page)
 {
-	char *page;
 	int ret, got;
+	size_t size;
 
-	if (pos >= PAGE_SIZE)
+	size = min_t(size_t, PAGE_SIZE, count);
+	if (pos >= size)
 		return 0;
 
-	page = (char *)__get_free_page(GFP_KERNEL);
-	if (!page)
-		return -ENOMEM;
-
 	ret = 0;
-	got = access_remote_vm(mm, arg_start, page, PAGE_SIZE, FOLL_ANON);
+	got = access_remote_vm(mm, arg_start, page, size, FOLL_ANON);
 	if (got > 0) {
 		int len = strnlen(page, got);
 
@@ -238,7 +235,9 @@ static ssize_t get_mm_proctitle(struct mm_struct *mm, char __user *buf,
 		if (len < got)
 			len++;
 
-		if (len > pos) {
+		if (!buf)
+			ret = len;
+		else if (len > pos) {
 			len -= pos;
 			if (len > count)
 				len = count;
@@ -248,16 +247,15 @@ static ssize_t get_mm_proctitle(struct mm_struct *mm, char __user *buf,
 			ret = len;
 		}
 	}
-	free_page((unsigned long)page);
 	return ret;
 }
 
 static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
-			      size_t count, loff_t *ppos)
+			      size_t count, loff_t *ppos, char *page)
 {
 	unsigned long arg_start, arg_end, env_start, env_end;
 	unsigned long pos, len;
-	char *page, c;
+	char c;
 
 	/* Check if process spawned far enough to have cmdline. */
 	if (!mm->env_end)
@@ -283,7 +281,7 @@ static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 	len = env_end - arg_start;
 
 	/* We're not going to care if "*ppos" has high bits set */
-	pos = *ppos;
+	pos = ppos ? *ppos : 0;
 	if (pos >= len)
 		return 0;
 	if (count > len - pos)
@@ -299,7 +297,7 @@ static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 	 * pos is 0, and set a flag in the 'struct file'.
 	 */
 	if (access_remote_vm(mm, arg_end-1, &c, 1, FOLL_ANON) == 1 && c)
-		return get_mm_proctitle(mm, buf, count, pos, arg_start);
+		return get_mm_proctitle(mm, buf, count, pos, arg_start, page);
 
 	/*
 	 * For the non-setproctitle() case we limit things strictly
@@ -311,10 +309,6 @@ static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 	if (count > arg_end - pos)
 		count = arg_end - pos;
 
-	page = (char *)__get_free_page(GFP_KERNEL);
-	if (!page)
-		return -ENOMEM;
-
 	len = 0;
 	while (count) {
 		int got;
@@ -323,7 +317,8 @@ static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 		got = access_remote_vm(mm, pos, page, size, FOLL_ANON);
 		if (got <= 0)
 			break;
-		got -= copy_to_user(buf, page, got);
+		if (buf)
+			got -= copy_to_user(buf, page, got);
 		if (unlikely(!got)) {
 			if (!len)
 				len = -EFAULT;
@@ -335,12 +330,11 @@ static ssize_t get_mm_cmdline(struct mm_struct *mm, char __user *buf,
 		count -= got;
 	}
 
-	free_page((unsigned long)page);
 	return len;
 }
 
 static ssize_t get_task_cmdline(struct task_struct *tsk, char __user *buf,
-				size_t count, loff_t *pos)
+				size_t count, loff_t *pos, char *page)
 {
 	struct mm_struct *mm;
 	ssize_t ret;
@@ -349,9 +343,37 @@ static ssize_t get_task_cmdline(struct task_struct *tsk, char __user *buf,
 	if (!mm)
 		return 0;
 
-	ret = get_mm_cmdline(mm, buf, count, pos);
+	ret = get_mm_cmdline(mm, buf, count, pos, page);
 	mmput(mm);
 	return ret;
+}
+
+/*
+ * Place up to maxcount chars of the command line of the process into the
+ * cmdline buffer.
+ * NOTE: Requires that the task was locked with task_lock(task) by the caller.
+ */
+void get_task_cmdline_kernel(struct task_struct *task,
+			char *cmdline, size_t maxcount)
+{
+	struct mm_struct *mm;
+	int i;
+
+	mm = task->mm;
+	if (!mm || (task->flags & PF_KTHREAD))
+		return;
+
+	memset(cmdline, 0, maxcount);
+	get_mm_cmdline(mm, NULL, maxcount - 1, NULL, cmdline);
+
+	/* remove NULs between parameters */
+	for (i = 0; i < maxcount - 2; i++) {
+		if (cmdline[i])
+			continue;
+		if (cmdline[i+1] == 0)
+			break;
+		cmdline[i] = ' ';
+	}
 }
 
 static ssize_t proc_pid_cmdline_read(struct file *file, char __user *buf,
@@ -359,13 +381,19 @@ static ssize_t proc_pid_cmdline_read(struct file *file, char __user *buf,
 {
 	struct task_struct *tsk;
 	ssize_t ret;
+	char *page;
 
 	BUG_ON(*pos < 0);
 
 	tsk = get_proc_task(file_inode(file));
 	if (!tsk)
 		return -ESRCH;
-	ret = get_task_cmdline(tsk, buf, count, pos);
+	page = (char *)__get_free_page(GFP_KERNEL);
+	if (page) {
+		ret = get_task_cmdline(tsk, buf, count, pos, page);
+		free_page((unsigned long)page);
+	} else
+		ret = -ENOMEM;
 	put_task_struct(tsk);
 	if (ret > 0)
 		*pos += ret;
