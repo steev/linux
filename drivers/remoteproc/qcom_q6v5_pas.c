@@ -361,7 +361,6 @@ static int adsp_init_clock(struct qcom_adsp *adsp)
 
 static int adsp_init_regulator(struct qcom_adsp *adsp)
 {
-	return 0;
 	adsp->cx_supply = devm_regulator_get_optional(adsp->dev, "cx");
 	if (IS_ERR(adsp->cx_supply))
 		return PTR_ERR(adsp->cx_supply);
