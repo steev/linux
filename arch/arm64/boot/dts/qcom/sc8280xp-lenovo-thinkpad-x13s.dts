@@ -19,7 +19,7 @@
 	compatible = "lenovo,thinkpad-x13s", "qcom,sc8280xp";
 	chassis-type = "laptop";
 
-	backlight {
+	backlight: backlight {
 		compatible = "pwm-backlight";
 		pwms = <&pmc8280c_lpg 3 1000000>;
 		enable-gpios = <&pmc8280_1_gpios 8 GPIO_ACTIVE_HIGH>;
@@ -379,6 +379,8 @@
 	aux-bus {
 		panel {
 			compatible = "edp-panel";
+
+			backlight = <&backlight>;
 
 			ports {
 				port {
