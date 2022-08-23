@@ -4151,7 +4151,7 @@ static struct gdsc usb30_sec_gdsc = {
 		.name = "usb30_sec_gdsc",
 	},
 	.pwrsts = PWRSTS_OFF_ON,
-	.flags = POLL_CFG_GDSCR,
+	.flags = POLL_CFG_GDSCR | GENPD_FLAG_ACTIVE_WAKEUP,
 };
 
 static struct gdsc emac_gdsc = {
@@ -4169,7 +4169,7 @@ static struct gdsc usb30_prim_gdsc = {
 		.name = "usb30_prim_gdsc",
 	},
 	.pwrsts = PWRSTS_OFF_ON,
-	.flags = POLL_CFG_GDSCR,
+	.flags = POLL_CFG_GDSCR | GENPD_FLAG_ACTIVE_WAKEUP,
 };
 
 static struct gdsc pcie_0_gdsc = {
