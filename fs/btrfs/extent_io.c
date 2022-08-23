@@ -33,7 +33,6 @@
 
 static struct kmem_cache *extent_state_cache;
 static struct kmem_cache *extent_buffer_cache;
-static struct bio_set btrfs_bioset;
 
 static inline bool extent_state_in_tree(const struct extent_state *state)
 {
@@ -207,7 +206,7 @@ static void submit_one_bio(struct btrfs_bio_ctrl *bio_ctrl)
 		btrfs_submit_data_read_bio(inode, bio, mirror_num,
 					   bio_ctrl->compress_type);
 
-	/* The bio is owned by the bi_end_io handler now */
+	/* The bio is owned by the end_io handler now */
 	bio_ctrl->bio = NULL;
 }
 
@@ -223,56 +222,31 @@ static void submit_write_bio(struct extent_page_data *epd, int ret)
 
 	if (ret) {
 		ASSERT(ret < 0);
-		bio->bi_status = errno_to_blk_status(ret);
-		bio_endio(bio);
-		/* The bio is owned by the bi_end_io handler now */
+		btrfs_bio_end_io(btrfs_bio(bio), errno_to_blk_status(ret));
+		/* The bio is owned by the end_io handler now */
 		epd->bio_ctrl.bio = NULL;
 	} else {
 		submit_one_bio(&epd->bio_ctrl);
 	}
 }
 
-int __init extent_state_cache_init(void)
+int __init extent_io_init(void)
 {
 	extent_state_cache = kmem_cache_create("btrfs_extent_state",
 			sizeof(struct extent_state), 0,
 			SLAB_MEM_SPREAD, NULL);
 	if (!extent_state_cache)
 		return -ENOMEM;
-	return 0;
-}
 
-int __init extent_io_init(void)
-{
 	extent_buffer_cache = kmem_cache_create("btrfs_extent_buffer",
 			sizeof(struct extent_buffer), 0,
 			SLAB_MEM_SPREAD, NULL);
-	if (!extent_buffer_cache)
+	if (!extent_buffer_cache) {
+		kmem_cache_destroy(extent_state_cache);
 		return -ENOMEM;
-
-	if (bioset_init(&btrfs_bioset, BIO_POOL_SIZE,
-			offsetof(struct btrfs_bio, bio),
-			BIOSET_NEED_BVECS))
-		goto free_buffer_cache;
-
-	if (bioset_integrity_create(&btrfs_bioset, BIO_POOL_SIZE))
-		goto free_bioset;
+	}
 
 	return 0;
-
-free_bioset:
-	bioset_exit(&btrfs_bioset);
-
-free_buffer_cache:
-	kmem_cache_destroy(extent_buffer_cache);
-	extent_buffer_cache = NULL;
-	return -ENOMEM;
-}
-
-void __cold extent_state_cache_exit(void)
-{
-	btrfs_extent_state_leak_debug_check();
-	kmem_cache_destroy(extent_state_cache);
 }
 
 void __cold extent_io_exit(void)
@@ -283,7 +257,8 @@ void __cold extent_io_exit(void)
 	 */
 	rcu_barrier();
 	kmem_cache_destroy(extent_buffer_cache);
-	bioset_exit(&btrfs_bioset);
+	btrfs_extent_state_leak_debug_check();
+	kmem_cache_destroy(extent_state_cache);
 }
 
 /*
@@ -2650,13 +2625,11 @@ int btrfs_repair_one_sector(struct inode *inode, struct btrfs_bio *failed_bbio,
 		return -EIO;
 	}
 
-	repair_bio = btrfs_bio_alloc(1);
+	repair_bio = btrfs_bio_alloc(1, REQ_OP_READ, failed_bbio->end_io,
+				     failed_bbio->private);
 	repair_bbio = btrfs_bio(repair_bio);
 	repair_bbio->file_offset = start;
-	repair_bio->bi_opf = REQ_OP_READ;
-	repair_bio->bi_end_io = failed_bio->bi_end_io;
 	repair_bio->bi_iter.bi_sector = failrec->logical >> 9;
-	repair_bio->bi_private = failed_bio->bi_private;
 
 	if (failed_bbio->csum) {
 		const u32 csum_size = fs_info->csum_size;
@@ -2823,8 +2796,9 @@ void end_extent_writepage(struct page *page, int err, u64 start, u64 end)
  * Scheduling is not allowed, so the extent state tree is expected
  * to have one and only one object corresponding to this IO.
  */
-static void end_bio_extent_writepage(struct bio *bio)
+static void end_bio_extent_writepage(struct btrfs_bio *bbio)
 {
+	struct bio *bio = &bbio->bio;
 	int error = blk_status_to_errno(bio->bi_status);
 	struct bio_vec *bvec;
 	u64 start;
@@ -2924,9 +2898,6 @@ static void endio_readpage_release_extent(struct processed_extent *processed,
 	 * Now we don't have range contiguous to the processed range, release
 	 * the processed range now.
 	 */
-	if (processed->uptodate && tree->track_uptodate)
-		set_extent_uptodate(tree, processed->start, processed->end,
-				    &cached, GFP_ATOMIC);
 	unlock_extent_cached_atomic(tree, processed->start, processed->end,
 				    &cached);
 
@@ -2988,10 +2959,10 @@ static struct extent_buffer *find_extent_buffer_readpage(
  * Scheduling is not allowed, so the extent state tree is expected
  * to have one and only one object corresponding to this IO.
  */
-static void end_bio_extent_readpage(struct bio *bio)
+static void end_bio_extent_readpage(struct btrfs_bio *bbio)
 {
+	struct bio *bio = &bbio->bio;
 	struct bio_vec *bvec;
-	struct btrfs_bio *bbio = btrfs_bio(bio);
 	struct extent_io_tree *tree, *failure_tree;
 	struct processed_extent processed = { 0 };
 	/*
@@ -3162,50 +3133,6 @@ int btrfs_alloc_page_array(unsigned int nr_pages, struct page **page_array)
 	return 0;
 }
 
-/*
- * Initialize the members up to but not including 'bio'. Use after allocating a
- * new bio by bio_alloc_bioset as it does not initialize the bytes outside of
- * 'bio' because use of __GFP_ZERO is not supported.
- */
-static inline void btrfs_bio_init(struct btrfs_bio *bbio)
-{
-	memset(bbio, 0, offsetof(struct btrfs_bio, bio));
-}
-
-/*
- * Allocate a btrfs_io_bio, with @nr_iovecs as maximum number of iovecs.
- *
- * The bio allocation is backed by bioset and does not fail.
- */
-struct bio *btrfs_bio_alloc(unsigned int nr_iovecs)
-{
-	struct bio *bio;
-
-	ASSERT(0 < nr_iovecs && nr_iovecs <= BIO_MAX_VECS);
-	bio = bio_alloc_bioset(NULL, nr_iovecs, 0, GFP_NOFS, &btrfs_bioset);
-	btrfs_bio_init(btrfs_bio(bio));
-	return bio;
-}
-
-struct bio *btrfs_bio_clone_partial(struct bio *orig, u64 offset, u64 size)
-{
-	struct bio *bio;
-	struct btrfs_bio *bbio;
-
-	ASSERT(offset <= UINT_MAX && size <= UINT_MAX);
-
-	/* this will never fail when it's backed by a bioset */
-	bio = bio_alloc_clone(orig->bi_bdev, orig, GFP_NOFS, &btrfs_bioset);
-	ASSERT(bio);
-
-	bbio = btrfs_bio(bio);
-	btrfs_bio_init(bbio);
-
-	bio_trim(bio, offset >> 9, size >> 9);
-	bbio->iter = bio->bi_iter;
-	return bio;
-}
-
 /**
  * Attempt to add a page to bio
  *
@@ -3351,7 +3278,7 @@ static int alloc_new_bio(struct btrfs_inode *inode,
 			 struct btrfs_bio_ctrl *bio_ctrl,
 			 struct writeback_control *wbc,
 			 blk_opf_t opf,
-			 bio_end_io_t end_io_func,
+			 btrfs_bio_end_io_t end_io_func,
 			 u64 disk_bytenr, u32 offset, u64 file_offset,
 			 enum btrfs_compression_type compress_type)
 {
@@ -3359,7 +3286,7 @@ static int alloc_new_bio(struct btrfs_inode *inode,
 	struct bio *bio;
 	int ret;
 
-	bio = btrfs_bio_alloc(BIO_MAX_VECS);
+	bio = btrfs_bio_alloc(BIO_MAX_VECS, opf, end_io_func, NULL);
 	/*
 	 * For compressed page range, its disk_bytenr is always @disk_bytenr
 	 * passed in, no matter if we have added any range into previous bio.
@@ -3370,8 +3297,6 @@ static int alloc_new_bio(struct btrfs_inode *inode,
 		bio->bi_iter.bi_sector = (disk_bytenr + offset) >> SECTOR_SHIFT;
 	bio_ctrl->bio = bio;
 	bio_ctrl->compress_type = compress_type;
-	bio->bi_end_io = end_io_func;
-	bio->bi_opf = opf;
 	ret = calc_bio_boundaries(bio_ctrl, inode, file_offset);
 	if (ret < 0)
 		goto error;
@@ -3410,8 +3335,7 @@ static int alloc_new_bio(struct btrfs_inode *inode,
 	return 0;
 error:
 	bio_ctrl->bio = NULL;
-	bio->bi_status = errno_to_blk_status(ret);
-	bio_endio(bio);
+	btrfs_bio_end_io(btrfs_bio(bio), errno_to_blk_status(ret));
 	return ret;
 }
 
@@ -3434,7 +3358,7 @@ static int submit_extent_page(blk_opf_t opf,
 			      struct btrfs_bio_ctrl *bio_ctrl,
 			      struct page *page, u64 disk_bytenr,
 			      size_t size, unsigned long pg_offset,
-			      bio_end_io_t end_io_func,
+			      btrfs_bio_end_io_t end_io_func,
 			      enum btrfs_compression_type compress_type,
 			      bool force_bio_submit)
 {
@@ -3613,7 +3537,6 @@ static int btrfs_do_readpage(struct page *page, struct extent_map **em_cached,
 	u64 extent_offset;
 	u64 last_byte = i_size_read(inode);
 	u64 block_start;
-	u64 cur_end;
 	struct extent_map *em;
 	int ret = 0;
 	size_t pg_offset = 0;
@@ -3672,7 +3595,6 @@ static int btrfs_do_readpage(struct page *page, struct extent_map **em_cached,
 			this_bio_flag = em->compress_type;
 
 		iosize = min(extent_map_end(em) - cur, end - cur + 1);
-		cur_end = min(extent_map_end(em) - 1, end);
 		iosize = ALIGN(iosize, blocksize);
 		if (this_bio_flag != BTRFS_COMPRESS_NONE)
 			disk_bytenr = em->block_start;
@@ -3743,20 +3665,9 @@ static int btrfs_do_readpage(struct page *page, struct extent_map **em_cached,
 			continue;
 		}
 		/* the get_extent function already copied into the page */
-		if (test_range_bit(tree, cur, cur_end,
-				   EXTENT_UPTODATE, 1, NULL)) {
-			unlock_extent(tree, cur, cur + iosize - 1);
-			end_page_read(page, true, cur, iosize);
-			cur = cur + iosize;
-			pg_offset += iosize;
-			continue;
-		}
-		/* we have an inline extent but it didn't get marked up
-		 * to date.  Error out
-		 */
 		if (block_start == EXTENT_MAP_INLINE) {
 			unlock_extent(tree, cur, cur + iosize - 1);
-			end_page_read(page, false, cur, iosize);
+			end_page_read(page, true, cur, iosize);
 			cur = cur + iosize;
 			pg_offset += iosize;
 			continue;
@@ -4431,8 +4342,9 @@ static struct extent_buffer *find_extent_buffer_nolock(
  * Unlike end_bio_extent_buffer_writepage(), we only call end_page_writeback()
  * after all extent buffers in the page has finished their writeback.
  */
-static void end_bio_subpage_eb_writepage(struct bio *bio)
+static void end_bio_subpage_eb_writepage(struct btrfs_bio *bbio)
 {
+	struct bio *bio = &bbio->bio;
 	struct btrfs_fs_info *fs_info;
 	struct bio_vec *bvec;
 	struct bvec_iter_all iter_all;
@@ -4488,8 +4400,9 @@ static void end_bio_subpage_eb_writepage(struct bio *bio)
 	bio_put(bio);
 }
 
-static void end_bio_extent_buffer_writepage(struct bio *bio)
+static void end_bio_extent_buffer_writepage(struct btrfs_bio *bbio)
 {
+	struct bio *bio = &bbio->bio;
 	struct bio_vec *bvec;
 	struct extent_buffer *eb;
 	int done;
@@ -6362,18 +6275,16 @@ static int release_extent_buffer(struct extent_buffer *eb)
 void free_extent_buffer(struct extent_buffer *eb)
 {
 	int refs;
-	int old;
 	if (!eb)
 		return;
 
+	refs = atomic_read(&eb->refs);
 	while (1) {
-		refs = atomic_read(&eb->refs);
 		if ((!test_bit(EXTENT_BUFFER_UNMAPPED, &eb->bflags) && refs <= 3)
 		    || (test_bit(EXTENT_BUFFER_UNMAPPED, &eb->bflags) &&
 			refs == 1))
 			break;
-		old = atomic_cmpxchg(&eb->refs, refs, refs - 1);
-		if (old == refs)
+		if (atomic_try_cmpxchg(&eb->refs, &refs, refs - 1))
 			return;
 	}
 

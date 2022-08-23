@@ -361,6 +361,8 @@ struct btrfs_fs_devices {
  */
 #define BTRFS_MAX_BIO_SECTORS				(256)
 
+typedef void (*btrfs_bio_end_io_t)(struct btrfs_bio *bbio);
+
 /*
  * Additional info to pass along bio.
  *
@@ -378,6 +380,10 @@ struct btrfs_bio {
 	u8 csum_inline[BTRFS_BIO_INLINE_CSUM_SIZE];
 	struct bvec_iter iter;
 
+	/* End I/O information supplied to btrfs_bio_alloc */
+	btrfs_bio_end_io_t end_io;
+	void *private;
+
 	/* For read end I/O handling */
 	struct work_struct end_io_work;
 
@@ -391,6 +397,20 @@ struct btrfs_bio {
 static inline struct btrfs_bio *btrfs_bio(struct bio *bio)
 {
 	return container_of(bio, struct btrfs_bio, bio);
+}
+
+int __init btrfs_bioset_init(void);
+void __cold btrfs_bioset_exit(void);
+
+struct bio *btrfs_bio_alloc(unsigned int nr_vecs, blk_opf_t opf,
+			    btrfs_bio_end_io_t end_io, void *private);
+struct bio *btrfs_bio_clone_partial(struct bio *orig, u64 offset, u64 size,
+				    btrfs_bio_end_io_t end_io, void *private);
+
+static inline void btrfs_bio_end_io(struct btrfs_bio *bbio, blk_status_t status)
+{
+	bbio->bio.bi_status = status;
+	bbio->end_io(bbio);
 }
 
 static inline void btrfs_bio_free_csum(struct btrfs_bio *bbio)
@@ -451,12 +471,9 @@ struct btrfs_discard_stripe {
  */
 struct btrfs_io_context {
 	refcount_t refs;
-	atomic_t stripes_pending;
 	struct btrfs_fs_info *fs_info;
 	u64 map_type; /* get from map_lookup->type */
-	bio_end_io_t *end_io;
 	struct bio *orig_bio;
-	void *private;
 	atomic_t error;
 	int max_errors;
 	int num_stripes;
