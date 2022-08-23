@@ -2924,9 +2924,6 @@ static void endio_readpage_release_extent(struct processed_extent *processed,
 	 * Now we don't have range contiguous to the processed range, release
 	 * the processed range now.
 	 */
-	if (processed->uptodate && tree->track_uptodate)
-		set_extent_uptodate(tree, processed->start, processed->end,
-				    &cached, GFP_ATOMIC);
 	unlock_extent_cached_atomic(tree, processed->start, processed->end,
 				    &cached);
 
@@ -3233,7 +3230,7 @@ static int btrfs_bio_add_page(struct btrfs_bio_ctrl *bio_ctrl,
 	u32 bio_size = bio->bi_iter.bi_size;
 	u32 real_size;
 	const sector_t sector = disk_bytenr >> SECTOR_SHIFT;
-	bool contig;
+	bool contig = false;
 	int ret;
 
 	ASSERT(bio);
@@ -3242,10 +3239,35 @@ static int btrfs_bio_add_page(struct btrfs_bio_ctrl *bio_ctrl,
 	if (bio_ctrl->compress_type != compress_type)
 		return 0;
 
-	if (bio_ctrl->compress_type != BTRFS_COMPRESS_NONE)
+
+	if (bio->bi_iter.bi_size == 0) {
+		/* We can always add a page into an empty bio. */
+		contig = true;
+	} else if (bio_ctrl->compress_type == BTRFS_COMPRESS_NONE) {
+		struct bio_vec *bvec = bio_last_bvec_all(bio);
+
+		/*
+		 * The contig check requires the following conditions to be met:
+		 * 1) The pages are belonging to the same inode
+		 *    This is implied by the call chain.
+		 *
+		 * 2) The range has adjacent logical bytenr
+		 *
+		 * 3) The range has adjacent file offset
+		 *    This is required for the usage of btrfs_bio->file_offset.
+		 */
+		if (bio_end_sector(bio) == sector &&
+		    page_offset(bvec->bv_page) + bvec->bv_offset +
+		    bvec->bv_len == page_offset(page) + pg_offset)
+			contig = true;
+	} else {
+		/*
+		 * For compression, all IO should have its logical bytenr
+		 * set to the starting bytenr of the compressed extent.
+		 */
 		contig = bio->bi_iter.bi_sector == sector;
-	else
-		contig = bio_end_sector(bio) == sector;
+	}
+
 	if (!contig)
 		return 0;
 
@@ -3588,7 +3610,6 @@ static int btrfs_do_readpage(struct page *page, struct extent_map **em_cached,
 	u64 extent_offset;
 	u64 last_byte = i_size_read(inode);
 	u64 block_start;
-	u64 cur_end;
 	struct extent_map *em;
 	int ret = 0;
 	size_t pg_offset = 0;
@@ -3647,7 +3668,6 @@ static int btrfs_do_readpage(struct page *page, struct extent_map **em_cached,
 			this_bio_flag = em->compress_type;
 
 		iosize = min(extent_map_end(em) - cur, end - cur + 1);
-		cur_end = min(extent_map_end(em) - 1, end);
 		iosize = ALIGN(iosize, blocksize);
 		if (this_bio_flag != BTRFS_COMPRESS_NONE)
 			disk_bytenr = em->block_start;
@@ -3718,20 +3738,9 @@ static int btrfs_do_readpage(struct page *page, struct extent_map **em_cached,
 			continue;
 		}
 		/* the get_extent function already copied into the page */
-		if (test_range_bit(tree, cur, cur_end,
-				   EXTENT_UPTODATE, 1, NULL)) {
-			unlock_extent(tree, cur, cur + iosize - 1);
-			end_page_read(page, true, cur, iosize);
-			cur = cur + iosize;
-			pg_offset += iosize;
-			continue;
-		}
-		/* we have an inline extent but it didn't get marked up
-		 * to date.  Error out
-		 */
 		if (block_start == EXTENT_MAP_INLINE) {
 			unlock_extent(tree, cur, cur + iosize - 1);
-			end_page_read(page, false, cur, iosize);
+			end_page_read(page, true, cur, iosize);
 			cur = cur + iosize;
 			pg_offset += iosize;
 			continue;
@@ -6337,18 +6346,16 @@ static int release_extent_buffer(struct extent_buffer *eb)
 void free_extent_buffer(struct extent_buffer *eb)
 {
 	int refs;
-	int old;
 	if (!eb)
 		return;
 
+	refs = atomic_read(&eb->refs);
 	while (1) {
-		refs = atomic_read(&eb->refs);
 		if ((!test_bit(EXTENT_BUFFER_UNMAPPED, &eb->bflags) && refs <= 3)
 		    || (test_bit(EXTENT_BUFFER_UNMAPPED, &eb->bflags) &&
 			refs == 1))
 			break;
-		old = atomic_cmpxchg(&eb->refs, refs, refs - 1);
-		if (old == refs)
+		if (atomic_try_cmpxchg(&eb->refs, &refs, refs - 1))
 			return;
 	}
 
