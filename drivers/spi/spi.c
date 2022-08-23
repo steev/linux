@@ -95,7 +95,7 @@ static ssize_t driver_override_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(driver_override);
 
-static struct spi_statistics *spi_alloc_pcpu_stats(struct device *dev)
+static struct spi_statistics __percpu *spi_alloc_pcpu_stats(struct device *dev)
 {
 	struct spi_statistics __percpu *pcpu_stats;
 
@@ -162,7 +162,7 @@ static struct device_attribute dev_attr_spi_device_##field = {		\
 }
 
 #define SPI_STATISTICS_SHOW_NAME(name, file, field)			\
-static ssize_t spi_statistics_##name##_show(struct spi_statistics *stat, \
+static ssize_t spi_statistics_##name##_show(struct spi_statistics __percpu *stat, \
 					    char *buf)			\
 {									\
 	ssize_t len;							\
@@ -309,7 +309,7 @@ static const struct attribute_group *spi_master_groups[] = {
 	NULL,
 };
 
-static void spi_statistics_add_transfer_stats(struct spi_statistics *pcpu_stats,
+static void spi_statistics_add_transfer_stats(struct spi_statistics __percpu *pcpu_stats,
 					      struct spi_transfer *xfer,
 					      struct spi_controller *ctlr)
 {
@@ -753,7 +753,7 @@ struct spi_device *spi_new_device(struct spi_controller *ctlr,
 	proxy->max_speed_hz = chip->max_speed_hz;
 	proxy->mode = chip->mode;
 	proxy->irq = chip->irq;
-	strlcpy(proxy->modalias, chip->modalias, sizeof(proxy->modalias));
+	strscpy(proxy->modalias, chip->modalias, sizeof(proxy->modalias));
 	proxy->dev.platform_data = (void *) chip->platform_data;
 	proxy->controller_data = chip->controller_data;
 	proxy->controller_state = NULL;
@@ -1275,8 +1275,8 @@ static int spi_transfer_wait(struct spi_controller *ctlr,
 			     struct spi_message *msg,
 			     struct spi_transfer *xfer)
 {
-	struct spi_statistics *statm = ctlr->pcpu_statistics;
-	struct spi_statistics *stats = msg->spi->pcpu_statistics;
+	struct spi_statistics __percpu *statm = ctlr->pcpu_statistics;
+	struct spi_statistics __percpu *stats = msg->spi->pcpu_statistics;
 	u32 speed_hz = xfer->speed_hz;
 	unsigned long long ms;
 
@@ -1432,8 +1432,8 @@ static int spi_transfer_one_message(struct spi_controller *ctlr,
 	struct spi_transfer *xfer;
 	bool keep_cs = false;
 	int ret = 0;
-	struct spi_statistics *statm = ctlr->pcpu_statistics;
-	struct spi_statistics *stats = msg->spi->pcpu_statistics;
+	struct spi_statistics __percpu *statm = ctlr->pcpu_statistics;
+	struct spi_statistics __percpu *stats = msg->spi->pcpu_statistics;
 
 	spi_set_cs(msg->spi, true, false);
 
@@ -2330,7 +2330,7 @@ struct spi_device *spi_new_ancillary_device(struct spi_device *spi,
 		goto err_out;
 	}
 
-	strlcpy(ancillary->modalias, "dummy", sizeof(ancillary->modalias));
+	strscpy(ancillary->modalias, "dummy", sizeof(ancillary->modalias));
 
 	/* Use provided chip-select for ancillary device */
 	ancillary->chip_select = chip_select;
@@ -2726,7 +2726,7 @@ static ssize_t slave_store(struct device *dev, struct device_attribute *attr,
 		if (!spi)
 			return -ENOMEM;
 
-		strlcpy(spi->modalias, name, sizeof(spi->modalias));
+		strscpy(spi->modalias, name, sizeof(spi->modalias));
 
 		rc = spi_add_device(spi);
 		if (rc) {
