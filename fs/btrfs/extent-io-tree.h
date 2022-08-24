@@ -96,9 +96,6 @@ struct extent_state {
 #endif
 };
 
-int __init extent_state_cache_init(void);
-void __cold extent_state_cache_exit(void);
-
 void extent_io_tree_init(struct btrfs_fs_info *fs_info,
 			 struct extent_io_tree *tree, unsigned int owner,
 			 void *private_data);
@@ -211,7 +208,7 @@ static inline int set_extent_delalloc(struct extent_io_tree *tree, u64 start,
 				      struct extent_state **cached_state)
 {
 	return set_extent_bit(tree, start, end,
-			      EXTENT_DELALLOC | EXTENT_UPTODATE | extra_bits,
+			      EXTENT_DELALLOC | extra_bits,
 			      0, NULL, cached_state, GFP_NOFS, NULL);
 }
 
@@ -219,7 +216,7 @@ static inline int set_extent_defrag(struct extent_io_tree *tree, u64 start,
 		u64 end, struct extent_state **cached_state)
 {
 	return set_extent_bit(tree, start, end,
-			      EXTENT_DELALLOC | EXTENT_UPTODATE | EXTENT_DEFRAG,
+			      EXTENT_DELALLOC | EXTENT_DEFRAG,
 			      0, NULL, cached_state, GFP_NOFS, NULL);
 }
 
