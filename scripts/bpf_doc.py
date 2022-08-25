@@ -10,6 +10,9 @@ from __future__ import print_function
 import argparse
 import re
 import sys, os
+import subprocess
+
+helpersDocStart = 'Start of BPF helper function descriptions:'
 
 class NoHelperFound(BaseException):
     pass
@@ -233,7 +236,7 @@ class HeaderParser(object):
         self.enum_syscalls = re.findall('(BPF\w+)+', bpf_cmd_str)
 
     def parse_desc_helpers(self):
-        self.seek_to('* Start of BPF helper function descriptions:',
+        self.seek_to(helpersDocStart,
                      'Could not find start of eBPF helper descriptions list')
         while True:
             try:
@@ -357,6 +360,31 @@ class PrinterRST(Printer):
 
         print('')
 
+    def get_kernel_version(self):
+        try:
+            version = subprocess.run(['git', 'describe'], cwd=linuxRoot,
+                                     capture_output=True, check=True)
+            version = version.stdout.decode().rstrip()
+        except:
+            try:
+                version = subprocess.run(['make', 'kernelversion'], cwd=linuxRoot,
+                                         capture_output=True, check=True)
+                version = version.stdout.decode().rstrip()
+            except:
+                return 'Linux'
+        return 'Linux {version}'.format(version=version)
+
+    def get_last_doc_update(self, delimiter):
+        try:
+            cmd = ['git', 'log', '-1', '--pretty=format:%cs', '--no-patch',
+                   '-L',
+                   '/{}/,/\*\//:include/uapi/linux/bpf.h'.format(delimiter)]
+            date = subprocess.run(cmd, cwd=linuxRoot,
+                                  capture_output=True, check=True)
+            return date.stdout.decode().rstrip()
+        except:
+            return ''
+
 class PrinterHelpersRST(PrinterRST):
     """
     A printer for dumping collected information about helpers as a ReStructured
@@ -378,6 +406,8 @@ list of eBPF helper functions
 -------------------------------------------------------------------------------
 
 :Manual section: 7
+:Version: {version}
+{date_field}{date}
 
 DESCRIPTION
 ===========
@@ -410,8 +440,13 @@ kernel at the top).
 HELPERS
 =======
 '''
+        kernelVersion = self.get_kernel_version()
+        lastUpdate = self.get_last_doc_update(helpersDocStart)
+
         PrinterRST.print_license(self)
-        print(header)
+        print(header.format(version=kernelVersion,
+                            date_field = ':Date: ' if lastUpdate else '',
+                            date=lastUpdate))
 
     def print_footer(self):
         footer = '''
