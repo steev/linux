@@ -189,6 +189,47 @@ static const struct ath11k_pci_ops ath11k_ahb_pci_ops_wcn6750 = {
 	.window_read32 = ath11k_ahb_window_read32_wcn6750,
 };
 
+static int ath11k_ahb_core_start_wcn6750(struct ath11k_base *ab)
+{
+	/* Initialize the hardware/firmware only for the first PDEV
+	 * or during hardware recovery.
+	 */
+	if (!test_bit(ATH11K_FLAG_RECOVERY, &ab->dev_flags) &&
+	    ath11k_core_any_pdevs_on(ab))
+		return 0;
+
+	return ath11k_core_start_device(ab);
+}
+
+static void ath11k_ahb_core_stop_wcn6750(struct ath11k_base *ab)
+{
+	return ath11k_core_stop_device(ab);
+}
+
+static int ath11k_ahb_core_start_ipq8074(struct ath11k_base *ab)
+{
+	/* TODO: Currently initializing the hardware/firmware only
+	 * during hardware recovery. Support to shutdown/turn-on
+	 * the hardware during Wi-Fi OFF/ON will be added later.
+	 */
+	if (!test_bit(ATH11K_FLAG_RECOVERY, &ab->dev_flags))
+		return 0;
+
+	return ath11k_core_start_device(ab);
+}
+
+static void ath11k_ahb_core_stop_ipq8074(struct ath11k_base *ab)
+{
+	/* TODO: Currently stopping the hardware/firmware only
+	 * during driver unload. Support to shutdown/turn-on
+	 * the hardware during Wi-Fi OFF/ON will be added later.
+	 */
+	if (!test_bit(ATH11K_FLAG_UNREGISTERING, &ab->dev_flags))
+		return;
+
+	return ath11k_core_stop_device(ab);
+}
+
 static inline u32 ath11k_ahb_read32(struct ath11k_base *ab, u32 offset)
 {
 	return ioread32(ab->mem + offset);
@@ -695,6 +736,8 @@ static const struct ath11k_hif_ops ath11k_ahb_hif_ops_ipq8074 = {
 	.map_service_to_pipe = ath11k_ahb_map_service_to_pipe,
 	.power_down = ath11k_ahb_power_down,
 	.power_up = ath11k_ahb_power_up,
+	.core_start = ath11k_ahb_core_start_ipq8074,
+	.core_stop = ath11k_ahb_core_stop_ipq8074,
 };
 
 static const struct ath11k_hif_ops ath11k_ahb_hif_ops_wcn6750 = {
@@ -709,6 +752,8 @@ static const struct ath11k_hif_ops ath11k_ahb_hif_ops_wcn6750 = {
 	.map_service_to_pipe = ath11k_pcic_map_service_to_pipe,
 	.power_down = ath11k_ahb_power_down,
 	.power_up = ath11k_ahb_power_up,
+	.core_start = ath11k_ahb_core_start_wcn6750,
+	.core_stop = ath11k_ahb_core_stop_wcn6750,
 };
 
 static int ath11k_core_get_rproc(struct ath11k_base *ab)

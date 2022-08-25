@@ -29,6 +29,8 @@ struct ath11k_hif_ops {
 	void (*ce_irq_enable)(struct ath11k_base *ab);
 	void (*ce_irq_disable)(struct ath11k_base *ab);
 	void (*get_ce_msi_idx)(struct ath11k_base *ab, u32 ce_id, u32 *msi_idx);
+	int (*core_start)(struct ath11k_base *ab);
+	void (*core_stop)(struct ath11k_base *ab);
 };
 
 static inline void ath11k_hif_ce_irq_enable(struct ath11k_base *ab)
@@ -133,5 +135,15 @@ static inline void ath11k_get_ce_msi_idx(struct ath11k_base *ab, u32 ce_id,
 		ab->hif.ops->get_ce_msi_idx(ab, ce_id, msi_data_idx);
 	else
 		*msi_data_idx = ce_id;
+}
+
+static inline int ath11k_hif_core_start(struct ath11k_base *ab)
+{
+	return ab->hif.ops->core_start(ab);
+}
+
+static inline void ath11k_hif_core_stop(struct ath11k_base *ab)
+{
+	return ab->hif.ops->core_stop(ab);
 }
 #endif /* _HIF_H_ */
