@@ -2691,9 +2691,13 @@ static void intel_ddi_post_disable_hdmi(struct intel_atomic_state *state,
 	dig_port->set_infoframes(encoder, false,
 				 old_crtc_state, old_conn_state);
 
-	intel_ddi_disable_pipe_clock(old_crtc_state);
+	if (DISPLAY_VER(dev_priv) < 12)
+		intel_ddi_disable_pipe_clock(old_crtc_state);
 
 	intel_disable_ddi_buf(encoder, old_crtc_state);
+
+	if (DISPLAY_VER(dev_priv) >= 12)
+		intel_ddi_disable_pipe_clock(old_crtc_state);
 
 	intel_display_power_put(dev_priv,
 				dig_port->ddi_io_power_domain,
@@ -2862,6 +2866,8 @@ static void intel_enable_ddi_hdmi(struct intel_atomic_state *state,
 	struct intel_digital_port *dig_port = enc_to_dig_port(encoder);
 	struct drm_connector *connector = conn_state->connector;
 	enum port port = encoder->port;
+	enum phy phy = intel_port_to_phy(dev_priv, port);
+	u32 buf_ctl;
 
 	if (!intel_hdmi_handle_sink_scrambling(encoder, connector,
 					       crtc_state->hdmi_high_tmds_clock_ratio,
@@ -2919,8 +2925,12 @@ static void intel_enable_ddi_hdmi(struct intel_atomic_state *state,
 	 * On ADL_P the PHY link rate and lane count must be programmed but
 	 * these are both 0 for HDMI.
 	 */
-	intel_de_write(dev_priv, DDI_BUF_CTL(port),
-		       dig_port->saved_port_bits | DDI_BUF_CTL_ENABLE);
+	buf_ctl = dig_port->saved_port_bits | DDI_BUF_CTL_ENABLE;
+	if (IS_ALDERLAKE_P(dev_priv) && intel_phy_is_tc(dev_priv, phy)) {
+		drm_WARN_ON(&dev_priv->drm, !intel_tc_port_in_legacy_mode(dig_port));
+		buf_ctl |= DDI_BUF_CTL_TC_PHY_OWNERSHIP;
+	}
+	intel_de_write(dev_priv, DDI_BUF_CTL(port), buf_ctl);
 
 	intel_audio_codec_enable(encoder, crtc_state, conn_state);
 }
