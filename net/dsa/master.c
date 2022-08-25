@@ -58,7 +58,7 @@ static void dsa_master_get_regs(struct net_device *dev,
 	}
 
 	cpu_info = (struct ethtool_drvinfo *)data;
-	strlcpy(cpu_info->driver, "dsa", sizeof(cpu_info->driver));
+	strscpy(cpu_info->driver, "dsa", sizeof(cpu_info->driver));
 	data += sizeof(*cpu_info);
 	cpu_regs = (struct ethtool_regs *)data;
 	data += sizeof(*cpu_regs);
@@ -307,7 +307,7 @@ static ssize_t tagging_store(struct device *d, struct device_attribute *attr,
 		 */
 		goto out;
 
-	err = dsa_tree_change_tag_proto(cpu_dp->ds->dst, dev, new_tag_ops,
+	err = dsa_tree_change_tag_proto(cpu_dp->ds->dst, new_tag_ops,
 					old_tag_ops);
 	if (err) {
 		/* On failure the old tagger is restored, so we don't need the
