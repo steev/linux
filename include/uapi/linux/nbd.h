@@ -11,6 +11,8 @@
  *            Cleanup PARANOIA usage & code.
  * 2004/02/19 Paul Clements
  *            Removed PARANOIA, plus various cleanup and comments
+ *
+ * See doc/proto.md of the nbd package for more details on the protocol.
  */
 
 #ifndef _UAPILINUX_NBD_H
@@ -63,7 +65,6 @@ enum {
 
 #define NBD_REQUEST_MAGIC 0x25609513
 #define NBD_REPLY_MAGIC 0x67446698
-/* Do *not* use magics: 0x12560953 0x96744668. */
 
 /*
  * This is the packet used for communication between client and

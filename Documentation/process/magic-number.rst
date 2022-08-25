@@ -96,11 +96,11 @@ USB_SERIAL_PORT_MAGIC 0x7301           usb_serial_port          ``drivers/usb/se
 CG_MAGIC              0x00090255       ufs_cylinder_group       ``include/linux/ufs_fs.h``
 LSEMAGIC              0x05091998       lse                      ``drivers/fc4/fc.c``
 RIEBL_MAGIC           0x09051990                                ``drivers/net/atarilance.c``
-NBD_REQUEST_MAGIC     0x12560953       nbd_request              ``include/linux/nbd.h``
 RED_MAGIC2            0x170fc2a5       (any)                    ``mm/slab.c``
 BAYCOM_MAGIC          0x19730510       baycom_state             ``drivers/net/baycom_epp.c``
 ISDN_X25IFACE_MAGIC   0x1e75a2b9       isdn_x25iface_proto_data ``drivers/isdn/isdn_x25iface.h``
 ECP_MAGIC             0x21504345       cdkecpsig                ``include/linux/cdk.h``
+NBD_REQUEST_MAGIC     0x25609513       nbd_request              ``include/uapi/linux/nbd.h``
 LSOMAGIC              0x27091997       lso                      ``drivers/fc4/fc.c``
 LSMAGIC               0x2a3b4d2a       ls                       ``drivers/fc4/fc.c``
 WANPIPE_MAGIC         0x414C4453       sdla_{dump,exec}         ``include/linux/wanpipe.h``
@@ -129,12 +129,12 @@ M3_CARD_MAGIC         0x646e6f50       m3_card                  ``sound/oss/maes
 FW_HEADER_MAGIC       0x65726F66       fw_header                ``drivers/atm/fore200e.h``
 SLOT_MAGIC            0x67267321       slot                     ``drivers/hotplug/cpqphp.h``
 SLOT_MAGIC            0x67267322       slot                     ``drivers/hotplug/acpiphp.h``
+NBD_REPLY_MAGIC       0x67446698       nbd_reply                ``include/uapi/linux/nbd.h``
 LO_MAGIC              0x68797548       nbd_device               ``include/linux/nbd.h``
 M3_STATE_MAGIC        0x734d724d       m3_state                 ``sound/oss/maestro3.c``
 VMALLOC_MAGIC         0x87654320       snd_alloc_track          ``sound/core/memory.c``
 KMALLOC_MAGIC         0x87654321       snd_alloc_track          ``sound/core/memory.c``
 PWC_MAGIC             0x89DC10AB       pwc_device               ``drivers/usb/media/pwc.h``
-NBD_REPLY_MAGIC       0x96744668       nbd_reply                ``include/linux/nbd.h``
 ENI155_MAGIC          0xa54b872d       midway_eprom	        ``drivers/atm/eni.h``
 CODA_MAGIC            0xC0DAC0DA       coda_file_info           ``fs/coda/coda_fs_i.h``
 YAM_MAGIC             0xF10A7654       yam_port                 ``drivers/net/hamradio/yam.c``
