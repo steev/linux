@@ -680,6 +680,30 @@ static int ath11k_pci_start(struct ath11k_base *ab)
 	return 0;
 }
 
+static int ath11k_pci_core_start(struct ath11k_base *ab)
+{
+	/* TODO: Currently initializing the hardware/firmware only
+	 * during hardware recovery. Support to shutdown/turn-on
+	 * the hardware during Wi-Fi OFF/ON will be added later.
+	 */
+	if (!test_bit(ATH11K_FLAG_RECOVERY, &ab->dev_flags))
+		return 0;
+
+	return ath11k_core_start_device(ab);
+}
+
+static void ath11k_pci_core_stop(struct ath11k_base *ab)
+{
+	/* TODO: Currently stopping the hardware/firmware only
+	 * during driver unload. Support to shutdown/turn-on
+	 * the hardware during Wi-Fi OFF/ON will be added later.
+	 */
+	if (!test_bit(ATH11K_FLAG_UNREGISTERING, &ab->dev_flags))
+		return;
+
+	return ath11k_core_stop_device(ab);
+}
+
 static const struct ath11k_hif_ops ath11k_pci_hif_ops = {
 	.start = ath11k_pci_start,
 	.stop = ath11k_pcic_stop,
@@ -697,6 +721,8 @@ static const struct ath11k_hif_ops ath11k_pci_hif_ops = {
 	.ce_irq_enable = ath11k_pci_hif_ce_irq_enable,
 	.ce_irq_disable = ath11k_pci_hif_ce_irq_disable,
 	.get_ce_msi_idx = ath11k_pcic_get_ce_msi_idx,
+	.core_start = ath11k_pci_core_start,
+	.core_stop = ath11k_pci_core_stop,
 };
 
 static void ath11k_pci_read_hw_version(struct ath11k_base *ab, u32 *major, u32 *minor)

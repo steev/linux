@@ -5720,9 +5720,9 @@ static int ath11k_mac_op_start(struct ieee80211_hw *hw)
 
 	ath11k_mac_drain_tx(ar);
 
-	ret = ath11k_core_start_device(ab);
+	ret = ath11k_hif_core_start(ab);
 	if (ret) {
-		ath11k_err(ab, "failed to start device : %d\n", ret);
+		ath11k_err(ab, "failed to start core : %d\n", ret);
 		return ret;
 	}
 
@@ -5883,6 +5883,10 @@ static void ath11k_mac_op_stop(struct ieee80211_hw *hw)
 	synchronize_rcu();
 
 	atomic_set(&ar->num_pending_mgmt_tx, 0);
+
+	/* If all PDEVs on the SoC are down, then power down the device */
+	if (!ath11k_core_any_pdevs_on(ar->ab))
+		ath11k_hif_core_stop(ar->ab);
 }
 
 static void
