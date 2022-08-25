@@ -497,7 +497,7 @@ static void acpi_pm_notify_handler(acpi_handle handle, u32 val, void *not_used)
 
 	acpi_handle_debug(handle, "Wake notify\n");
 
-	adev = acpi_bus_get_acpi_device(handle);
+	adev = acpi_get_acpi_dev(handle);
 	if (!adev)
 		return;
 
@@ -515,7 +515,7 @@ static void acpi_pm_notify_handler(acpi_handle handle, u32 val, void *not_used)
 
 	mutex_unlock(&acpi_pm_notifier_lock);
 
-	acpi_bus_put_acpi_device(adev);
+	acpi_put_acpi_dev(adev);
 }
 
 /**
@@ -1460,7 +1460,7 @@ EXPORT_SYMBOL_GPL(acpi_storage_d3);
  * not valid to ask for the ACPI power state of the device in that time frame.
  *
  * This function is intended to be used in a driver's probe or remove
- * function. See Documentation/firmware-guide/acpi/low-power-probe.rst for
+ * function. See Documentation/firmware-guide/acpi/non-d0-probe.rst for
  * more information.
  */
 bool acpi_dev_state_d0(struct device *dev)
