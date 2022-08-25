@@ -1175,7 +1175,6 @@ err_qmi_deinit:
 static void ath11k_core_soc_destroy(struct ath11k_base *ab)
 {
 	ath11k_debugfs_soc_destroy(ab);
-	ath11k_reg_free(ab);
 	ath11k_qmi_deinit_service(ab);
 }
 
@@ -1471,6 +1470,7 @@ static void ath11k_core_reconfigure_on_crash(struct ath11k_base *ab)
 	mutex_unlock(&ab->core_lock);
 
 	ath11k_dp_free(ab);
+	ath11k_reg_free(ab);
 
 	ab->free_vdev_map = (1LL << (ab->num_radios * TARGET_NUM_VDEVS(ab))) - 1;
 }
@@ -1846,6 +1846,7 @@ void ath11k_core_stop_device(struct ath11k_base *ab)
 	ath11k_thermal_unregister(ab);
 	ath11k_dp_pdev_free(ab);
 	ath11k_dp_free(ab);
+	ath11k_reg_free(ab);
 }
 EXPORT_SYMBOL(ath11k_core_stop_device);
 
