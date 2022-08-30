@@ -937,6 +937,14 @@ static void qcom_battmgr_notification(struct qcom_battmgr *battmgr,
 		return;
 	}
 
+	/*
+	 * FIXME: The PMIC GLINK client registration is racy and we can
+	 *        receive callbacks before having registered the power
+	 *        supplies. Warn but avoid crashing when that happens for now.
+	 */
+	if (WARN_ON(!battmgr->bat_psy || !battmgr->usb_psy || !battmgr->wls_psy))
+		return;
+
 	notification = le32_to_cpu(msg->notification);
 	switch (notification) {
 	case NOTIF_BAT_INFO:
