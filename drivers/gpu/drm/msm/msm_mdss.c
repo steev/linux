@@ -208,7 +208,6 @@ static int msm_mdss_enable(struct msm_mdss *msm_mdss)
 		writel_relaxed(0x420, msm_mdss->mmio + UBWC_STATIC);
 		break;
 	case DPU_HW_VER_600:
-	case DPU_HW_VER_800:
 		/* TODO: 0x102e for LP_DDR4 */
 		writel_relaxed(0x103e, msm_mdss->mmio + UBWC_STATIC);
 		writel_relaxed(2, msm_mdss->mmio + UBWC_CTRL_2);
@@ -219,6 +218,11 @@ static int msm_mdss_enable(struct msm_mdss *msm_mdss)
 		break;
 	case DPU_HW_VER_720:
 		writel_relaxed(0x101e, msm_mdss->mmio + UBWC_STATIC);
+		break;
+	case DPU_HW_VER_800:
+		writel_relaxed(0x102e, msm_mdss->mmio + UBWC_STATIC);
+		writel_relaxed(2, msm_mdss->mmio + UBWC_CTRL_2);
+		writel_relaxed(1, msm_mdss->mmio + UBWC_PREDICTION_MODE);
 		break;
 	}
 
