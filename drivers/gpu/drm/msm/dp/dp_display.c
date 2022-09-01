@@ -1261,8 +1261,8 @@ int dp_display_request_irq(struct msm_dp *dp_display)
 
 	dp = container_of(dp_display, struct dp_display_private, dp_display);
 
-	dp->irq = irq_of_parse_and_map(dp->pdev->dev.of_node, 0);
-	if (!dp->irq) {
+	dp->irq = platform_get_irq(dp->pdev, 0);
+	if (dp->irq < 0) {
 		DRM_ERROR("failed to get irq\n");
 		return -EINVAL;
 	}
