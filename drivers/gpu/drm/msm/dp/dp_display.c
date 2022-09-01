@@ -1328,6 +1328,12 @@ static int dp_display_probe(struct platform_device *pdev)
 	dp->dp_display.is_edp =
 		(dp->dp_display.connector_type == DRM_MODE_CONNECTOR_eDP);
 
+	rc = dp_display_request_irq(&dp->dp_display);
+	if (rc) {
+		DRM_ERROR("request_irq failed, ret=%d\n", rc);
+		return rc;
+	}
+
 	rc = dp_init_sub_modules(dp);
 	if (rc) {
 		DRM_ERROR("init sub module failed\n");
@@ -1634,12 +1640,6 @@ int msm_dp_modeset_init(struct msm_dp *dp_display, struct drm_device *dev,
 	dp_display->drm_dev = dev;
 
 	dp_priv = container_of(dp_display, struct dp_display_private, dp_display);
-
-	ret = dp_display_request_irq(dp_display);
-	if (ret) {
-		DRM_ERROR("request_irq failed, ret=%d\n", ret);
-		return ret;
-	}
 
 	ret = dp_display_get_next_bridge(dp_display);
 	if (ret)
