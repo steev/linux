@@ -30,6 +30,7 @@ enum qcom_battmgr_variant {
 #define NOTIF_USB_PROPERTY		0x32
 #define NOTIF_WLS_PROPERTY		0x34
 #define NOTIF_BAT_INFO			0x80
+#define NOTIF_BAT_INFO_CHANGED		0x81
 
 #define BATTMGR_BAT_INFO		0x9
 
@@ -947,9 +948,10 @@ static void qcom_battmgr_notification(struct qcom_battmgr *battmgr,
 
 	notification = le32_to_cpu(msg->notification);
 	switch (notification) {
-	case NOTIF_BAT_INFO:
+	case NOTIF_BAT_INFO_CHANGED:
 		battmgr->info.valid = false;
 		fallthrough;
+	case NOTIF_BAT_INFO:
 	case NOTIF_BAT_PROPERTY:
 		power_supply_changed(battmgr->bat_psy);
 		break;
