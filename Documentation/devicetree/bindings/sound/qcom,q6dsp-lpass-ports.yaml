@@ -153,9 +153,12 @@ examples:
     #include <dt-bindings/soc/qcom,apr.h>
     #include <dt-bindings/sound/qcom,q6afe.h>
     apr {
+        compatible = "qcom,apr-v2";
         #address-cells = <1>;
         #size-cells = <0>;
-        apr-service@4 {
+        qcom,domain = <APR_DOMAIN_ADSP>;
+
+        service@4 {
             reg = <APR_SVC_AFE>;
 
             dais {
@@ -165,8 +168,8 @@ examples:
               #sound-dai-cells = <1>;
 
               dai@22 {
-                reg = <QUATERNARY_MI2S_RX>;
-                qcom,sd-lines = <0 1 2 3>;
+                  reg = <QUATERNARY_MI2S_RX>;
+                  qcom,sd-lines = <0 1 2 3>;
               };
             };
         };
@@ -178,6 +181,7 @@ examples:
         #address-cells = <1>;
         #size-cells = <0>;
         qcom,domain = <GPR_DOMAIN_ID_ADSP>;
+
         service@1 {
             compatible = "qcom,q6apm";
             reg = <GPR_APM_MODULE_IID>;
@@ -189,8 +193,8 @@ examples:
               #sound-dai-cells = <1>;
 
               dai@22 {
-                reg = <QUATERNARY_MI2S_RX>;
-                qcom,sd-lines = <0 1 2 3>;
+                  reg = <QUATERNARY_MI2S_RX>;
+                  qcom,sd-lines = <0 1 2 3>;
               };
             };
         };
