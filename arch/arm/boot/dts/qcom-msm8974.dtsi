@@ -1566,7 +1566,6 @@
 					      "core_mmss";
 
 				phys = <&dsi0_phy>;
-				phy-names = "dsi-phy";
 
 				status = "disabled";
 
