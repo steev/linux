@@ -1446,8 +1446,8 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 		ctrl->clock_stop_not_supported = true;
 	} else {
 		ctrl->reg_read(ctrl, SWRM_COMP_MASTER_ID, &val);
-		if (val == MASTER_ID_WSA)
-			ctrl->clock_stop_not_supported = true;
+		//if (val == MASTER_ID_WSA)
+		//	ctrl->clock_stop_not_supported = true;
 	}
 
 #ifdef CONFIG_DEBUG_FS
