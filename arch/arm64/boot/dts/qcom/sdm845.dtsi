@@ -4641,7 +4641,6 @@
 				power-domains = <&rpmhpd SDM845_CX>;
 
 				phys = <&dsi0_phy>;
-				phy-names = "dsi";
 
 				status = "disabled";
 
@@ -4713,7 +4712,6 @@
 				power-domains = <&rpmhpd SDM845_CX>;
 
 				phys = <&dsi1_phy>;
-				phy-names = "dsi";
 
 				status = "disabled";
 
