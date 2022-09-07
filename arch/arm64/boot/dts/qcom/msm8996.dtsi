@@ -992,7 +992,6 @@
 				assigned-clock-parents = <&dsi0_phy 0>, <&dsi0_phy 1>;
 
 				phys = <&dsi0_phy>;
-				phy-names = "dsi";
 				status = "disabled";
 
 				#address-cells = <1>;
@@ -1060,7 +1059,6 @@
 				assigned-clock-parents = <&dsi1_phy 0>, <&dsi1_phy 1>;
 
 				phys = <&dsi1_phy>;
-				phy-names = "dsi";
 				status = "disabled";
 
 				#address-cells = <1>;
