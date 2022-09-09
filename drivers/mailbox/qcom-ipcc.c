@@ -82,7 +82,7 @@ static irqreturn_t qcom_ipcc_irq_fn(int irq, void *data)
 
 		virq = irq_find_mapping(ipcc->irq_domain, hwirq);
 		writel(hwirq, ipcc->base + IPCC_REG_RECV_SIGNAL_CLEAR);
-		generic_handle_irq(virq);
+		generic_handle_irq_safe(virq);
 	}
 
 	return IRQ_HANDLED;
