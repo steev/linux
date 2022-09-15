@@ -866,11 +866,13 @@ meson_venc_hdmi_supported_mode(const struct drm_display_mode *mode)
 			    DRM_MODE_FLAG_PVSYNC | DRM_MODE_FLAG_NVSYNC))
 		return MODE_BAD;
 
-	/* support higher resolution than 1920x1080 */
-	if (mode->hdisplay < 640 || mode->hdisplay > 2560)
+	/* support 384x1280 and 1280x384 for the waveshare 7.9"
+	 * as well, support 2560x1600 for 2K resolution
+	 */
+	if (mode->hdisplay < 384 || mode->hdisplay > 2560)
 		return MODE_BAD_HVALUE;
 
-	if (mode->vdisplay < 480 || mode->vdisplay > 1600)
+	if (mode->vdisplay < 384 || mode->vdisplay > 1920)
 		return MODE_BAD_VVALUE;
 
 	return MODE_OK;
