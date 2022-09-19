@@ -65,6 +65,7 @@ struct wcd_mbhc {
 	bool extn_cable_hph_rem;
 	bool force_linein;
 	bool impedance_detect;
+	bool micbias_enabled;
 	unsigned long event_state;
 	unsigned long jiffies_atreport;
 	/* impedance of hphl and hphr */
@@ -193,7 +194,7 @@ int wcd_mbhc_event_notify(struct wcd_mbhc *mbhc, unsigned long event)
 		 * make sure current source is enabled so as to detect
 		 * button press/release events
 		 */
-		if (mbhc->mbhc_cb->mbhc_micbias_control/* && !mbhc->micbias_enable*/) {
+		if (mbhc->mbhc_cb->mbhc_micbias_control && mbhc->micbias_enabled) {
 			if (wcd_mbhc_read_field(mbhc, WCD_MBHC_FSM_EN))
 				wcd_mbhc_write_field(mbhc, WCD_MBHC_BTN_ISRC_CTL, 3);
 		}
@@ -273,8 +274,10 @@ static void wcd_micbias_disable(struct wcd_mbhc *mbhc)
 {
 	struct snd_soc_component *component = mbhc->component;
 
-	if (mbhc->mbhc_cb->mbhc_micbias_control)
+	if (mbhc->mbhc_cb->mbhc_micbias_control && mbhc->micbias_enabled) {
 		mbhc->mbhc_cb->mbhc_micbias_control(component, MIC_BIAS_2, MICB_DISABLE);
+		mbhc->micbias_enabled = false;
+	}
 
 	if (mbhc->mbhc_cb->mbhc_micb_ctrl_thr_mic)
 		mbhc->mbhc_cb->mbhc_micb_ctrl_thr_mic(component, MIC_BIAS_2, false);
@@ -502,6 +505,7 @@ static void wcd_mbhc_adc_detect_plug_type(struct wcd_mbhc *mbhc)
 	if (mbhc->mbhc_cb->mbhc_micbias_control) {
 		mbhc->mbhc_cb->mbhc_micbias_control(component, MIC_BIAS_2,
 						    MICB_ENABLE);
+		mbhc->micbias_enabled = true;
 		wcd_schedule_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
 	}
 }
@@ -1235,8 +1239,10 @@ correct_plug_type:
 		wcd_mbhc_adc_update_fsm_source(mbhc, plug_type);
 
 exit:
-	if (mbhc->mbhc_cb->mbhc_micbias_control/* &&  !mbhc->micbias_enable*/)
+	if (mbhc->mbhc_cb->mbhc_micbias_control && mbhc->micbias_enabled) {
 		mbhc->mbhc_cb->mbhc_micbias_control(component, MIC_BIAS_2, MICB_DISABLE);
+		mbhc->micbias_enabled = false;
+	}
 
 	/*
 	 * If plug type is corrected from special headset to headphone,
@@ -1464,6 +1470,7 @@ struct wcd_mbhc *wcd_mbhc_init(struct snd_soc_component *component,
 	mbhc->mbhc_cb = mbhc_cb;
 	mbhc->fields = fields;
 	mbhc->mbhc_detection_logic = WCD_DETECTION_ADC;
+	mbhc->micbias_enabled = false;
 
 	if (mbhc_cb->compute_impedance)
 		mbhc->impedance_detect = impedance_det_en;
