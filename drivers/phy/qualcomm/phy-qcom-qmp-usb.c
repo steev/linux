@@ -2822,12 +2822,9 @@ static int qcom_qmp_phy_usb_probe(struct platform_device *pdev)
 		return ret;
 
 	ret = qcom_qmp_phy_usb_vreg_init(dev, cfg);
-	if (ret) {
-		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "failed to get regulator supplies: %d\n",
-				ret);
-		return ret;
-	}
+	if (ret)
+		return dev_err_probe(dev, ret,
+				     "failed to get regulator supplies\n");
 
 	num = of_get_available_child_count(dev->of_node);
 	/* do we have a rogue child node ? */
