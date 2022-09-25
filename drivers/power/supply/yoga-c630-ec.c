@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2018 Linaro Ltd.
  */
+#include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
