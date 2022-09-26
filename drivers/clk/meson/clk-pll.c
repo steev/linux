@@ -273,14 +273,14 @@ static int meson_clk_pll_wait_lock(struct clk_hw *hw)
 {
 	struct clk_regmap *clk = to_clk_regmap(hw);
 	struct meson_clk_pll_data *pll = meson_clk_pll_data(clk);
-	int delay = 5000;
+	int delay = 1000;
 
 	do {
 		/* Is the clock locked now ? Time out after 100ms. */
 		if (meson_parm_read(clk->map, &pll->l))
 			return 0;
 
-		udelay(20);
+		udelay(1);
 	} while (--delay);
 
 	return -ETIMEDOUT;
@@ -339,6 +339,8 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
 	/* Enable the pll */
 	meson_parm_write(clk->map, &pll->en, 1);
 
+	udelay(50);
+
 	/* Take the pll out reset */
 	meson_parm_write(clk->map, &pll->rst, 0);
 
@@ -396,8 +398,8 @@ static int meson_clk_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	ret = meson_clk_pll_enable(hw);
 	if (ret) {
-		pr_warn("%s: %s pll did not lock, trying to restore old rate %lu\n",
-			__func__, clk_hw_get_name(hw), old_rate);
+		pr_warn("%s: %s pll did not lock to %lu, trying to restore old rate %lu\n",
+			__func__, clk_hw_get_name(hw), rate, old_rate);
 		/*
 		 * FIXME: Do we really need/want this HACK ?
 		 * It looks unsafe. what happens if the clock gets into a
