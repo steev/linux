@@ -111,6 +111,12 @@
 			opp-hz = /bits/ 64 <1800000000>;
 			opp-microvolt = <981000>;
 		};
+
+		opp-2004000000 {
+			opp-hz = /bits/ 64 <2004000000>;
+			opp-microvolt = <1022000>;
+			turbo-mode;
+		};
 	};
 };
 
