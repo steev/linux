@@ -30,6 +30,7 @@
 #include <linux/soc/qcom/smem.h>
 
 #define MSM_ID_SMEM	137
+#define PVS_NAME_TEMPLATE "speedXX-pvsXX-vXX"
 
 enum _msm_id {
 	MSM8996V3 = 0xF6ul,
@@ -50,6 +51,7 @@ struct qcom_cpufreq_match_data {
 	int (*get_version)(struct device *cpu_dev,
 			   struct nvmem_cell *speedbin_nvmem,
 			   char **pvs_name,
+			   size_t pvs_name_size,
 			   struct qcom_cpufreq_drv *drv);
 	const char **genpd_names;
 };
@@ -172,6 +174,7 @@ static enum _msm8996_version qcom_cpufreq_get_msm_id(void)
 static int qcom_cpufreq_kryo_name_version(struct device *cpu_dev,
 					  struct nvmem_cell *speedbin_nvmem,
 					  char **pvs_name,
+					  size_t pvs_name_size,
 					  struct qcom_cpufreq_drv *drv)
 {
 	size_t len;
@@ -208,6 +211,7 @@ static int qcom_cpufreq_kryo_name_version(struct device *cpu_dev,
 static int qcom_cpufreq_krait_name_version(struct device *cpu_dev,
 					   struct nvmem_cell *speedbin_nvmem,
 					   char **pvs_name,
+					   size_t pvs_name_size,
 					   struct qcom_cpufreq_drv *drv)
 {
 	int speed = 0, pvs = 0, pvs_ver = 0;
@@ -235,7 +239,7 @@ static int qcom_cpufreq_krait_name_version(struct device *cpu_dev,
 		goto len_error;
 	}
 
-	snprintf(*pvs_name, sizeof("speedXX-pvsXX-vXX"), "speed%d-pvs%d-v%d",
+	snprintf(*pvs_name, pvs_name_size, "speed%d-pvs%d-v%d",
 		 speed, pvs, pvs_ver);
 
 	drv->versions = (1 << speed);
@@ -265,7 +269,7 @@ static int qcom_cpufreq_probe(struct platform_device *pdev)
 	struct nvmem_cell *speedbin_nvmem;
 	struct device_node *np;
 	struct device *cpu_dev;
-	char *pvs_name = "speedXX-pvsXX-vXX";
+	char *pvs_name = PVS_NAME_TEMPLATE;
 	unsigned cpu;
 	const struct of_device_id *match;
 	int ret;
@@ -306,8 +310,8 @@ static int qcom_cpufreq_probe(struct platform_device *pdev)
 			goto free_drv;
 		}
 
-		ret = drv->data->get_version(cpu_dev,
-							speedbin_nvmem, &pvs_name, drv);
+		ret = drv->data->get_version(cpu_dev, speedbin_nvmem, &pvs_name,
+					     sizeof(PVS_NAME_TEMPLATE), drv);
 		if (ret) {
 			nvmem_cell_put(speedbin_nvmem);
 			goto free_drv;
