@@ -28,7 +28,8 @@ dtbo-$(CONFIG_ARCH_MESON) += \
 	meson-g12b-spi-b-gpioh-4-5-6-7.dtbo \
 	meson-g12b-uart-ao-a-gpioao-0-1.dtbo \
 	meson-g12b-uart-ao-b-gpioao-8-9.dtbo \
-	meson-g12b-uart-ee-c-gpioh-4-5-6-7.dtbo
+	meson-g12b-uart-ee-c-gpioh-4-5-6-7.dtbo \
+	meson-g12a-gpio-poweroff.dtbo
 
 scr-$(CONFIG_ARCH_MESON) += \
 	meson-fixup.scr
