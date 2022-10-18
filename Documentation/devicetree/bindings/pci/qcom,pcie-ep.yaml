@@ -42,13 +42,13 @@ properties:
     maxItems: 8
 
   qcom,perst-regs:
-    description: Reference to a syscon representing TCSR followed by the two
-                 offsets within syscon for Perst enable and Perst separation
-                 enable registers
+    description: PERST TCSR registers
     $ref: "/schemas/types.yaml#/definitions/phandle-array"
     items:
-      minItems: 3
-      maxItems: 3
+      - items:
+          - description: phandle of TCSR syscon
+          - description: offset of PERST Enable register
+          - description: offset of PERST Separation Enable register
 
   interrupts:
     items:
