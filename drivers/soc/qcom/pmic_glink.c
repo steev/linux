@@ -47,7 +47,7 @@ struct pmic_glink_client {
 
 static void _devm_pmic_glink_release_client(struct device *dev, void *res)
 {
-	struct pmic_glink_client *client = *(struct pmic_glink_client **)res;
+	struct pmic_glink_client *client = (struct pmic_glink_client *)res;
 	struct pmic_glink *pg = client->pmic;
 
 	mutex_lock(&pg->client_lock);
