@@ -16,13 +16,21 @@ description:
 
 properties:
   compatible:
-    enum:
-      - qcom,sc7180-osm-l3
-      - qcom,sc7280-epss-l3
-      - qcom,sc8180x-osm-l3
-      - qcom,sdm845-osm-l3
-      - qcom,sm8150-osm-l3
-      - qcom,sm8250-epss-l3
+    oneOf:
+      items:
+        - enum:
+            - qcom,sc7180-osm-l3
+            - qcom,sc8180x-osm-l3
+            - qcom,sdm845-osm-l3
+            - qcom,sm8150-osm-l3
+        - const: qcom,osm-l3
+      items:
+        - enum:
+            - qcom,sc7280-epss-l3
+            - qcom,sc8280xp-epss-l3
+            - qcom,sm8250-epss-l3
+            - qcom,sm8350-epss-l3
+        - const: qcom,epss-l3
 
   reg:
     maxItems: 1
