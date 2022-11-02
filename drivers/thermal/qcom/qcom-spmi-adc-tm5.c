@@ -1033,10 +1033,8 @@ static int adc_tm5_probe(struct platform_device *pdev)
 	}
 
 	ret = adc_tm5_get_dt_data(adc_tm, node);
-	if (ret) {
-		dev_err(dev, "get dt data failed: %d\n", ret);
-		return ret;
-	}
+	if (ret)
+		return dev_err_probe(dev, ret, "get dt data failed\n");
 
 	ret = adc_tm->data->init(adc_tm);
 	if (ret) {
