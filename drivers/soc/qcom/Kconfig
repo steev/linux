@@ -96,6 +96,7 @@ config QCOM_PMIC_GLINK
 	depends on RPMSG
 	depends on TYPEC
 	depends on DRM
+	select AUXILIARY_BUS
 	select QCOM_PDR_HELPERS
 	help
 	  The Qualcomm PMIC GLINK driver provides access, over GLINK, to the
