@@ -382,6 +382,7 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 				port@1 {
+					status = "disabled";
 					reg = <1>;
 					lenovo_ec_dp_in: endpoint {
 						remote-endpoint = <&mdss_dp_out>;
@@ -520,7 +521,7 @@
 };
 
 &mdss_dp {
-	status = "okay";
+	status = "disabled";
 	data-lanes = <0 1>;
 
 	ports {
