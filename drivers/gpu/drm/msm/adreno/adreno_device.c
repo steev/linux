@@ -360,7 +360,7 @@ static const struct adreno_info gpulist[] = {
 		.revn = 690,
 		.name = "A690",
 		.fw = {
-			[ADRENO_FW_SQE] = "a660_sqe.fw",
+			[ADRENO_FW_SQE] = "a690_sqe.fw",
 			[ADRENO_FW_GMU] = "a690_gmu.bin",
 		},
 		.gmem = SZ_4M,
