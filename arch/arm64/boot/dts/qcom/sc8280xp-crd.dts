@@ -34,6 +34,12 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	firmware {
+		tee-uefisecapp {
+			compatible = "qcom,tee-uefisecapp";
+		};
+	};
+
 	pmic-glink {
 		compatible = "qcom,sc8280xp-pmic-glink", "qcom,pmic-glink";
 
