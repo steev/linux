@@ -31,6 +31,12 @@
 		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
 	};
 
+	firmware {
+		tee-uefisecapp {
+			compatible = "qcom,tee-uefisecapp";
+		};
+	};
+
 	pmic-glink {
 		compatible = "qcom,sc8280xp-pmic-glink", "qcom,pmic-glink";
 
