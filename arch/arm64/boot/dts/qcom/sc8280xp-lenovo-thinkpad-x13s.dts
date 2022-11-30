@@ -57,6 +57,12 @@
 		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
 	};
 
+	firmware {
+		tee-uefisecapp {
+			compatible = "qcom,tee-uefisecapp";
+		};
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
