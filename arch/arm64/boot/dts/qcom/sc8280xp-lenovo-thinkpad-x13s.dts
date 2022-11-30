@@ -62,6 +62,17 @@
 		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
 	};
 
+	firmware {
+		scm: scm {
+			compatible = "qcom,scm-sc8280xp", "qcom,scm";
+		};
+
+		qseecom {
+			compatible = "qcom,qseecom-sc8280xp", "qcom,qseecom";
+			qcom,scm = <&scm>;
+		};
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
