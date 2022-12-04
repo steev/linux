@@ -3014,6 +3014,7 @@ static int wcd934x_mbhc_init(struct snd_soc_component *component)
 {
 	struct wcd934x_ddata *data = dev_get_drvdata(component->dev->parent);
 	struct wcd934x_codec *wcd = snd_soc_component_get_drvdata(component);
+	struct wcd_mbhc_config *cfg = &wcd->mbhc_cfg;
 	struct wcd_mbhc_intr *intr_ids = &wcd->intr_ids;
 
 	intr_ids->mbhc_sw_intr = regmap_irq_get_virq(data->irq_data,
@@ -3036,6 +3037,8 @@ static int wcd934x_mbhc_init(struct snd_soc_component *component)
 		wcd->mbhc = NULL;
 		return -EINVAL;
 	}
+
+	cfg->micb_mv = wcd->micb2_mv;
 
 	snd_soc_add_component_controls(component, impedance_detect_controls,
 				       ARRAY_SIZE(impedance_detect_controls));
@@ -5880,7 +5883,6 @@ static int wcd934x_codec_parse_data(struct wcd934x_codec *wcd)
 	cfg->anc_micbias = MIC_BIAS_2;
 	cfg->v_hs_max = WCD_MBHC_HS_V_MAX;
 	cfg->num_btn = WCD934X_MBHC_MAX_BUTTONS;
-	cfg->micb_mv = wcd->micb2_mv;
 	cfg->linein_th = 5000;
 	cfg->hs_thr = 1700;
 	cfg->hph_thr = 50;
