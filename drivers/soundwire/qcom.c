@@ -380,8 +380,9 @@ static int qcom_swrm_cmd_fifo_wr_cmd(struct qcom_swrm_ctrl *swrm, u8 cmd_data,
 	if (swrm->version <= 0x01030000)
 		usleep_range(150, 155);
 
+	swrm_wait_for_wr_fifo_done(swrm);
+
 	if (cmd_id == SWR_BROADCAST_CMD_ID) {
-		swrm_wait_for_wr_fifo_done(swrm);
 		/*
 		 * sleep for 10ms for MSM soundwire variant to allow broadcast
 		 * command to complete.
