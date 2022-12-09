@@ -561,7 +561,6 @@
 	edp_reg_en: edp-reg-en-state {
 		pins = "gpio25";
 		function = "gpio";
-		output-enable;
 	};
 
 	kybd_default: kybd-default-state {
