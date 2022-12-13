@@ -508,6 +508,14 @@ static inline int irq_domain_alloc_irqs(struct irq_domain *domain,
 				       NULL);
 }
 
+static inline int irq_domain_alloc_irqs_affinity(struct irq_domain *domain,
+			unsigned int nr_irqs, int node, void *arg,
+			const struct irq_affinity_desc *affinity)
+{
+	return __irq_domain_alloc_irqs(domain, -1, nr_irqs, node, arg, false,
+				       affinity);
+}
+
 extern int irq_domain_alloc_irqs_hierarchy(struct irq_domain *domain,
 					   unsigned int irq_base,
 					   unsigned int nr_irqs, void *arg);
@@ -575,6 +583,13 @@ static inline bool irq_domain_is_msi_device(struct irq_domain *domain)
 #else	/* CONFIG_IRQ_DOMAIN_HIERARCHY */
 static inline int irq_domain_alloc_irqs(struct irq_domain *domain,
 			unsigned int nr_irqs, int node, void *arg)
+{
+	return -1;
+}
+
+static inline int irq_domain_alloc_irqs_affinity(struct irq_domain *domain,
+			unsigned int nr_irqs, int node, void *arg,
+			const struct irq_affinity_desc *affinity)
 {
 	return -1;
 }
