@@ -17,7 +17,7 @@
 	compatible = "qcom,sa8295p-adp", "qcom,sa8540p";
 
 	aliases {
-		serial0 = &qup2_uart17;
+		serial0 = &uart17;
 	};
 
 	chosen {
@@ -483,11 +483,6 @@
 	status = "okay";
 };
 
-&qup2_uart17 {
-	compatible = "qcom,geni-debug-uart";
-	status = "okay";
-};
-
 &remoteproc_adsp {
 	firmware-name = "qcom/sa8540p/adsp.mbn";
 	status = "okay";
@@ -571,6 +566,11 @@
 			#interrupt-cells = <2>;
 		};
 	};
+};
+
+&uart17 {
+	compatible = "qcom,geni-debug-uart";
+	status = "okay";
 };
 
 &ufs_mem_hc {
