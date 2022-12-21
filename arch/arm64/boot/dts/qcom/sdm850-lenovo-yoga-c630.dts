@@ -801,6 +801,7 @@
 };
 
 &venus {
+	firmware-name = "qcom/venus-5.2/qcvss850.mbn";
 	status = "okay";
 };
 
