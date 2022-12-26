@@ -2581,9 +2581,10 @@ int amdgpu_device_set_cg_state(struct amdgpu_device *adev,
 		i = state == AMD_CG_STATE_GATE ? j : adev->num_ip_blocks - j - 1;
 		if (!adev->ip_blocks[i].status.late_initialized)
 			continue;
-		/* skip CG for GFX on S0ix */
+		/* skip CG for GFX, SDMA on S0ix */
 		if (adev->in_s0ix &&
-		    adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_GFX)
+		    (adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_GFX ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_SDMA))
 			continue;
 		/* skip CG for VCE/UVD, it's handled specially */
 		if (adev->ip_blocks[i].version->type != AMD_IP_BLOCK_TYPE_UVD &&
@@ -2617,9 +2618,10 @@ int amdgpu_device_set_pg_state(struct amdgpu_device *adev,
 		i = state == AMD_PG_STATE_GATE ? j : adev->num_ip_blocks - j - 1;
 		if (!adev->ip_blocks[i].status.late_initialized)
 			continue;
-		/* skip PG for GFX on S0ix */
+		/* skip PG for GFX, SDMA on S0ix */
 		if (adev->in_s0ix &&
-		    adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_GFX)
+		    (adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_GFX ||
+		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_SDMA))
 			continue;
 		/* skip CG for VCE/UVD, it's handled specially */
 		if (adev->ip_blocks[i].version->type != AMD_IP_BLOCK_TYPE_UVD &&
@@ -3027,6 +3029,12 @@ static int amdgpu_device_ip_suspend_phase2(struct amdgpu_device *adev)
 		     adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_MES))
 			continue;
 
+		/* SDMA 5.x+ is part of GFX power domain so it's covered by GFXOFF */
+		if (adev->in_s0ix &&
+		    (adev->ip_versions[SDMA0_HWIP][0] >= IP_VERSION(5, 0, 0)) &&
+		    (adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_SDMA))
+			continue;
+
 		/* XXX handle errors */
 		r = adev->ip_blocks[i].version->funcs->suspend(adev);
 		/* XXX handle errors */
@@ -3227,15 +3235,6 @@ static int amdgpu_device_ip_resume_phase2(struct amdgpu_device *adev)
 			return r;
 		}
 		adev->ip_blocks[i].status.hw = true;
-
-		if (adev->in_s0ix && adev->ip_blocks[i].version->type == AMD_IP_BLOCK_TYPE_SMC) {
-			/* disable gfxoff for IP resume. The gfxoff will be re-enabled in
-			 * amdgpu_device_resume() after IP resume.
-			 */
-			amdgpu_gfx_off_ctrl(adev, false);
-			DRM_DEBUG("will disable gfxoff for re-initializing other blocks\n");
-		}
-
 	}
 
 	return 0;
@@ -4223,13 +4222,6 @@ exit:
 	/* Make sure IB tests flushed */
 	flush_delayed_work(&adev->delayed_init_work);
 
-	if (adev->in_s0ix) {
-		/* re-enable gfxoff after IP resume. This re-enables gfxoff after
-		 * it was disabled for IP resume in amdgpu_device_ip_resume_phase2().
-		 */
-		amdgpu_gfx_off_ctrl(adev, true);
-		DRM_DEBUG("will enable gfxoff for the mission mode\n");
-	}
 	if (fbcon)
 		drm_fb_helper_set_suspend_unlocked(adev_to_drm(adev)->fb_helper, false);
 
