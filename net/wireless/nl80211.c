@@ -377,6 +377,7 @@ he_bss_color_policy[NL80211_HE_BSS_COLOR_ATTR_MAX + 1] = {
 	[NL80211_HE_BSS_COLOR_ATTR_COLOR] = NLA_POLICY_RANGE(NLA_U8, 1, 63),
 	[NL80211_HE_BSS_COLOR_ATTR_DISABLED] = { .type = NLA_FLAG },
 	[NL80211_HE_BSS_COLOR_ATTR_PARTIAL] = { .type = NLA_FLAG },
+	[NL80211_HE_BSS_COLOR_ATTR_COLLISION_DETECTION_DISABLED] = { .type = NLA_FLAG },
 };
 
 static const struct nla_policy nl80211_txattr_policy[NL80211_TXRATE_MAX + 1] = {
@@ -5414,6 +5415,8 @@ static int nl80211_parse_he_bss_color(struct nlattr *attrs,
 		!nla_get_flag(tb[NL80211_HE_BSS_COLOR_ATTR_DISABLED]);
 	he_bss_color->partial =
 		nla_get_flag(tb[NL80211_HE_BSS_COLOR_ATTR_PARTIAL]);
+	he_bss_color->collision_detection_enabled =
+		!nla_get_flag(tb[NL80211_HE_BSS_COLOR_ATTR_COLLISION_DETECTION_DISABLED]);
 
 	return 0;
 }

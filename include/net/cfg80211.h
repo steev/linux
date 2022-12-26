@@ -304,11 +304,13 @@ struct ieee80211_he_obss_pd {
  * @color: the current color.
  * @enabled: HE BSS color is used
  * @partial: define the AID equation.
+ * @collision_detection_enabled: HE BSS color collision detection is enabled.
  */
 struct cfg80211_he_bss_color {
 	u8 color;
 	bool enabled;
 	bool partial;
+	bool collision_detection_enabled;
 };
 
 /**
