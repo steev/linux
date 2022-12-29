@@ -36,7 +36,9 @@ struct dpu_plane_state {
 	bool pending;
 
 	struct dpu_sw_pipe pipe;
+	struct dpu_sw_pipe r_pipe;
 	struct dpu_hw_pipe_cfg pipe_cfg;
+	struct dpu_hw_pipe_cfg r_pipe_cfg;
 
 	u64 plane_fetch_bw;
 	u64 plane_clk;

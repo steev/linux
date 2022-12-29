@@ -415,7 +415,7 @@ static void _dpu_crtc_blend_setup_pipe(struct drm_crtc *crtc,
 	enum dpu_sspp sspp_idx;
 	struct drm_plane_state *state;
 
-	if (pipe->sspp)
+	if (!pipe->sspp)
 		return;
 
 	sspp_idx = pipe->sspp->idx;
@@ -484,6 +484,12 @@ static void _dpu_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 					   stage_cfg, pstate->stage, 0,
 					   fetch_active,
 					   &pstate->pipe);
+
+		_dpu_crtc_blend_setup_pipe(crtc, plane,
+					   mixer, cstate->num_mixers,
+					   stage_cfg, pstate->stage, 1,
+					   fetch_active,
+					   &pstate->r_pipe);
 
 		/* blend config update */
 		for (lm_idx = 0; lm_idx < cstate->num_mixers; lm_idx++) {
