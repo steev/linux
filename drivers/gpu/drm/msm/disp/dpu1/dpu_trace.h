@@ -633,9 +633,9 @@ TRACE_EVENT(dpu_enc_phys_vid_irq_ctrl,
 TRACE_EVENT(dpu_crtc_setup_mixer,
 	TP_PROTO(uint32_t crtc_id, uint32_t plane_id,
 		 struct drm_plane_state *state, struct dpu_plane_state *pstate,
-		 uint32_t stage_idx, uint32_t pixel_format,
+		 uint32_t pixel_format,
 		 uint64_t modifier),
-	TP_ARGS(crtc_id, plane_id, state, pstate, stage_idx,
+	TP_ARGS(crtc_id, plane_id, state, pstate,
 		pixel_format, modifier),
 	TP_STRUCT__entry(
 		__field(	uint32_t,		crtc_id		)
@@ -643,7 +643,6 @@ TRACE_EVENT(dpu_crtc_setup_mixer,
 		__field(	uint32_t,		fb_id		)
 		__field_struct(	struct drm_rect,	src_rect	)
 		__field_struct(	struct drm_rect,	dst_rect	)
-		__field(	uint32_t,		stage_idx	)
 		__field(	enum dpu_stage,		stage		)
 		__field(	enum dpu_sspp,		sspp		)
 		__field(	uint32_t,		multirect_idx	)
@@ -657,7 +656,6 @@ TRACE_EVENT(dpu_crtc_setup_mixer,
 		__entry->fb_id = state ? state->fb->base.id : 0;
 		__entry->src_rect = drm_plane_state_src(state);
 		__entry->dst_rect = drm_plane_state_dest(state);
-		__entry->stage_idx = stage_idx;
 		__entry->stage = pstate->stage;
 		__entry->sspp = pstate->pipe.sspp->idx;
 		__entry->multirect_idx = pstate->pipe.multirect_index;
@@ -666,13 +664,13 @@ TRACE_EVENT(dpu_crtc_setup_mixer,
 		__entry->modifier = modifier;
 	),
 	TP_printk("crtc_id:%u plane_id:%u fb_id:%u src:" DRM_RECT_FP_FMT
-		  " dst:" DRM_RECT_FMT " stage_idx:%u stage:%d, sspp:%d "
+		  " dst:" DRM_RECT_FMT " stage:%d, sspp:%d "
 		  "multirect_index:%d multirect_mode:%u pix_format:%u "
 		  "modifier:%llu",
 		  __entry->crtc_id, __entry->plane_id, __entry->fb_id,
 		  DRM_RECT_FP_ARG(&__entry->src_rect),
 		  DRM_RECT_ARG(&__entry->dst_rect),
-		  __entry->stage_idx, __entry->stage, __entry->sspp,
+		  __entry->stage, __entry->sspp,
 		  __entry->multirect_idx, __entry->multirect_mode,
 		  __entry->pixel_format, __entry->modifier)
 );
