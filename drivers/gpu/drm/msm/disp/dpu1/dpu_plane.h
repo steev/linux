@@ -37,6 +37,8 @@ struct dpu_plane_state {
 	uint32_t multirect_mode;
 	bool pending;
 
+	struct dpu_hw_sspp *pipe_hw;
+
 	u64 plane_fetch_bw;
 	u64 plane_clk;
 
