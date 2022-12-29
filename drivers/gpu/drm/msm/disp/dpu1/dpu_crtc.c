@@ -431,7 +431,7 @@ static void _dpu_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 		pstate = to_dpu_plane_state(state);
 		fb = state->fb;
 
-		sspp_idx = pstate->pipe_hw->idx;
+		sspp_idx = pstate->pipe.sspp->idx;
 		set_bit(sspp_idx, fetch_active);
 
 		DRM_DEBUG_ATOMIC("crtc %d stage:%d - plane %d sspp %d fb %d\n",
@@ -450,11 +450,10 @@ static void _dpu_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 		stage_cfg->stage[pstate->stage][stage_idx] =
 					sspp_idx;
 		stage_cfg->multirect_index[pstate->stage][stage_idx] =
-					pstate->multirect_index;
+					pstate->pipe.multirect_index;
 
 		trace_dpu_crtc_setup_mixer(DRMID(crtc), DRMID(plane),
 					   state, pstate, stage_idx,
-					   sspp_idx - SSPP_VIG0,
 					   format->base.pixel_format,
 					   fb ? fb->modifier : 0);
 
@@ -1197,7 +1196,7 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
 		pstates[cnt].dpu_pstate = dpu_pstate;
 		pstates[cnt].drm_pstate = pstate;
 		pstates[cnt].stage = pstate->normalized_zpos;
-		pstates[cnt].pipe_id = to_dpu_plane_state(pstate)->pipe_hw->idx;
+		pstates[cnt].pipe_id = to_dpu_plane_state(pstate)->pipe.sspp->idx;
 
 		dpu_pstate->needs_dirtyfb = needs_dirtyfb;
 
@@ -1470,7 +1469,7 @@ static int _dpu_debugfs_status_show(struct seq_file *s, void *data)
 			state->crtc_x, state->crtc_y, state->crtc_w,
 			state->crtc_h);
 		seq_printf(s, "\tmultirect: mode: %d index: %d\n",
-			pstate->multirect_mode, pstate->multirect_index);
+			pstate->pipe.multirect_mode, pstate->pipe.multirect_index);
 
 		seq_puts(s, "\n");
 	}

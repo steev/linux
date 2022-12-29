@@ -33,11 +33,9 @@ struct dpu_plane_state {
 	struct msm_gem_address_space *aspace;
 	enum dpu_stage stage;
 	bool needs_qos_remap;
-	uint32_t multirect_index;
-	uint32_t multirect_mode;
 	bool pending;
 
-	struct dpu_hw_sspp *pipe_hw;
+	struct dpu_sw_pipe pipe;
 
 	u64 plane_fetch_bw;
 	u64 plane_clk;
