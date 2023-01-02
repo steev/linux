@@ -1734,6 +1734,8 @@
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&rx_swr_default>;
+
+			status = "disabled";
 		};
 
 		/* RX */
@@ -1761,6 +1763,8 @@
 			#sound-dai-cells = <1>;
 			#address-cells = <2>;
 			#size-cells = <0>;
+
+			status = "disabled";
 		};
 
 		txmacro: txmacro@3220000 {
@@ -1784,6 +1788,8 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			#sound-dai-cells = <1>;
+
+			status = "disabled";
 		};
 
 		wsamacro: codec@3240000 {
@@ -1805,6 +1811,8 @@
 
 			pinctrl-names = "default";
 			pinctrl-0 = <&wsa_swr_default>;
+
+			status = "disabled";
 		};
 
 		/* WSA */
@@ -1831,6 +1839,8 @@
 			#sound-dai-cells = <1>;
 			#address-cells = <2>;
 			#size-cells = <0>;
+
+			status = "disabled";
 		};
 
 		/* TX */
@@ -1859,6 +1869,8 @@
 			qcom,ports-word-length =	/bits/ 8 <0xff 0x00 0xff 0xff>;
 			qcom,ports-block-group-count =	/bits/ 8 <0xff 0xff 0xff 0xff>;
 			qcom,ports-lane-control =	/bits/ 8 <0x00 0x01 0x00 0x00>;
+
+			status = "disabled";
 		};
 
 		vamacro: codec@3370000 {
@@ -1875,6 +1887,8 @@
 			#clock-cells = <0>;
 			clock-output-names = "fsgen";
 			#sound-dai-cells = <1>;
+
+			status = "disabled";
 		};
 
 		lpass_tlmm: pinctrl@33c0000 {
@@ -1888,6 +1902,8 @@
 			clocks = <&q6prmcc LPASS_HW_MACRO_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>,
 				 <&q6prmcc LPASS_HW_DCODEC_VOTE LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
 			clock-names = "core", "audio";
+
+			status = "disabled";
 
 			tx_swr_default: tx-swr-default-state {
 				clk-pins {

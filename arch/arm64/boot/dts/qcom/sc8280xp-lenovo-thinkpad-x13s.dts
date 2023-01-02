@@ -732,6 +732,10 @@
 	status = "okay";
 };
 
+&rxmacro {
+	status = "okay";
+};
+
 &soc {
 	wcd938x: codec {
 		compatible = "qcom,wcd9380-codec";
@@ -835,6 +839,8 @@
 };
 
 &swr0 {
+	status = "okay";
+
 	left_spkr: wsa8830-left@0,1 {
 		compatible = "sdw10217020200";
 		reg = <0 1>;
@@ -880,11 +886,17 @@
 	};
 };
 
+&txmacro {
+	status = "okay";
+};
+
 &vamacro {
 	pinctrl-0 = <&dmic01_default>, <&dmic02_default>;
 	pinctrl-names = "default";
 	vdd-micb-supply = <&vreg_s10b>;
 	qcom,dmic-sample-rate = <600000>;
+
+	status = "okay";
 };
 
 &usb_0 {
@@ -935,11 +947,19 @@
 	status = "okay";
 };
 
+&wsamacro {
+	status = "okay";
+};
+
 &xo_board_clk {
 	clock-frequency = <38400000>;
 };
 
 /* PINCTRL */
+
+&lpass_tlmm {
+	status = "okay";
+};
 
 &pmc8280_1_gpios {
 	edp_bl_en: edp-bl-en-state {
