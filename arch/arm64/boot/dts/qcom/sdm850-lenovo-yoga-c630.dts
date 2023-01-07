@@ -394,6 +394,7 @@
 		hid-descr-addr = <0x1>;
 
 		interrupts-extended = <&tlmm 37 IRQ_TYPE_LEVEL_HIGH>;
+		wakeup-source;
 	};
 
 	tsc2: hid@2c {
@@ -402,6 +403,7 @@
 		hid-descr-addr = <0x20>;
 
 		interrupts-extended = <&tlmm 37 IRQ_TYPE_LEVEL_HIGH>;
+		wakeup-source;
 	};
 };
 
@@ -415,6 +417,7 @@
 		hid-descr-addr = <0x1>;
 
 		interrupts-extended = <&tlmm 125 IRQ_TYPE_LEVEL_LOW>;
+		wakeup-source;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c5_hid_active>;
@@ -486,6 +489,7 @@
 		hid-descr-addr = <0x1>;
 
 		interrupts-extended = <&tlmm 92 IRQ_TYPE_LEVEL_LOW>;
+		wakeup-source;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c11_hid_active>;
