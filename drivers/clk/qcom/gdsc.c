@@ -292,22 +292,6 @@ static int gdsc_enable(struct generic_pm_domain *domain)
 	 */
 	udelay(1);
 
-	/* Turn on HW trigger mode if supported */
-	if (sc->flags & HW_CTRL) {
-		ret = gdsc_hwctrl(sc, true);
-		if (ret)
-			return ret;
-		/*
-		 * Wait for the GDSC to go through a power down and
-		 * up cycle.  In case a firmware ends up polling status
-		 * bits for the gdsc, it might read an 'on' status before
-		 * the GDSC can finish the power cycle.
-		 * We wait 1us before returning to ensure the firmware
-		 * can't immediately poll the status bits.
-		 */
-		udelay(1);
-	}
-
 	if (sc->flags & RETAIN_FF_ENABLE)
 		gdsc_retain_ff_on(sc);
 
@@ -321,24 +305,6 @@ static int gdsc_disable(struct generic_pm_domain *domain)
 
 	if (sc->pwrsts == PWRSTS_ON)
 		return gdsc_assert_reset(sc);
-
-	/* Turn off HW trigger mode if supported */
-	if (sc->flags & HW_CTRL) {
-		ret = gdsc_hwctrl(sc, false);
-		if (ret < 0)
-			return ret;
-		/*
-		 * Wait for the GDSC to go through a power down and
-		 * up cycle.  In case we end up polling status
-		 * bits for the gdsc before the power cycle is completed
-		 * it might read an 'on' status wrongly.
-		 */
-		udelay(1);
-
-		ret = gdsc_poll_status(sc, GDSC_ON);
-		if (ret)
-			return ret;
-	}
 
 	if (sc->pwrsts & PWRSTS_OFF)
 		gdsc_clear_mem_on(sc);
@@ -420,13 +386,6 @@ static int gdsc_init(struct gdsc *sc)
 				goto err_disable_supply;
 		}
 
-		/* Turn on HW trigger mode if supported */
-		if (sc->flags & HW_CTRL) {
-			ret = gdsc_hwctrl(sc, true);
-			if (ret < 0)
-				goto err_disable_supply;
-		}
-
 		/*
 		 * Make sure the retain bit is set if the GDSC is already on,
 		 * otherwise we end up turning off the GDSC and destroying all
@@ -438,6 +397,13 @@ static int gdsc_init(struct gdsc *sc)
 		/* If ALWAYS_ON GDSCs are not ON, turn them ON */
 		gdsc_enable(&sc->pd);
 		on = true;
+	}
+
+	/* Disable HW trigger mode until propertly supported */
+	if (sc->flags & HW_CTRL) {
+		ret = gdsc_hwctrl(sc, false);
+		if (ret < 0)
+			return ret;
 	}
 
 	if (on || (sc->pwrsts & PWRSTS_RET))
