@@ -231,6 +231,15 @@
 			};
 		};
 	};
+
+	reserved-memory {
+		linux,cma {
+			compatible = "shared-dma-pool";
+			size = <0x0 0x8000000>;
+			reusable;
+			linux,cma-default;
+		};
+	};
 };
 
 &apps_rsc {
