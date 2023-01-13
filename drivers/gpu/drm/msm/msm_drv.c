@@ -442,6 +442,9 @@ static int msm_drm_init(struct device *dev, const struct drm_driver *drv)
 
 	drm_mode_config_init(ddev);
 
+	ddev->mode_config.funcs = &mode_config_funcs;
+	ddev->mode_config.helper_private = &mode_config_helper_funcs;
+
 	ret = msm_init_vram(ddev);
 	if (ret)
 		goto err_drm_dev_put;
@@ -482,9 +485,6 @@ static int msm_drm_init(struct device *dev, const struct drm_driver *drv)
 	}
 
 	drm_helper_move_panel_connectors_to_head(ddev);
-
-	ddev->mode_config.funcs = &mode_config_funcs;
-	ddev->mode_config.helper_private = &mode_config_helper_funcs;
 
 	for (i = 0; i < priv->num_crtcs; i++) {
 		/* initialize event thread */
