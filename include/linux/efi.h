@@ -1063,7 +1063,7 @@ bool efivar_is_available(void);
 static inline bool efivar_is_available(void) { return false; }
 #endif
 
-int efivar_supports_writes(void);
+bool efivar_supports_writes(void);
 
 int efivar_lock(void);
 int efivar_trylock(void);
