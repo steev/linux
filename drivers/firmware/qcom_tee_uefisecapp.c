@@ -267,7 +267,6 @@ struct qctee_rsp_uefi_query_variable_info {
 
 struct qcuefi_client {
 	struct device *dev;
-	struct kobject *kobj;
 	struct efivars efivars;
 	struct qctee_dma dma;
 	u32 app_id;
@@ -693,13 +692,6 @@ static int qcom_uefisecapp_probe(struct platform_device *pdev)
 	if (status)
 		return status;
 
-	/* Set up kobject for efivars interface. */
-	qcuefi->kobj = kobject_create_and_add("qcom_tee_uefisecapp", firmware_kobj);
-	if (!qcuefi->kobj) {
-		status = -ENOMEM;
-		goto err_kobj;
-	}
-
 	/* Register global reference. */
 	platform_set_drvdata(pdev, qcuefi);
 	status = qcuefi_set_reference(qcuefi);
@@ -707,7 +699,7 @@ static int qcom_uefisecapp_probe(struct platform_device *pdev)
 		goto err_ref;
 
 	/* Register efivar ops. */
-	status = efivars_register(&qcuefi->efivars, &qcom_efivar_ops, qcuefi->kobj);
+	status = efivars_register(&qcuefi->efivars, &qcom_efivar_ops);
 	if (status)
 		goto err_register;
 
@@ -716,8 +708,6 @@ static int qcom_uefisecapp_probe(struct platform_device *pdev)
 err_register:
 	qcuefi_set_reference(NULL);
 err_ref:
-	kobject_put(qcuefi->kobj);
-err_kobj:
 	qctee_dma_free(qcuefi->dev, &qcuefi->dma);
 	return status;
 }
@@ -733,7 +723,6 @@ static int qcom_uefisecapp_remove(struct platform_device *pdev)
 	qcuefi_set_reference(NULL);
 
 	/* Free remaining resources. */
-	kobject_put(qcuefi->kobj);
 	qctee_dma_free(qcuefi->dev, &qcuefi->dma);
 
 	return 0;
