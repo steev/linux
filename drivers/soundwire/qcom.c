@@ -1541,7 +1541,6 @@ static int qcom_swrm_remove(struct platform_device *pdev)
 static int __maybe_unused swrm_runtime_resume(struct device *dev)
 {
 	struct qcom_swrm_ctrl *ctrl = dev_get_drvdata(dev);
-	int ret;
 
 	if (ctrl->wake_irq > 0) {
 		if (!irqd_irq_disabled(irq_get_irq_data(ctrl->wake_irq)))
@@ -1583,13 +1582,10 @@ static int __maybe_unused swrm_runtime_resume(struct device *dev)
 		ctrl->reg_write(ctrl, SWRM_INTERRUPT_MASK_ADDR, ctrl->intr_mask);
 		ctrl->reg_write(ctrl, SWRM_INTERRUPT_CPU_EN, ctrl->intr_mask);
 
-		usleep_range(100, 105);
+		usleep_range(500, 505);
 		if (!swrm_wait_for_frame_gen_enabled(ctrl))
 			dev_err(ctrl->dev, "link failed to connect\n");
 
-		ret = sdw_bus_exit_clk_stop(&ctrl->bus);
-		if (ret < 0)
-			dev_err(ctrl->dev, "bus failed to exit clock stop %d\n", ret);
 	}
 
 	return 0;
@@ -1607,11 +1603,6 @@ static int __maybe_unused swrm_runtime_suspend(struct device *dev)
 		ctrl->reg_write(ctrl, SWRM_INTERRUPT_MASK_ADDR, ctrl->intr_mask);
 		ctrl->reg_write(ctrl, SWRM_INTERRUPT_CPU_EN, ctrl->intr_mask);
 		/* Prepare slaves for clock stop */
-		ret = sdw_bus_prep_clk_stop(&ctrl->bus);
-		if (ret < 0 && ret != -ENODATA) {
-			dev_err(dev, "prepare clock stop failed %d", ret);
-			return ret;
-		}
 
 		ret = sdw_bus_clk_stop(&ctrl->bus);
 		if (ret < 0 && ret != -ENODATA) {
