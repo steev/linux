@@ -691,6 +691,8 @@ static void wsa881x_init(struct wsa881x_priv *wsa881x)
 {
 	struct regmap *rm = wsa881x->regmap;
 	unsigned int val = 0;
+	regcache_cache_only(wsa881x->regmap, false);
+	regcache_sync(wsa881x->regmap);
 
 	regmap_read(rm, WSA881X_CHIP_ID1, &wsa881x->version);
 	regmap_register_patch(wsa881x->regmap, wsa881x_rev_2_0,
@@ -737,6 +739,7 @@ static int wsa881x_component_probe(struct snd_soc_component *comp)
 	struct wsa881x_priv *wsa881x = snd_soc_component_get_drvdata(comp);
 
 	snd_soc_component_init_regmap(comp, wsa881x->regmap);
+	regcache_cache_only(wsa881x->regmap, true);
 
 	return 0;
 }

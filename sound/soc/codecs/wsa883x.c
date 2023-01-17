@@ -1004,6 +1004,9 @@ static void wsa883x_init(struct wsa883x_priv *wsa883x)
 	struct regmap *regmap = wsa883x->regmap;
 	int variant, version;
 
+	regcache_cache_only(wsa883x->regmap, false);
+	regcache_sync(wsa883x->regmap);
+
 	regmap_read(regmap, WSA883X_OTP_REG_0, &variant);
 	wsa883x->variant = variant & WSA883X_ID_MASK;
 
@@ -1167,6 +1170,7 @@ static int wsa883x_codec_probe(struct snd_soc_component *comp)
 	struct wsa883x_priv *wsa883x = snd_soc_component_get_drvdata(comp);
 
 	snd_soc_component_init_regmap(comp, wsa883x->regmap);
+	regcache_cache_only(wsa883x->regmap, true);
 
 	return 0;
 }
