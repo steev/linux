@@ -2094,7 +2094,6 @@ static int __maybe_unused tx_macro_runtime_suspend(struct device *dev)
 
 	clk_disable_unprepare(tx->mclk);
 	clk_disable_unprepare(tx->npl);
-	clk_disable_unprepare(tx->fsgen);
 
 	return 0;
 }
@@ -2116,18 +2115,10 @@ static int __maybe_unused tx_macro_runtime_resume(struct device *dev)
 		goto err_npl;
 	}
 
-	ret = clk_prepare_enable(tx->fsgen);
-	if (ret) {
-		dev_err(dev, "unable to prepare fsgen\n");
-		goto err_fsgen;
-	}
-
 	regcache_cache_only(tx->regmap, false);
 	regcache_sync(tx->regmap);
 
 	return 0;
-err_fsgen:
-	clk_disable_unprepare(tx->npl);
 err_npl:
 	clk_disable_unprepare(tx->mclk);
 
