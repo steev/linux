@@ -2507,7 +2507,6 @@ static int __maybe_unused wsa_macro_runtime_suspend(struct device *dev)
 
 	clk_disable_unprepare(wsa->mclk);
 	clk_disable_unprepare(wsa->npl);
-	clk_disable_unprepare(wsa->fsgen);
 
 	return 0;
 }
@@ -2529,18 +2528,11 @@ static int __maybe_unused wsa_macro_runtime_resume(struct device *dev)
 		goto err_npl;
 	}
 
-	ret = clk_prepare_enable(wsa->fsgen);
-	if (ret) {
-		dev_err(dev, "unable to prepare fsgen\n");
-		goto err_fsgen;
-	}
-
 	regcache_cache_only(wsa->regmap, false);
 	regcache_sync(wsa->regmap);
 
 	return 0;
-err_fsgen:
-	clk_disable_unprepare(wsa->npl);
+
 err_npl:
 	clk_disable_unprepare(wsa->mclk);
 
