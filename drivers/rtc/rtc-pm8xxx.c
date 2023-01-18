@@ -5,6 +5,7 @@
  * Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2023, Linaro Limited
  */
+#include <linux/efi.h>
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/nvmem-consumer.h>
@@ -17,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 
+#include <asm/byteorder.h>
 #include <asm/unaligned.h>
 
 /* RTC_CTRL register bit fields */
@@ -46,6 +48,11 @@ struct pm8xxx_rtc_regs {
 	unsigned int alarm_en;
 };
 
+struct qcom_uefi_rtc_info {
+	__le32	offset_gps;
+	u8	reserved[8];
+} __packed;
+
 /**
  * struct pm8xxx_rtc -  RTC driver internal structure
  * @rtc:		RTC device
@@ -54,6 +61,7 @@ struct pm8xxx_rtc_regs {
  * @alarm_irq:		alarm irq number
  * @regs:		register description
  * @dev:		device structure
+ * @rtc_info:		qcom uefi rtc-info structure
  * @nvmem_cell:		nvmem cell for offset
  * @offset:		offset from epoch in seconds
  */
@@ -61,12 +69,100 @@ struct pm8xxx_rtc {
 	struct rtc_device *rtc;
 	struct regmap *regmap;
 	bool allow_set_time;
+	bool use_uefi;
 	int alarm_irq;
 	const struct pm8xxx_rtc_regs *regs;
 	struct device *dev;
+	struct qcom_uefi_rtc_info rtc_info;
 	struct nvmem_cell *nvmem_cell;
 	u32 offset;
 };
+
+#ifdef CONFIG_EFI
+
+MODULE_IMPORT_NS(EFIVAR);
+
+#define QCOM_UEFI_NAME	L"RTCInfo"
+#define QCOM_UEFI_GUID	EFI_GUID(0x882f8c2b, 0x9646, 0x435f, \
+				 0x8d, 0xe5, 0xf2, 0x08, 0xff, 0x80, 0xc1, 0xbd)
+#define QCOM_UEFI_ATTRS	(EFI_VARIABLE_NON_VOLATILE | \
+			 EFI_VARIABLE_BOOTSERVICE_ACCESS | \
+			 EFI_VARIABLE_RUNTIME_ACCESS)
+
+static int pm8xxx_rtc_read_uefi_offset(struct pm8xxx_rtc *rtc_dd)
+{
+	struct qcom_uefi_rtc_info *rtc_info = &rtc_dd->rtc_info;
+	unsigned long size = sizeof(*rtc_info);
+	struct device *dev = rtc_dd->dev;
+	efi_status_t status;
+	u32 offset_gps;
+	int rc;
+
+	rc = efivar_lock();
+	if (rc)
+		return rc;
+
+	status = efivar_get_variable(QCOM_UEFI_NAME, &QCOM_UEFI_GUID, NULL,
+				     &size, rtc_info);
+	efivar_unlock();
+
+	if (status != EFI_SUCCESS) {
+		dev_dbg(dev, "failed to read UEFI offset: %lu\n", status);
+		return efi_status_to_err(status);
+	}
+
+	if (size != sizeof(*rtc_info)) {
+		dev_dbg(dev, "unexpected UEFI structure size %lu\n", size);
+		return -EINVAL;
+	}
+
+	dev_dbg(dev, "uefi_rtc_info = %*ph\n", (int)size, rtc_info);
+
+	/* Convert from GPS to Unix time offset */
+	offset_gps = le32_to_cpu(rtc_info->offset_gps);
+	rtc_dd->offset = offset_gps + (u32)RTC_TIMESTAMP_EPOCH_GPS;
+
+	return 0;
+}
+
+static int pm8xxx_rtc_write_uefi_offset(struct pm8xxx_rtc *rtc_dd, u32 offset)
+{
+	struct qcom_uefi_rtc_info *rtc_info = &rtc_dd->rtc_info;
+	unsigned long size = sizeof(*rtc_info);
+	struct device *dev = rtc_dd->dev;
+	efi_status_t status;
+	u32 offset_gps;
+
+	/* Convert from Unix to GPS time offset */
+	offset_gps = offset - (u32)RTC_TIMESTAMP_EPOCH_GPS;
+
+	rtc_info->offset_gps = cpu_to_le32(offset_gps);
+
+	dev_dbg(dev, "efi_rtc_info = %*ph\n", (int)size, rtc_info);
+
+	status = efivar_set_variable(QCOM_UEFI_NAME, &QCOM_UEFI_GUID,
+				     QCOM_UEFI_ATTRS, size, rtc_info);
+	if (status != EFI_SUCCESS) {
+		dev_dbg(dev, "failed to write UEFI offset: %lx\n", status);
+		return efi_status_to_err(status);
+	}
+
+	return 0;
+}
+
+#else	/* CONFIG_EFI */
+
+static int pm8xxx_rtc_read_uefi_offset(struct pm8xxx_rtc *rtc_dd)
+{
+	return -ENODEV;
+}
+
+static int pm8xxx_rtc_write_uefi_offset(struct pm8xxx_rtc *rtc_dd, u32 offset)
+{
+	return -ENODEV;
+}
+
+#endif	/* CONFIG_EFI */
 
 static int pm8xxx_rtc_read_nvmem_offset(struct pm8xxx_rtc *rtc_dd)
 {
@@ -112,10 +208,13 @@ static int pm8xxx_rtc_write_nvmem_offset(struct pm8xxx_rtc *rtc_dd, u32 offset)
 
 static int pm8xxx_rtc_read_offset(struct pm8xxx_rtc *rtc_dd)
 {
-	if (!rtc_dd->nvmem_cell)
+	if (!rtc_dd->nvmem_cell && !rtc_dd->use_uefi)
 		return 0;
 
-	return pm8xxx_rtc_read_nvmem_offset(rtc_dd);
+	if (rtc_dd->nvmem_cell)
+		return pm8xxx_rtc_read_nvmem_offset(rtc_dd);
+	else
+		return pm8xxx_rtc_read_uefi_offset(rtc_dd);
 }
 
 static int pm8xxx_rtc_read_raw(struct pm8xxx_rtc *rtc_dd, u32 *secs)
@@ -155,7 +254,7 @@ static int pm8xxx_rtc_update_offset(struct pm8xxx_rtc *rtc_dd, u32 secs)
 	u32 offset;
 	int rc;
 
-	if (!rtc_dd->nvmem_cell)
+	if (!rtc_dd->nvmem_cell && !rtc_dd->use_uefi)
 		return -ENODEV;
 
 	rc = pm8xxx_rtc_read_raw(rtc_dd, &raw_secs);
@@ -167,7 +266,11 @@ static int pm8xxx_rtc_update_offset(struct pm8xxx_rtc *rtc_dd, u32 secs)
 	if (offset == rtc_dd->offset)
 		return 0;
 
-	rc = pm8xxx_rtc_write_nvmem_offset(rtc_dd, offset);
+	if (rtc_dd->nvmem_cell)
+		rc = pm8xxx_rtc_write_nvmem_offset(rtc_dd, offset);
+	else
+		rc = pm8xxx_rtc_write_uefi_offset(rtc_dd, offset);
+
 	if (rc)
 		return rc;
 
@@ -486,6 +589,17 @@ static int pm8xxx_rtc_probe(struct platform_device *pdev)
 		if (rc != -ENOENT)
 			return rc;
 		rtc_dd->nvmem_cell = NULL;
+
+		/* Use UEFI storage as fallback if available */
+		rtc_dd->use_uefi = of_property_read_bool(pdev->dev.of_node,
+							 "qcom,uefi-rtc-info");
+	}
+
+	if (rtc_dd->use_uefi && !efivar_is_available()) {
+		if (IS_ENABLED(CONFIG_EFI))
+			return -EPROBE_DEFER;
+		dev_warn(&pdev->dev, "efivars not available\n");
+		rtc_dd->use_uefi = false;
 	}
 
 	rtc_dd->regs = match->data;
