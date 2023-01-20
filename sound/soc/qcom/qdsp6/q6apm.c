@@ -590,6 +590,8 @@ EXPORT_SYMBOL_GPL(q6apm_graph_close);
 
 int q6apm_graph_prepare(struct q6apm_graph *graph)
 {
+	graph->tx_data.dsp_buf = 0;
+	graph->rx_data.dsp_buf = 0;
 	return audioreach_graph_mgmt_cmd(graph->ar_graph, APM_CMD_GRAPH_PREPARE);
 }
 EXPORT_SYMBOL_GPL(q6apm_graph_prepare);
