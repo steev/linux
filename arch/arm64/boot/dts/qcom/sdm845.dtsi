@@ -350,8 +350,13 @@
 	};
 
 	firmware {
-		scm {
+		scm: scm {
 			compatible = "qcom,scm-sdm845", "qcom,scm";
+		};
+
+		qseecom {
+			compatible = "qcom,qseecom-sc8280xp", "qcom,qseecom";
+			qcom,scm = <&scm>;
 		};
 	};
 
