@@ -281,6 +281,11 @@
 		scm: scm {
 			compatible = "qcom,scm-sc8280xp", "qcom,scm";
 		};
+
+		qseecom {
+			compatible = "qcom,qseecom-sc8280xp", "qcom,qseecom";
+			qcom,scm = <&scm>;
+		};
 	};
 
 	aggre1_noc: interconnect-aggre1-noc {
