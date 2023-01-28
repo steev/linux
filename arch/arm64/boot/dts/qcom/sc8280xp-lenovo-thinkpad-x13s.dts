@@ -21,6 +21,11 @@
 	model = "Lenovo ThinkPad X13s";
 	compatible = "lenovo,thinkpad-x13s", "qcom,sc8280xp";
 
+	aliases {
+		serial0 = &qup2_uart17;
+		serial1 = &qup0_uart2;
+	};
+
 	wcd938x: audio-codec {
 		compatible = "qcom,wcd9380-codec";
 
@@ -424,6 +429,15 @@
 		compatible = "qcom,pm8350c-rpmh-regulators";
 		qcom,pmic-id = "c";
 		vdd-bob-supply = <&vreg_vph_pwr>;
+
+		vreg_s1c: smps1 {
+			regulator-name = "vreg_s1c";
+			regulator-min-microvolt = <1880000>;
+			regulator-max-microvolt = <1900000>;
+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_AUTO>,
+						  <RPMH_REGULATOR_MODE_RET>;
+			regulator-allow-set-load;
+		};
 
 		vreg_l1c: ldo1 {
 			regulator-name = "vreg_l1c";
@@ -850,6 +864,31 @@
 	};
 };
 
+&qup0_uart2 {
+	status = "okay";
+
+	pinctrl-0 = <&uart2_state>;
+	pinctrl-names = "default";
+
+	bluetooth {
+		compatible = "qcom,wcn6855-bt";
+
+		vddio-supply = <&vreg_s10b>;
+		vddxo-supply = <&vreg_s12b>;
+		vddrf-supply = <&vreg_s12b>;
+		vddch0-supply = <&vreg_s11b>;
+		vddch1-supply = <&vreg_s1c>;
+
+		max-speed = <3200000>;
+
+		enable-gpios = <&tlmm 133 GPIO_ACTIVE_HIGH>;
+		swctrl-gpios = <&tlmm 132 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-0 = <&bt_en>;
+		pinctrl-names = "default";
+	};
+};
+
 &qup1 {
 	status = "okay";
 };
@@ -901,6 +940,12 @@
 
 		wakeup-source;
 	};
+};
+
+&qup2_uart17 {
+	compatible = "qcom,geni-debug-uart";
+
+	status = "okay";
 };
 
 &remoteproc_adsp {
@@ -1169,6 +1214,19 @@
 &tlmm {
 	gpio-reserved-ranges = <70 2>, <74 6>, <83 4>, <125 2>, <128 2>, <154 7>;
 
+	bt_en: bt-en-state {
+		hstp-sw-ctrl-pins {
+			pins = "gpio132";
+			function = "gpio";
+		};
+
+		hstp-bt-en-pins {
+			pins = "gpio133";
+			function = "gpio";
+			drive-strength = <16>;
+		};
+	};
+
 	edp_reg_en: edp-reg-en-state {
 		pins = "gpio25";
 		function = "gpio";
@@ -1284,6 +1342,27 @@
 		function = "qup4";
 		bias-disable;
 		drive-strength = <16>;
+	};
+
+	uart2_state: uart2-state {
+		cts-pins {
+			pins = "gpio122";
+			function = "qup2";
+			bias-disable;
+		};
+
+		rts-tx-pins {
+			pins = "gpio122", "gpio123";
+			function = "qup2";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		rx-pins {
+			pins = "gpio124";
+			function = "qup2";
+			bias-pull-up;
+		};
 	};
 
 	qup2_i2c5_default: qup2-i2c5-default-state {
