@@ -38,6 +38,7 @@
 #define QCA_HCI_CC_SUCCESS		0x00
 
 #define QCA_WCN3991_SOC_ID		(0x40014320)
+#define QCA_WCN6855_SOC_ID		(0x400C0210)
 
 /* QCA chipset version can be decided by patch and SoC
  * version, combination with upper 2 bytes from SoC
