@@ -41,11 +41,6 @@
 
 #define DRIVER_DESC "HID core driver"
 
-int hid_debug = 0;
-module_param_named(debug, hid_debug, int, 0600);
-MODULE_PARM_DESC(debug, "toggle HID debugging messages");
-EXPORT_SYMBOL_GPL(hid_debug);
-
 static int hid_ignore_special_drivers = 0;
 module_param_named(ignore_special_drivers, hid_ignore_special_drivers, int, 0600);
 MODULE_PARM_DESC(ignore_special_drivers, "Ignore any special drivers and handle all devices by generic driver");
@@ -2937,10 +2932,6 @@ static struct hid_bpf_ops hid_ops = {
 static int __init hid_init(void)
 {
 	int ret;
-
-	if (hid_debug)
-		pr_warn("hid_debug is now used solely for parser and driver debugging.\n"
-			"debugfs is now used for inspecting the device (report descriptor, reports)\n");
 
 	ret = bus_register(&hid_bus_type);
 	if (ret) {
