@@ -874,11 +874,18 @@ unlock_out:
 static unsigned long long __calculate_block_age(unsigned long long new,
 						unsigned long long old)
 {
-	unsigned long long diff;
+	unsigned int rem_old, rem_new;
+	unsigned long long res;
 
-	diff = (new >= old) ? new - (new - old) : new + (old - new);
+	res = div_u64_rem(new, 100, &rem_new) * (100 - LAST_AGE_WEIGHT)
+		+ div_u64_rem(old, 100, &rem_old) * LAST_AGE_WEIGHT;
 
-	return div_u64(diff * LAST_AGE_WEIGHT, 100);
+	if (rem_new)
+		res += rem_new * (100 - LAST_AGE_WEIGHT) / 100;
+	if (rem_old)
+		res += rem_old * LAST_AGE_WEIGHT / 100;
+
+	return res;
 }
 
 /* This returns a new age and allocated blocks in ei */
@@ -1045,6 +1052,17 @@ bool f2fs_lookup_read_extent_cache(struct inode *inode, pgoff_t pgofs,
 		return false;
 
 	return __lookup_extent_tree(inode, pgofs, ei, EX_READ);
+}
+
+bool f2fs_lookup_read_extent_cache_block(struct inode *inode, pgoff_t index,
+				block_t *blkaddr)
+{
+	struct extent_info ei = {};
+
+	if (!f2fs_lookup_read_extent_cache(inode, index, &ei))
+		return false;
+	*blkaddr = ei.blk + index - ei.fofs;
+	return true;
 }
 
 void f2fs_update_read_extent_cache(struct dnode_of_data *dn)
