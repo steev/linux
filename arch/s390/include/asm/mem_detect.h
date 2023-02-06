@@ -40,11 +40,8 @@ void add_mem_detect_block(u64 start, u64 end);
 static inline int __get_mem_detect_block(u32 n, unsigned long *start,
 					 unsigned long *end)
 {
-	if (n >= mem_detect.count) {
-		*start = 0;
-		*end = 0;
+	if (n >= mem_detect.count)
 		return -1;
-	}
 
 	if (n < MEM_INLINED_ENTRIES) {
 		*start = (unsigned long)mem_detect.entries[n].start;
@@ -68,6 +65,17 @@ static inline int __get_mem_detect_block(u32 n, unsigned long *start,
 	for (i = 0, __get_mem_detect_block(i, p_start, p_end);		\
 	     i < mem_detect.count;					\
 	     i++, __get_mem_detect_block(i, p_start, p_end))
+
+static inline unsigned long get_mem_detect_online_total(void)
+{
+	unsigned long start, end, total = 0;
+	int i;
+
+	for_each_mem_detect_block(i, &start, &end)
+		total += end - start;
+
+	return total;
+}
 
 static inline void get_mem_detect_reserved(unsigned long *start,
 					   unsigned long *size)
