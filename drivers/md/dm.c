@@ -1365,6 +1365,7 @@ void dm_submit_bio_remap(struct bio *clone, struct bio *tgt_clone)
 
 	trace_block_bio_remap(tgt_clone, disk_devt(io->md->disk),
 			      tio->old_sector);
+	bio_set_flag(tgt_clone, BIO_REMAPPED);
 	submit_bio_noacct(tgt_clone);
 }
 EXPORT_SYMBOL_GPL(dm_submit_bio_remap);
