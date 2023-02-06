@@ -2129,7 +2129,6 @@ static void wait_for_master_cpu(int cpu)
 #endif
 }
 
-#ifdef CONFIG_X86_64
 static inline void setup_getcpu(int cpu)
 {
 	unsigned long cpudata = vdso_encode_cpunode(cpu, early_cpu_to_node(cpu));
@@ -2151,6 +2150,7 @@ static inline void setup_getcpu(int cpu)
 	write_gdt_entry(get_cpu_gdt_rw(cpu), GDT_ENTRY_CPUNODE, &d, DESCTYPE_S);
 }
 
+#ifdef CONFIG_X86_64
 static inline void ucode_cpu_init(int cpu)
 {
 	if (cpu)
@@ -2169,8 +2169,6 @@ static inline void tss_setup_ist(struct tss_struct *tss)
 }
 
 #else /* CONFIG_X86_64 */
-
-static inline void setup_getcpu(int cpu) { }
 
 static inline void ucode_cpu_init(int cpu)
 {
