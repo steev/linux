@@ -232,7 +232,7 @@ static int write_metadata(struct log_writes_c *lc, void *entry,
 		goto error;
 	}
 
-	ptr = kmap_atomic(page);
+	ptr = kmap_local_page(page);
 	memcpy(ptr, entry, entrylen);
 	if (datalen)
 		memcpy(ptr + entrylen, data, datalen);
@@ -287,7 +287,7 @@ static int write_inline_data(struct log_writes_c *lc, void *entry,
 				goto error_bio;
 			}
 
-			ptr = kmap_atomic(page);
+			ptr = kmap_local_page(page);
 			memcpy(ptr, data, pg_datalen);
 			if (pg_sectorlen > pg_datalen)
 				memset(ptr + pg_datalen, 0, pg_sectorlen - pg_datalen);
@@ -743,7 +743,7 @@ static int log_writes_map(struct dm_target *ti, struct bio *bio)
 			return DM_MAPIO_KILL;
 		}
 
-		dst = kmap_atomic(page);
+		dst = kmap_local_page(page);
 		memcpy_from_bvec(dst, &bv);
 		kunmap_atomic(dst);
 		block->vecs[i].bv_page = page;

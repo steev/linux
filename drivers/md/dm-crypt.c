@@ -532,7 +532,7 @@ static int crypt_iv_lmk_gen(struct crypt_config *cc, u8 *iv,
 
 	if (bio_data_dir(dmreq->ctx->bio_in) == WRITE) {
 		sg = crypt_get_sg_data(cc, dmreq->sg_in);
-		src = kmap_atomic(sg_page(sg));
+		src = kmap_local_page(sg_page(sg));
 		r = crypt_iv_lmk_one(cc, iv, dmreq, src + sg->offset);
 		kunmap_atomic(src);
 	} else
@@ -552,7 +552,7 @@ static int crypt_iv_lmk_post(struct crypt_config *cc, u8 *iv,
 		return 0;
 
 	sg = crypt_get_sg_data(cc, dmreq->sg_out);
-	dst = kmap_atomic(sg_page(sg));
+	dst = kmap_local_page(sg_page(sg));
 	r = crypt_iv_lmk_one(cc, iv, dmreq, dst + sg->offset);
 
 	/* Tweak the first block of plaintext sector */
@@ -682,7 +682,7 @@ static int crypt_iv_tcw_gen(struct crypt_config *cc, u8 *iv,
 	/* Remove whitening from ciphertext */
 	if (bio_data_dir(dmreq->ctx->bio_in) != WRITE) {
 		sg = crypt_get_sg_data(cc, dmreq->sg_in);
-		src = kmap_atomic(sg_page(sg));
+		src = kmap_local_page(sg_page(sg));
 		r = crypt_iv_tcw_whitening(cc, dmreq, src + sg->offset);
 		kunmap_atomic(src);
 	}
@@ -708,7 +708,7 @@ static int crypt_iv_tcw_post(struct crypt_config *cc, u8 *iv,
 
 	/* Apply whitening on ciphertext */
 	sg = crypt_get_sg_data(cc, dmreq->sg_out);
-	dst = kmap_atomic(sg_page(sg));
+	dst = kmap_local_page(sg_page(sg));
 	r = crypt_iv_tcw_whitening(cc, dmreq, dst + sg->offset);
 	kunmap_atomic(dst);
 
@@ -975,13 +975,13 @@ static int crypt_iv_elephant(struct crypt_config *cc, struct dm_crypt_request *d
 		goto out;
 
 	sg = crypt_get_sg_data(cc, dmreq->sg_out);
-	data = kmap_atomic(sg_page(sg));
+	data = kmap_local_page(sg_page(sg));
 	data_offset = data + sg->offset;
 
 	/* Cannot modify original bio, copy to sg_out and apply Elephant to it */
 	if (bio_data_dir(dmreq->ctx->bio_in) == WRITE) {
 		sg2 = crypt_get_sg_data(cc, dmreq->sg_in);
-		data2 = kmap_atomic(sg_page(sg2));
+		data2 = kmap_local_page(sg_page(sg2));
 		memcpy(data_offset, data2 + sg2->offset, cc->sector_size);
 		kunmap_atomic(data2);
 	}
