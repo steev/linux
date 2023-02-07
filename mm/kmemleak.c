@@ -105,6 +105,9 @@
 #include <linux/kmemleak.h>
 #include <linux/memory_hotplug.h>
 
+/* akpm: stupid temporary hack */
+#define stack_depot_want_early_init stack_depot_request_early_init
+
 /*
  * Kmemleak configuration and common defines.
  */
