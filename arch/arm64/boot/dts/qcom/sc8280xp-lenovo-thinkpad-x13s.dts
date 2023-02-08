@@ -264,6 +264,11 @@
 	};
 
 	reserved-memory {
+		gpu_mem: gpu-mem@8bf00000 {
+			reg = <0 0x8bf00000 0 0x2000>;
+			no-map;
+		};
+
 		linux,cma {
 			compatible = "shared-dma-pool";
 			size = <0x0 0x8000000>;
@@ -357,6 +362,10 @@
 			};
 		};
 	};
+};
+
+&adreno_smmu {
+	status = "okay";
 };
 
 &apps_rsc {
@@ -489,6 +498,23 @@
 };
 
 &dispcc0 {
+	status = "okay";
+};
+
+&gmu {
+	status = "okay";
+};
+
+&gpu {
+	status = "okay";
+
+	zap-shader {
+		memory-region = <&gpu_mem>;
+		firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcdxkmsuc8280.mbn";
+	};
+};
+
+&gpucc {
 	status = "okay";
 };
 
