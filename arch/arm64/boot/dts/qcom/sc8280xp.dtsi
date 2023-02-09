@@ -3230,6 +3230,11 @@
 				iommus = <&apps_smmu 0x820 0x0>;
 				phys = <&usb_0_hsphy>, <&usb_0_qmpphy QMP_USB43DP_USB3_PHY>;
 				phy-names = "usb2-phy", "usb3-phy";
+
+				port {
+					usb_0_role_switch: endpoint {
+					};
+				};
 			};
 		};
 
@@ -3285,6 +3290,10 @@
 				iommus = <&apps_smmu 0x860 0x0>;
 				phys = <&usb_1_hsphy>, <&usb_1_qmpphy QMP_USB43DP_USB3_PHY>;
 				phy-names = "usb2-phy", "usb3-phy";
+				port {
+					usb_1_role_switch: endpoint {
+					};
+				};
 			};
 		};
 
