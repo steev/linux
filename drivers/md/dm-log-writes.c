@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2014 Facebook. All rights reserved.
  *
@@ -231,7 +232,7 @@ static int write_metadata(struct log_writes_c *lc, void *entry,
 		goto error;
 	}
 
-	ptr = kmap_atomic(page);
+	ptr = kmap_local_page(page);
 	memcpy(ptr, entry, entrylen);
 	if (datalen)
 		memcpy(ptr + entrylen, data, datalen);
@@ -286,7 +287,7 @@ static int write_inline_data(struct log_writes_c *lc, void *entry,
 				goto error_bio;
 			}
 
-			ptr = kmap_atomic(page);
+			ptr = kmap_local_page(page);
 			memcpy(ptr, data, pg_datalen);
 			if (pg_sectorlen > pg_datalen)
 				memset(ptr + pg_datalen, 0, pg_sectorlen - pg_datalen);
@@ -742,7 +743,7 @@ static int log_writes_map(struct dm_target *ti, struct bio *bio)
 			return DM_MAPIO_KILL;
 		}
 
-		dst = kmap_atomic(page);
+		dst = kmap_local_page(page);
 		memcpy_from_bvec(dst, &bv);
 		kunmap_atomic(dst);
 		block->vecs[i].bv_page = page;
@@ -792,10 +793,10 @@ static int normal_end_io(struct dm_target *ti, struct bio *bio,
  * INFO format: <logged entries> <highest allocated sector>
  */
 static void log_writes_status(struct dm_target *ti, status_type_t type,
-			      unsigned status_flags, char *result,
-			      unsigned maxlen)
+			      unsigned int status_flags, char *result,
+			      unsigned int maxlen)
 {
-	unsigned sz = 0;
+	unsigned int sz = 0;
 	struct log_writes_c *lc = ti->private;
 
 	switch (type) {
@@ -844,8 +845,8 @@ static int log_writes_iterate_devices(struct dm_target *ti,
  * Messages supported:
  *   mark <mark data> - specify the marked data.
  */
-static int log_writes_message(struct dm_target *ti, unsigned argc, char **argv,
-			      char *result, unsigned maxlen)
+static int log_writes_message(struct dm_target *ti, unsigned int argc, char **argv,
+			      char *result, unsigned int maxlen)
 {
 	int r = -EINVAL;
 	struct log_writes_c *lc = ti->private;
