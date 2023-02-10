@@ -2446,9 +2446,6 @@ static bool filemap_range_uptodate(struct address_space *mapping,
 
 	if (folio_test_uptodate(folio))
 		return true;
-	/* pipes can't handle partially uptodate pages */
-	if (iov_iter_is_pipe(iter))
-		return false;
 	if (!mapping->a_ops->is_partially_uptodate)
 		return false;
 	if (mapping->host->i_blkbits >= folio_shift(folio))
