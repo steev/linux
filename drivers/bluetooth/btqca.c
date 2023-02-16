@@ -630,7 +630,6 @@ static void qca_generate_nvm_name(struct hci_dev *hdev, char *fwname,
 
 	soc_ver = get_soc_ver(ver.soc_id, ver.rom_ver);
 	rom_ver = ((soc_ver & 0x00000f00) >> 0x04) | (soc_ver & 0x0000000f);
-	bt_dev_info(hdev, "bid == 0x%02x 0x%02x", bid[0], bid[1]);
 
 	if ((ver.soc_id & 0x0000ff00) == 0x1200) /*hsp gf chip*/
 		variant = "g";
@@ -640,10 +639,10 @@ static void qca_generate_nvm_name(struct hci_dev *hdev, char *fwname,
 	if (bid[0] == 0 && bid[1] == 0) {
 		snprintf(fwname, max_size, "qca/hpnv%02x%s.bin", rom_ver, variant);
 	} else {
+		/* Horrible hack to override boardid = 0 to be b. */
 		snprintf(fwname, max_size, "qca/hpnv%02x%s.%x%02x",
-			rom_ver, variant, bid[0], bid[1]);
+			rom_ver, variant, bid[0] == 0 ? 0x0b : bid[0], bid[1]);
 	}
-	bt_dev_info(hdev, "%s:  %s", __func__, fwname);
 }
 
 int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
