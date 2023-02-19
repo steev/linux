@@ -58,6 +58,7 @@
 #include "scrub.h"
 #include "verity.h"
 #include "super.h"
+#include "extent-tree.h"
 #define CREATE_TRACE_POINTS
 #include <trace/events/btrfs.h>
 
@@ -1157,6 +1158,7 @@ static int btrfs_fill_super(struct super_block *sb,
 	inode = btrfs_iget(sb, BTRFS_FIRST_FREE_OBJECTID, fs_info->fs_root);
 	if (IS_ERR(inode)) {
 		err = PTR_ERR(inode);
+		btrfs_handle_fs_error(fs_info, err, NULL);
 		goto fail_close;
 	}
 
@@ -2049,7 +2051,7 @@ static int btrfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 		}
 
 		/*
-		 * Metadata in mixed block goup profiles are accounted in data
+		 * Metadata in mixed block group profiles are accounted in data
 		 */
 		if (!mixed && found->flags & BTRFS_BLOCK_GROUP_METADATA) {
 			if (found->flags & BTRFS_BLOCK_GROUP_DATA)

@@ -229,7 +229,7 @@ struct full_stripe_lock {
 };
 
 #ifndef CONFIG_64BIT
-/* This structure is for archtectures whose (void *) is smaller than u64 */
+/* This structure is for architectures whose (void *) is smaller than u64 */
 struct scrub_page_private {
 	u64 logical;
 };
@@ -1230,7 +1230,7 @@ static int scrub_handle_errored_block(struct scrub_block *sblock_to_check)
 			sblock_other = sblocks_for_recheck[mirror_index];
 		} else {
 			struct scrub_recover *r = sblock_bad->sectors[0]->recover;
-			int max_allowed = r->bioc->num_stripes - r->bioc->num_tgtdevs;
+			int max_allowed = r->bioc->num_stripes - r->bioc->replace_nr_stripes;
 
 			if (mirror_index >= max_allowed)
 				break;
@@ -1430,7 +1430,7 @@ static inline int scrub_nr_raid_mirrors(struct btrfs_io_context *bioc)
 }
 
 static inline void scrub_stripe_index_and_offset(u64 logical, u64 map_type,
-						 u64 *raid_map,
+						 u64 full_stripe_logical,
 						 int nstripes, int mirror,
 						 int *stripe_index,
 						 u64 *stripe_offset)
@@ -1438,19 +1438,21 @@ static inline void scrub_stripe_index_and_offset(u64 logical, u64 map_type,
 	int i;
 
 	if (map_type & BTRFS_BLOCK_GROUP_RAID56_MASK) {
-		/* RAID5/6 */
-		for (i = 0; i < nstripes; i++) {
-			if (raid_map[i] == RAID6_Q_STRIPE ||
-			    raid_map[i] == RAID5_P_STRIPE)
-				continue;
+		const int nr_data_stripes = (map_type & BTRFS_BLOCK_GROUP_RAID5) ?
+					    nstripes - 1 : nstripes - 2;
 
-			if (logical >= raid_map[i] &&
-			    logical < raid_map[i] + BTRFS_STRIPE_LEN)
+		/* RAID5/6 */
+		for (i = 0; i < nr_data_stripes; i++) {
+			const u64 data_stripe_start = full_stripe_logical +
+						(i * BTRFS_STRIPE_LEN);
+
+			if (logical >= data_stripe_start &&
+			    logical < data_stripe_start + BTRFS_STRIPE_LEN)
 				break;
 		}
 
 		*stripe_index = i;
-		*stripe_offset = logical - raid_map[i];
+		*stripe_offset = logical - full_stripe_logical;
 	} else {
 		/* The other RAID type */
 		*stripe_index = mirror;
@@ -1538,9 +1540,9 @@ static int scrub_setup_recheck_block(struct scrub_block *original_sblock,
 
 			scrub_stripe_index_and_offset(logical,
 						      bioc->map_type,
-						      bioc->raid_map,
+						      bioc->full_stripe_logical,
 						      bioc->num_stripes -
-						      bioc->num_tgtdevs,
+						      bioc->replace_nr_stripes,
 						      mirror_index,
 						      &stripe_index,
 						      &stripe_offset);
@@ -2053,20 +2055,33 @@ static int scrub_checksum_tree_block(struct scrub_block *sblock)
 	 * a) don't have an extent buffer and
 	 * b) the page is already kmapped
 	 */
-	if (sblock->logical != btrfs_stack_header_bytenr(h))
+	if (sblock->logical != btrfs_stack_header_bytenr(h)) {
 		sblock->header_error = 1;
-
-	if (sector->generation != btrfs_stack_header_generation(h)) {
-		sblock->header_error = 1;
-		sblock->generation_error = 1;
+		btrfs_warn_rl(fs_info,
+		"tree block %llu mirror %u has bad bytenr, has %llu want %llu",
+			      sblock->logical, sblock->mirror_num,
+			      btrfs_stack_header_bytenr(h),
+			      sblock->logical);
+		goto out;
 	}
 
-	if (!scrub_check_fsid(h->fsid, sector))
+	if (!scrub_check_fsid(h->fsid, sector)) {
 		sblock->header_error = 1;
+		btrfs_warn_rl(fs_info,
+		"tree block %llu mirror %u has bad fsid, has %pU want %pU",
+			      sblock->logical, sblock->mirror_num,
+			      h->fsid, sblock->dev->fs_devices->fsid);
+		goto out;
+	}
 
-	if (memcmp(h->chunk_tree_uuid, fs_info->chunk_tree_uuid,
-		   BTRFS_UUID_SIZE))
+	if (memcmp(h->chunk_tree_uuid, fs_info->chunk_tree_uuid, BTRFS_UUID_SIZE)) {
 		sblock->header_error = 1;
+		btrfs_warn_rl(fs_info,
+		"tree block %llu mirror %u has bad chunk tree uuid, has %pU want %pU",
+			      sblock->logical, sblock->mirror_num,
+			      h->chunk_tree_uuid, fs_info->chunk_tree_uuid);
+		goto out;
+	}
 
 	shash->tfm = fs_info->csum_shash;
 	crypto_shash_init(shash);
@@ -2079,9 +2094,27 @@ static int scrub_checksum_tree_block(struct scrub_block *sblock)
 	}
 
 	crypto_shash_final(shash, calculated_csum);
-	if (memcmp(calculated_csum, on_disk_csum, sctx->fs_info->csum_size))
+	if (memcmp(calculated_csum, on_disk_csum, sctx->fs_info->csum_size)) {
 		sblock->checksum_error = 1;
+		btrfs_warn_rl(fs_info,
+		"tree block %llu mirror %u has bad csum, has " CSUM_FMT " want " CSUM_FMT,
+			      sblock->logical, sblock->mirror_num,
+			      CSUM_FMT_VALUE(fs_info->csum_size, on_disk_csum),
+			      CSUM_FMT_VALUE(fs_info->csum_size, calculated_csum));
+		goto out;
+	}
 
+	if (sector->generation != btrfs_stack_header_generation(h)) {
+		sblock->header_error = 1;
+		sblock->generation_error = 1;
+		btrfs_warn_rl(fs_info,
+		"tree block %llu mirror %u has bad generation, has %llu want %llu",
+			      sblock->logical, sblock->mirror_num,
+			      btrfs_stack_header_generation(h),
+			      sector->generation);
+	}
+
+out:
 	return sblock->header_error || sblock->checksum_error;
 }
 
@@ -2367,7 +2400,7 @@ static void scrub_missing_raid56_pages(struct scrub_block *sblock)
 	btrfs_bio_counter_inc_blocked(fs_info);
 	ret = btrfs_map_sblock(fs_info, BTRFS_MAP_GET_READ_MIRRORS, logical,
 			       &length, &bioc);
-	if (ret || !bioc || !bioc->raid_map)
+	if (ret || !bioc)
 		goto bioc_out;
 
 	if (WARN_ON(!sctx->is_dev_replace ||
@@ -2975,7 +3008,7 @@ static void scrub_parity_check_and_repair(struct scrub_parity *sparity)
 	btrfs_bio_counter_inc_blocked(fs_info);
 	ret = btrfs_map_sblock(fs_info, BTRFS_MAP_WRITE, sparity->logic_start,
 			       &length, &bioc);
-	if (ret || !bioc || !bioc->raid_map)
+	if (ret || !bioc)
 		goto bioc_out;
 
 	bio = bio_alloc(NULL, BIO_MAX_VECS, REQ_OP_READ, GFP_NOFS);
