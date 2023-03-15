@@ -9,6 +9,15 @@
 
 /delete-node/ &cont_splash_mem;
 
+/ {
+	reserved-memory {
+		cont_splash_mem: framebuffer@80400000 {
+			reg = <0x0 0x80400000 0x0 0x960000>;
+			no-map;
+		};
+	};
+};
+
 &cpu4_opp_table {
 	cpu4_opp33: opp-2841600000 {
 		opp-hz = /bits/ 64 <2841600000>;

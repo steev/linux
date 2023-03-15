@@ -61,12 +61,6 @@
 
 	/* Reserved memory changes */
 	reserved-memory {
-		/* Bootloader display framebuffer region */
-		cont_splash_mem: memory@80400000 {
-			reg = <0x0 0x80400000 0x0 0x960000>;
-			no-map;
-		};
-
 		qseecom_mem: memory@8b500000 {
 			reg = <0 0x8b500000 0 0xa00000>;
 			no-map;
