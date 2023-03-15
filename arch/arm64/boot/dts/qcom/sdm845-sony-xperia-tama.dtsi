@@ -79,12 +79,6 @@
 	};
 
 	reserved-memory {
-		/* SONY was cool and didn't diverge from MTP this time, yay! */
-		cont_splash_mem: memory@9d400000 {
-			reg = <0x0 0x9d400000 0x0 0x2400000>;
-			no-map;
-		};
-
 		ramoops@ffc00000 {
 			compatible = "ramoops";
 			reg = <0x0 0xffc00000 0x0 0x100000>;

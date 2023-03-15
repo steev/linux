@@ -93,12 +93,6 @@
 			no-map;
 		};
 
-		/* Framebuffer region */
-		memory@9d400000 {
-			reg = <0x0 0x9d400000 0x0 0x2400000>;
-			no-map;
-		};
-
 		/* rmtfs lower guard */
 		memory@f0800000 {
 			reg = <0 0xf0800000 0 0x1000>;

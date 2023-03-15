@@ -878,6 +878,11 @@
 			no-map;
 		};
 
+		cont_splash_mem: framebuffer@9d400000 {
+			reg = <0 0x9d400000 0 0x2400000>;
+			no-map;
+		};
+
 		mdata_mem: mpss-metadata {
 			alloc-ranges = <0 0xa0000000 0 0x20000000>;
 			size = <0 0x4000>;
