@@ -782,6 +782,7 @@ smb3_qfs_tcon(const unsigned int xid, struct cifs_tcon *tcon,
 
 	oparms = (struct cifs_open_parms) {
 		.tcon = tcon,
+		.path = "",
 		.desired_access = FILE_READ_ATTRIBUTES,
 		.disposition = FILE_OPEN,
 		.create_options = cifs_create_options(cifs_sb, 0),
@@ -872,6 +873,7 @@ smb2_is_path_accessible(const unsigned int xid, struct cifs_tcon *tcon,
 
 	oparms = (struct cifs_open_parms) {
 		.tcon = tcon,
+		.path = full_path,
 		.desired_access = FILE_READ_ATTRIBUTES,
 		.disposition = FILE_OPEN,
 		.create_options = cifs_create_options(cifs_sb, 0),
@@ -2147,6 +2149,7 @@ smb3_notify(const unsigned int xid, struct file *pfile,
 	tcon = cifs_sb_master_tcon(cifs_sb);
 	oparms = (struct cifs_open_parms) {
 		.tcon = tcon,
+		.path = path,
 		.desired_access = FILE_READ_ATTRIBUTES | FILE_READ_DATA,
 		.disposition = FILE_OPEN,
 		.create_options = cifs_create_options(cifs_sb, 0),
@@ -2685,6 +2688,7 @@ smb311_queryfs(const unsigned int xid, struct cifs_tcon *tcon,
 
 	oparms = (struct cifs_open_parms) {
 		.tcon = tcon,
+		.path = "",
 		.desired_access = FILE_READ_ATTRIBUTES,
 		.disposition = FILE_OPEN,
 		.create_options = cifs_create_options(cifs_sb, 0),
@@ -3259,6 +3263,7 @@ get_smb2_acl_by_path(struct cifs_sb_info *cifs_sb,
 
 	oparms = (struct cifs_open_parms) {
 		.tcon = tcon,
+		.path = path,
 		.desired_access = READ_CONTROL,
 		.disposition = FILE_OPEN,
 		/*
