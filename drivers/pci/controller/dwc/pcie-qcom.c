@@ -1938,6 +1938,7 @@ static struct platform_driver qcom_pcie_driver = {
 		.name = "qcom-pcie",
 		.of_match_table = qcom_pcie_match,
 		.pm = &qcom_pcie_pm_ops,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 };
 module_platform_driver(qcom_pcie_driver);
