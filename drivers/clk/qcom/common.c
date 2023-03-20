@@ -20,6 +20,7 @@
 struct qcom_cc {
 	struct qcom_reset_controller reset;
 	struct clk_regmap **rclks;
+	struct gdsc_desc *scd;
 	size_t num_rclks;
 };
 
@@ -234,6 +235,13 @@ static struct clk_hw *qcom_cc_clk_hw_get(struct of_phandle_args *clkspec,
 	return cc->rclks[idx] ? &cc->rclks[idx]->hw : NULL;
 }
 
+struct gdsc_desc *qcom_cc_get_gdsc_desc(struct device *dev)
+{
+	struct qcom_cc *cc = dev_get_drvdata(dev);
+
+	return cc->scd;
+}
+
 int qcom_cc_really_probe(struct platform_device *pdev,
 			 const struct qcom_cc_desc *desc, struct regmap *regmap)
 {
@@ -251,6 +259,8 @@ int qcom_cc_really_probe(struct platform_device *pdev,
 	if (!cc)
 		return -ENOMEM;
 
+	dev_set_drvdata(dev, cc);
+
 	reset = &cc->reset;
 	reset->rcdev.of_node = dev->of_node;
 	reset->rcdev.ops = &qcom_reset_ops;
@@ -267,6 +277,9 @@ int qcom_cc_really_probe(struct platform_device *pdev,
 		scd = devm_kzalloc(dev, sizeof(*scd), GFP_KERNEL);
 		if (!scd)
 			return -ENOMEM;
+
+		cc->scd = scd;
+
 		scd->dev = dev;
 		scd->scs = desc->gdscs;
 		scd->num = desc->num_gdscs;
@@ -318,6 +331,12 @@ int qcom_cc_probe(struct platform_device *pdev, const struct qcom_cc_desc *desc)
 	return qcom_cc_really_probe(pdev, desc, regmap);
 }
 EXPORT_SYMBOL_GPL(qcom_cc_probe);
+
+void qcom_cc_sync_state(struct device *dev)
+{
+	gdsc_sync_state(dev);
+}
+EXPORT_SYMBOL_GPL(qcom_cc_sync_state);
 
 int qcom_cc_probe_by_index(struct platform_device *pdev, int index,
 			   const struct qcom_cc_desc *desc)
