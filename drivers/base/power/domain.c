@@ -649,10 +649,11 @@ busy:
  * Queue up the execution of genpd_power_off() unless it's already been done
  * before.
  */
-static void genpd_queue_power_off_work(struct generic_pm_domain *genpd)
+void genpd_queue_power_off_work(struct generic_pm_domain *genpd)
 {
 	queue_work(pm_wq, &genpd->power_off_work);
 }
+EXPORT_SYMBOL_GPL(genpd_queue_power_off_work);
 
 /**
  * genpd_power_off - Remove power from a given PM domain.
