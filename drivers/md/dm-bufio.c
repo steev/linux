@@ -327,7 +327,7 @@ enum data_mode {
 };
 
 struct dm_buffer {
-	/* protected by the locks in buffer_cache */
+	/* protected by the locks in dm_buffer_cache */
 	struct rb_node node;
 
 	/* immutable, so don't need protecting */
@@ -393,7 +393,7 @@ struct tree_lock {
 	struct rw_semaphore lock;
 } ____cacheline_aligned_in_smp;
 
-struct buffer_cache {
+struct dm_buffer_cache {
 	/*
 	 * We spread entries across multiple trees to reduce contention
 	 * on the locks.
@@ -414,22 +414,22 @@ static inline unsigned int cache_index(sector_t block)
 	return block & LOCKS_MASK;
 }
 
-static inline void cache_read_lock(struct buffer_cache *bc, sector_t block)
+static inline void cache_read_lock(struct dm_buffer_cache *bc, sector_t block)
 {
 	down_read(&bc->locks[cache_index(block)].lock);
 }
 
-static inline void cache_read_unlock(struct buffer_cache *bc, sector_t block)
+static inline void cache_read_unlock(struct dm_buffer_cache *bc, sector_t block)
 {
 	up_read(&bc->locks[cache_index(block)].lock);
 }
 
-static inline void cache_write_lock(struct buffer_cache *bc, sector_t block)
+static inline void cache_write_lock(struct dm_buffer_cache *bc, sector_t block)
 {
 	down_write(&bc->locks[cache_index(block)].lock);
 }
 
-static inline void cache_write_unlock(struct buffer_cache *bc, sector_t block)
+static inline void cache_write_unlock(struct dm_buffer_cache *bc, sector_t block)
 {
 	up_write(&bc->locks[cache_index(block)].lock);
 }
@@ -439,12 +439,12 @@ static inline void cache_write_unlock(struct buffer_cache *bc, sector_t block)
  * This struct helps avoid redundant drop and gets of the same lock.
  */
 struct lock_history {
-	struct buffer_cache *cache;
+	struct dm_buffer_cache *cache;
 	bool write;
 	unsigned int previous;
 };
 
-static void lh_init(struct lock_history *lh, struct buffer_cache *cache, bool write)
+static void lh_init(struct lock_history *lh, struct dm_buffer_cache *cache, bool write)
 {
 	lh->cache = cache;
 	lh->write = write;
@@ -513,7 +513,7 @@ static struct dm_buffer *list_to_buffer(struct list_head *l)
 	return le_to_buffer(le);
 }
 
-static void cache_init(struct buffer_cache *bc)
+static void cache_init(struct dm_buffer_cache *bc)
 {
 	unsigned int i;
 
@@ -526,7 +526,7 @@ static void cache_init(struct buffer_cache *bc)
 	lru_init(&bc->lru[LIST_DIRTY]);
 }
 
-static void cache_destroy(struct buffer_cache *bc)
+static void cache_destroy(struct dm_buffer_cache *bc)
 {
 	unsigned int i;
 
@@ -540,7 +540,7 @@ static void cache_destroy(struct buffer_cache *bc)
 /*
  * not threadsafe, or racey depending how you look at it
  */
-static unsigned long cache_count(struct buffer_cache *bc, int list_mode)
+static unsigned long cache_count(struct dm_buffer_cache *bc, int list_mode)
 {
 	return lru_count(&bc->lru[list_mode]);
 }
@@ -550,7 +550,7 @@ static unsigned long cache_count(struct buffer_cache *bc, int list_mode)
 /*
  * not threadsafe
  */
-static unsigned long cache_total(struct buffer_cache *bc)
+static unsigned long cache_total(struct dm_buffer_cache *bc)
 {
 	return lru_count(&bc->lru[LIST_CLEAN]) +
 		lru_count(&bc->lru[LIST_DIRTY]);
@@ -588,7 +588,7 @@ static void __cache_inc_buffer(struct dm_buffer *b)
 	WRITE_ONCE(b->last_accessed, jiffies);
 }
 
-static struct dm_buffer *cache_get(struct buffer_cache *bc, sector_t block)
+static struct dm_buffer *cache_get(struct dm_buffer_cache *bc, sector_t block)
 {
 	struct dm_buffer *b;
 
@@ -609,7 +609,7 @@ static struct dm_buffer *cache_get(struct buffer_cache *bc, sector_t block)
  * Returns true if the hold count hits zero.
  * threadsafe
  */
-static bool cache_put(struct buffer_cache *bc, struct dm_buffer *b)
+static bool cache_put(struct dm_buffer_cache *bc, struct dm_buffer *b)
 {
 	bool r;
 
@@ -653,7 +653,7 @@ static enum evict_result __evict_pred(struct lru_entry *le, void *context)
 	return w->pred(b, w->context);
 }
 
-static struct dm_buffer *__cache_evict(struct buffer_cache *bc, int list_mode,
+static struct dm_buffer *__cache_evict(struct dm_buffer_cache *bc, int list_mode,
 				       b_predicate pred, void *context,
 				       struct lock_history *lh)
 {
@@ -672,7 +672,7 @@ static struct dm_buffer *__cache_evict(struct buffer_cache *bc, int list_mode,
 	return b;
 }
 
-static struct dm_buffer *cache_evict(struct buffer_cache *bc, int list_mode,
+static struct dm_buffer *cache_evict(struct dm_buffer_cache *bc, int list_mode,
 				     b_predicate pred, void *context)
 {
 	struct dm_buffer *b;
@@ -690,7 +690,7 @@ static struct dm_buffer *cache_evict(struct buffer_cache *bc, int list_mode,
 /*
  * Mark a buffer as clean or dirty. Not threadsafe.
  */
-static void cache_mark(struct buffer_cache *bc, struct dm_buffer *b, int list_mode)
+static void cache_mark(struct dm_buffer_cache *bc, struct dm_buffer *b, int list_mode)
 {
 	cache_write_lock(bc, b->block);
 	if (list_mode != b->list_mode) {
@@ -707,7 +707,7 @@ static void cache_mark(struct buffer_cache *bc, struct dm_buffer *b, int list_mo
  * Runs through the lru associated with 'old_mode', if the predicate matches then
  * it moves them to 'new_mode'.  Not threadsafe.
  */
-static void __cache_mark_many(struct buffer_cache *bc, int old_mode, int new_mode,
+static void __cache_mark_many(struct dm_buffer_cache *bc, int old_mode, int new_mode,
 			      b_predicate pred, void *context, struct lock_history *lh)
 {
 	struct lru_entry *le;
@@ -725,7 +725,7 @@ static void __cache_mark_many(struct buffer_cache *bc, int old_mode, int new_mod
 	}
 }
 
-static void cache_mark_many(struct buffer_cache *bc, int old_mode, int new_mode,
+static void cache_mark_many(struct dm_buffer_cache *bc, int old_mode, int new_mode,
 			    b_predicate pred, void *context)
 {
 	struct lock_history lh;
@@ -753,7 +753,7 @@ enum it_action {
 
 typedef enum it_action (*iter_fn)(struct dm_buffer *b, void *context);
 
-static void __cache_iterate(struct buffer_cache *bc, int list_mode,
+static void __cache_iterate(struct dm_buffer_cache *bc, int list_mode,
 			    iter_fn fn, void *context, struct lock_history *lh)
 {
 	struct lru *lru = &bc->lru[list_mode];
@@ -781,7 +781,7 @@ static void __cache_iterate(struct buffer_cache *bc, int list_mode,
 	} while (le != first);
 }
 
-static void cache_iterate(struct buffer_cache *bc, int list_mode,
+static void cache_iterate(struct dm_buffer_cache *bc, int list_mode,
 			  iter_fn fn, void *context)
 {
 	struct lock_history lh;
@@ -824,7 +824,7 @@ static bool __cache_insert(struct rb_root *root, struct dm_buffer *b)
 	return true;
 }
 
-static bool cache_insert(struct buffer_cache *bc, struct dm_buffer *b)
+static bool cache_insert(struct dm_buffer_cache *bc, struct dm_buffer *b)
 {
 	bool r;
 
@@ -848,7 +848,7 @@ static bool cache_insert(struct buffer_cache *bc, struct dm_buffer *b)
  *
  * Not threadsafe.
  */
-static bool cache_remove(struct buffer_cache *bc, struct dm_buffer *b)
+static bool cache_remove(struct dm_buffer_cache *bc, struct dm_buffer *b)
 {
 	bool r;
 
@@ -894,7 +894,7 @@ static struct dm_buffer *__find_next(struct rb_root *root, sector_t block)
 	return best;
 }
 
-static void __remove_range(struct buffer_cache *bc,
+static void __remove_range(struct dm_buffer_cache *bc,
 			   struct rb_root *root,
 			   sector_t begin, sector_t end,
 			   b_predicate pred, b_release release)
@@ -921,7 +921,7 @@ static void __remove_range(struct buffer_cache *bc,
 	}
 }
 
-static void cache_remove_range(struct buffer_cache *bc,
+static void cache_remove_range(struct dm_buffer_cache *bc,
 			       sector_t begin, sector_t end,
 			       b_predicate pred, b_release release)
 {
@@ -988,7 +988,7 @@ struct dm_bufio_client {
 	 */
 	unsigned long oldest_buffer;
 
-	struct buffer_cache cache;
+	struct dm_buffer_cache cache;
 };
 
 static DEFINE_STATIC_KEY_FALSE(no_sleep_enabled);
