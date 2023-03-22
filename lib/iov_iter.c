@@ -821,6 +821,34 @@ size_t copy_page_from_iter_atomic(struct page *page, unsigned offset, size_t byt
 }
 EXPORT_SYMBOL(copy_page_from_iter_atomic);
 
+size_t copy_page_to_iter_atomic(struct page *page, unsigned offset, size_t bytes,
+				struct iov_iter *i)
+{
+	char *kaddr = kmap_local_page(page);
+	char *p = kaddr + offset;
+	size_t copied = 0;
+
+	if (!page_copy_sane(page, offset, bytes) ||
+	    WARN_ON_ONCE(i->data_source))
+		goto out;
+
+	if (unlikely(iov_iter_is_pipe(i))) {
+		copied = copy_page_to_iter_pipe(page, offset, bytes, i);
+		goto out;
+	}
+
+	iterate_and_advance(i, bytes, base, len, off,
+		copyout(base, p + off, len),
+		memcpy(base, p + off, len)
+	)
+	copied = bytes;
+
+out:
+	kunmap_local(kaddr);
+	return copied;
+}
+EXPORT_SYMBOL(copy_page_to_iter_atomic);
+
 static void pipe_advance(struct iov_iter *i, size_t size)
 {
 	struct pipe_inode_info *pipe = i->pipe;
