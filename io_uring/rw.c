@@ -402,7 +402,22 @@ static struct iovec *__io_import_iovec(int ddir, struct io_kiocb *req,
 			      req->ctx->compat);
 	if (unlikely(ret < 0))
 		return ERR_PTR(ret);
-	return iovec;
+	if (iter->nr_segs != 1)
+		return iovec;
+	/*
+	 * Convert to non-vectored request if we have a single segment. If we
+	 * need to defer the request, then we no longer have to allocate and
+	 * maintain a struct io_async_rw. Additionally, we won't have cleanup
+	 * to do at completion time
+	 */
+	rw->addr = (unsigned long) iter->iov[0].iov_base;
+	rw->len = iter->iov[0].iov_len;
+	iov_iter_ubuf(iter, ddir, iter->iov[0].iov_base, rw->len);
+	/* readv -> read distance is the same as writev -> write */
+	BUILD_BUG_ON((IORING_OP_READ - IORING_OP_READV) !=
+			(IORING_OP_WRITE - IORING_OP_WRITEV));
+	req->opcode += (IORING_OP_READ - IORING_OP_READV);
+	return NULL;
 }
 
 static inline int io_import_iovec(int rw, struct io_kiocb *req,
