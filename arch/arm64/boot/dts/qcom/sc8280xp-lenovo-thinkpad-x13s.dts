@@ -1199,7 +1199,6 @@
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio107";
 		function = "gpio";
-		input-enable;
 		bias-disable;
 	};
 
