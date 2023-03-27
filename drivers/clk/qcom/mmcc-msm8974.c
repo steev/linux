@@ -2801,6 +2801,7 @@ static struct platform_driver mmcc_msm8974_driver = {
 	.driver		= {
 		.name	= "mmcc-msm8974",
 		.of_match_table = mmcc_msm8974_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(mmcc_msm8974_driver);
