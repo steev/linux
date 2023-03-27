@@ -4610,6 +4610,7 @@ static struct platform_driver gcc_sc8180x_driver = {
 	.driver		= {
 		.name	= "gcc-sc8180x",
 		.of_match_table = gcc_sc8180x_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
