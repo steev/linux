@@ -1628,6 +1628,7 @@ static struct platform_driver gcc_sdx55_driver = {
 	.driver = {
 		.name = "gcc-sdx55",
 		.of_match_table = gcc_sdx55_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

@@ -339,6 +339,7 @@ static struct platform_driver gpucc_sdm660_driver = {
 	.driver		= {
 		.name	= "gpucc-sdm660",
 		.of_match_table = gpucc_sdm660_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(gpucc_sdm660_driver);

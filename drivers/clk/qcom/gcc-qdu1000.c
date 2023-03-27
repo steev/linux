@@ -2634,6 +2634,7 @@ static struct platform_driver gcc_qdu1000_driver = {
 	.driver = {
 		.name = "gcc-qdu1000",
 		.of_match_table = gcc_qdu1000_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

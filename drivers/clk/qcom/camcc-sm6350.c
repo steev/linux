@@ -1887,6 +1887,7 @@ static struct platform_driver camcc_sm6350_driver = {
 	.driver = {
 		.name = "sm6350-camcc",
 		.of_match_table = camcc_sm6350_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

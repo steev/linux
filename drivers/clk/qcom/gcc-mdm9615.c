@@ -1720,6 +1720,7 @@ static struct platform_driver gcc_mdm9615_driver = {
 	.driver		= {
 		.name	= "gcc-mdm9615",
 		.of_match_table = gcc_mdm9615_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

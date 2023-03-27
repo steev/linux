@@ -343,6 +343,7 @@ static struct platform_driver gpucc_msm8998_driver = {
 	.driver		= {
 		.name	= "gpucc-msm8998",
 		.of_match_table = gpucc_msm8998_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(gpucc_msm8998_driver);
