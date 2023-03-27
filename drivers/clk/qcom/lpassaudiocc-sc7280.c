@@ -863,6 +863,7 @@ static struct platform_driver lpass_aon_cc_sc7280_driver = {
 		.name = "lpass_aon_cc-sc7280",
 		.of_match_table = lpass_aon_cc_sc7280_match_table,
 		.pm = &lpass_audio_cc_pm_ops,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

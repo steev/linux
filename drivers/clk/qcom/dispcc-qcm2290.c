@@ -530,6 +530,7 @@ static struct platform_driver disp_cc_qcm2290_driver = {
 	.driver = {
 		.name = "dispcc-qcm2290",
 		.of_match_table = disp_cc_qcm2290_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

@@ -3642,6 +3642,7 @@ static struct platform_driver gcc_apq8084_driver = {
 	.driver		= {
 		.name	= "gcc-apq8084",
 		.of_match_table = gcc_apq8084_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

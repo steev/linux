@@ -502,6 +502,7 @@ static struct platform_driver gpu_cc_sm6350_driver = {
 	.driver = {
 		.name = "sm6350-gpucc",
 		.of_match_table = gpu_cc_sm6350_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
