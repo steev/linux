@@ -2832,6 +2832,7 @@ static struct platform_driver gcc_qcs404_driver = {
 	.driver = {
 		.name = "gcc-qcs404",
 		.of_match_table = gcc_qcs404_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

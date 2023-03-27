@@ -96,6 +96,7 @@ static struct platform_driver apss_ipq6018_driver = {
 	.probe = apss_ipq6018_probe,
 	.driver = {
 		.name   = "qcom,apss-ipq6018-clk",
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

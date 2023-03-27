@@ -3770,6 +3770,7 @@ static struct platform_driver gcc_msm8960_driver = {
 	.driver		= {
 		.name	= "gcc-msm8960",
 		.of_match_table = gcc_msm8960_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

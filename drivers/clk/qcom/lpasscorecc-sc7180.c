@@ -469,6 +469,7 @@ static struct platform_driver lpass_core_cc_sc7180_driver = {
 		.name = "lpass_core_cc-sc7180",
 		.of_match_table = lpass_core_cc_sc7180_match_table,
 		.pm = &lpass_pm_ops,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
@@ -478,6 +479,7 @@ static struct platform_driver lpass_hm_sc7180_driver = {
 		.name = "lpass_hm-sc7180",
 		.of_match_table = lpass_hm_sc7180_match_table,
 		.pm = &lpass_pm_ops,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

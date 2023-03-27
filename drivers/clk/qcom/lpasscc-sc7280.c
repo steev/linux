@@ -154,6 +154,7 @@ static struct platform_driver lpass_cc_sc7280_driver = {
 	.driver		= {
 		.name	= "sc7280-lpasscc",
 		.of_match_table = lpass_cc_sc7280_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

@@ -4013,6 +4013,7 @@ static struct platform_driver gcc_msm8939_driver = {
 	.driver		= {
 		.name	= "gcc-msm8939",
 		.of_match_table = gcc_msm8939_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

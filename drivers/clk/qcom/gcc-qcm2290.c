@@ -3001,6 +3001,7 @@ static struct platform_driver gcc_qcm2290_driver = {
 	.driver = {
 		.name = "gcc-qcm2290",
 		.of_match_table = gcc_qcm2290_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
