@@ -721,6 +721,7 @@ static struct platform_driver disp_cc_sc7180_driver = {
 	.driver = {
 		.name = "sc7180-dispcc",
 		.of_match_table = disp_cc_sc7180_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

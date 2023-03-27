@@ -2712,6 +2712,7 @@ static struct platform_driver gcc_msm8994_driver = {
 	.driver		= {
 		.name	= "gcc-msm8994",
 		.of_match_table = gcc_msm8994_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

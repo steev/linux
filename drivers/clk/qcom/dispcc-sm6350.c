@@ -778,6 +778,7 @@ static struct platform_driver disp_cc_sm6350_driver = {
 	.driver = {
 		.name = "disp_cc-sm6350",
 		.of_match_table = disp_cc_sm6350_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
