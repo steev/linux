@@ -1845,7 +1845,7 @@ static int qcom_pcie_suspend_noirq(struct device *dev)
 	 * Set minimum bandwidth required to keep data path functional during
 	 * suspend.
 	 */
-	ret = icc_set_bw(pcie->icc_mem, 0, MBps_to_icc(250));
+	ret = icc_set_bw(pcie->icc_mem, 0, kBps_to_icc(1));
 	if (ret) {
 		dev_err(dev, "Failed to set interconnect bandwidth: %d\n", ret);
 		return ret;
