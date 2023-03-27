@@ -15,6 +15,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/reset-controller.h>
 #include <linux/slab.h>
+
+#include "common.h"
 #include "gdsc.h"
 
 #define PWR_ON_MASK		BIT(31)
@@ -319,6 +321,9 @@ static int gdsc_disable(struct generic_pm_domain *domain)
 	struct gdsc *sc = domain_to_gdsc(domain);
 	int ret;
 
+	if (!sc->state_synced)
+		return -EBUSY;
+
 	if (sc->pwrsts == PWRSTS_ON)
 		return gdsc_assert_reset(sc);
 
@@ -365,6 +370,7 @@ static int gdsc_disable(struct generic_pm_domain *domain)
 
 static int gdsc_init(struct gdsc *sc)
 {
+	struct device *dev = sc->dev;
 	u32 mask, val;
 	int on, ret;
 
@@ -452,6 +458,9 @@ static int gdsc_init(struct gdsc *sc)
 	if (!sc->pd.power_on)
 		sc->pd.power_on = gdsc_enable;
 
+	if (!dev_has_sync_state(dev))
+		sc->state_synced = true;
+
 	ret = pm_genpd_init(&sc->pd, NULL, !on);
 	if (ret)
 		goto err_disable_supply;
@@ -496,6 +505,7 @@ int gdsc_register(struct gdsc_desc *desc,
 	for (i = 0; i < num; i++) {
 		if (!scs[i])
 			continue;
+		scs[i]->dev = dev;
 		scs[i]->regmap = regmap;
 		scs[i]->rcdev = rcdev;
 		ret = gdsc_init(scs[i]);
@@ -534,6 +544,22 @@ void gdsc_unregister(struct gdsc_desc *desc)
 			pm_genpd_remove_subdomain(pd_to_genpd(dev->pm_domain), &scs[i]->pd);
 	}
 	of_genpd_del_provider(dev->of_node);
+}
+
+void gdsc_sync_state(struct device *dev)
+{
+	struct gdsc_desc *scd = qcom_cc_get_gdsc_desc(dev);
+	struct gdsc **scs = scd->scs;
+	size_t num = scd->num;
+	int i;
+
+	for (i = 0; i < num; i++) {
+		if (!scs[i])
+			continue;
+
+		scs[i]->state_synced = true;
+		pm_genpd_queue_power_off(&scs[i]->pd);
+	}
 }
 
 /*

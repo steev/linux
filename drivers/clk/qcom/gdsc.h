@@ -35,6 +35,7 @@ struct gdsc {
 	struct generic_pm_domain	pd;
 	struct generic_pm_domain	*parent;
 	struct regmap			*regmap;
+	struct device			*dev;
 	unsigned int			gdscr;
 	unsigned int			collapse_ctrl;
 	unsigned int			collapse_mask;
@@ -73,6 +74,8 @@ struct gdsc {
 
 	const char 			*supply;
 	struct regulator		*rsupply;
+
+	bool				state_synced;
 };
 
 struct gdsc_desc {
@@ -86,6 +89,7 @@ int gdsc_register(struct gdsc_desc *desc, struct reset_controller_dev *,
 		  struct regmap *);
 void gdsc_unregister(struct gdsc_desc *desc);
 int gdsc_gx_do_nothing_enable(struct generic_pm_domain *domain);
+void gdsc_sync_state(struct device *dev);
 #else
 static inline int gdsc_register(struct gdsc_desc *desc,
 				struct reset_controller_dev *rcdev,
@@ -93,6 +97,8 @@ static inline int gdsc_register(struct gdsc_desc *desc,
 {
 	return -ENOSYS;
 }
+
+static inline void gdsc_sync_state(struct device *dev) { }
 
 static inline void gdsc_unregister(struct gdsc_desc *desc) {};
 #endif /* CONFIG_QCOM_GDSC */
