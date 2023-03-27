@@ -617,16 +617,18 @@ busy:
 }
 
 /**
- * genpd_queue_power_off_work - Queue up the execution of genpd_power_off().
+ * pm_genpd_queue_power_off - Queue up the execution of genpd_power_off().
  * @genpd: PM domain to power off.
  *
  * Queue up the execution of genpd_power_off() unless it's already been done
- * before.
+ * before. The sole purpose of this being exported is to allow the providers
+ * to disable the unused domains from their sync_state callback.
  */
-static void genpd_queue_power_off_work(struct generic_pm_domain *genpd)
+void pm_genpd_queue_power_off(struct generic_pm_domain *genpd)
 {
 	queue_work(pm_wq, &genpd->power_off_work);
 }
+EXPORT_SYMBOL_GPL(pm_genpd_queue_power_off);
 
 /**
  * genpd_power_off - Remove power from a given PM domain.
@@ -1070,7 +1072,7 @@ static int __init genpd_power_off_unused(void)
 	mutex_lock(&gpd_list_lock);
 
 	list_for_each_entry(genpd, &gpd_list, gpd_list_node)
-		genpd_queue_power_off_work(genpd);
+		pm_genpd_queue_power_off(genpd);
 
 	mutex_unlock(&gpd_list_lock);
 
@@ -1405,7 +1407,7 @@ static void genpd_complete(struct device *dev)
 
 	genpd->prepared_count--;
 	if (!genpd->prepared_count)
-		genpd_queue_power_off_work(genpd);
+		pm_genpd_queue_power_off(genpd);
 
 	genpd_unlock(genpd);
 }
@@ -2677,7 +2679,7 @@ static void genpd_dev_pm_detach(struct device *dev, bool power_off)
 	}
 
 	/* Check if PM domain can be powered off after removing this device. */
-	genpd_queue_power_off_work(pd);
+	pm_genpd_queue_power_off(pd);
 
 	/* Unregister the device if it was created by genpd. */
 	if (dev->bus == &genpd_bus_type)
@@ -2692,7 +2694,7 @@ static void genpd_dev_pm_sync(struct device *dev)
 	if (IS_ERR(pd))
 		return;
 
-	genpd_queue_power_off_work(pd);
+	pm_genpd_queue_power_off(pd);
 }
 
 static int __genpd_dev_pm_attach(struct device *dev, struct device *base_dev,
@@ -2853,7 +2855,7 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
 	}
 
 	pm_runtime_enable(virt_dev);
-	genpd_queue_power_off_work(dev_to_genpd(virt_dev));
+	pm_genpd_queue_power_off(dev_to_genpd(virt_dev));
 
 	return virt_dev;
 }
