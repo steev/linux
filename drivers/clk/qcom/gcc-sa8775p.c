@@ -4766,6 +4766,7 @@ static struct platform_driver gcc_sa8775p_driver = {
 	.driver = {
 		.name = "sa8775p-gcc",
 		.of_match_table = gcc_sa8775p_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

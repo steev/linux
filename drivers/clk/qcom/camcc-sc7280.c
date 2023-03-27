@@ -2465,6 +2465,7 @@ static struct platform_driver cam_cc_sc7280_driver = {
 	.driver = {
 		.name = "cam_cc-sc7280",
 		.of_match_table = cam_cc_sc7280_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

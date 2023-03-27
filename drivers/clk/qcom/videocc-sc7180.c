@@ -234,6 +234,7 @@ static struct platform_driver video_cc_sc7180_driver = {
 	.driver = {
 		.name = "sc7180-videocc",
 		.of_match_table = video_cc_sc7180_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

@@ -2859,6 +2859,7 @@ static struct platform_driver mmcc_660_driver = {
 	.driver		= {
 		.name	= "mmcc-sdm660",
 		.of_match_table = mmcc_660_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(mmcc_660_driver);
