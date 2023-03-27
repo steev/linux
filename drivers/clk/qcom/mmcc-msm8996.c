@@ -3635,6 +3635,7 @@ static struct platform_driver mmcc_msm8996_driver = {
 	.driver		= {
 		.name	= "mmcc-msm8996",
 		.of_match_table = mmcc_msm8996_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(mmcc_msm8996_driver);

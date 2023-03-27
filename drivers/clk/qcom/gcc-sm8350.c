@@ -3855,6 +3855,7 @@ static struct platform_driver gcc_sm8350_driver = {
 	.driver = {
 		.name = "sm8350-gcc",
 		.of_match_table = gcc_sm8350_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

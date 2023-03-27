@@ -473,6 +473,7 @@ static struct platform_driver gpu_cc_sc7280_driver = {
 	.driver = {
 		.name = "gpu_cc-sc7280",
 		.of_match_table = gpu_cc_sc7280_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
