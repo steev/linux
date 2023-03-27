@@ -2566,6 +2566,7 @@ static struct platform_driver gcc_sm6350_driver = {
 	.driver = {
 		.name = "gcc-sm6350",
 		.of_match_table = gcc_sm6350_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
