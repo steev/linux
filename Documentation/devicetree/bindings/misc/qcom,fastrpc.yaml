@@ -64,7 +64,7 @@ properties:
     const: 0
 
 patternProperties:
-  "(compute-)?cb@[0-9]*$":
+  "(compute-)?cb(@[0-9]*)?$":
     type: object
 
     description: >
@@ -89,7 +89,6 @@ patternProperties:
 
     required:
       - compatible
-      - reg
 
     additionalProperties: false
 
