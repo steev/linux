@@ -3428,6 +3428,7 @@ static struct platform_driver gcc_ipq806x_driver = {
 	.driver		= {
 		.name	= "gcc-ipq806x",
 		.of_match_table = gcc_ipq806x_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

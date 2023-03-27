@@ -2485,6 +2485,7 @@ static struct platform_driver gcc_sdm660_driver = {
 	.driver		= {
 		.name	= "gcc-sdm660",
 		.of_match_table = gcc_sdm660_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
