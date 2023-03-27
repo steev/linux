@@ -312,6 +312,7 @@ static struct platform_driver gpu_cc_sm8150_driver = {
 	.driver = {
 		.name = "sm8150-gpucc",
 		.of_match_table = gpu_cc_sm8150_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

@@ -463,6 +463,7 @@ static struct platform_driver lcc_ipq806x_driver = {
 	.driver		= {
 		.name	= "lcc-ipq806x",
 		.of_match_table = lcc_ipq806x_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(lcc_ipq806x_driver);
