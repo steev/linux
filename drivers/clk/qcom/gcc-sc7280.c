@@ -3482,6 +3482,7 @@ static struct platform_driver gcc_sc7280_driver = {
 	.driver = {
 		.name = "gcc-sc7280",
 		.of_match_table = gcc_sc7280_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

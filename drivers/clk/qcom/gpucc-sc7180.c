@@ -254,6 +254,7 @@ static struct platform_driver gpu_cc_sc7180_driver = {
 	.driver = {
 		.name = "sc7180-gpucc",
 		.of_match_table = gpu_cc_sc7180_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 

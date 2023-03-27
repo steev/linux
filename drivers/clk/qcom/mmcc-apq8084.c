@@ -3398,6 +3398,7 @@ static struct platform_driver mmcc_apq8084_driver = {
 	.driver		= {
 		.name	= "mmcc-apq8084",
 		.of_match_table = mmcc_apq8084_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(mmcc_apq8084_driver);

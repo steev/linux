@@ -4741,6 +4741,7 @@ static struct platform_driver gcc_ipq8074_driver = {
 	.driver = {
 		.name   = "qcom,gcc-ipq8074",
 		.of_match_table = gcc_ipq8074_match_table,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
