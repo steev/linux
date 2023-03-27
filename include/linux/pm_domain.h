@@ -231,6 +231,7 @@ int pm_genpd_remove_subdomain(struct generic_pm_domain *genpd,
 int pm_genpd_init(struct generic_pm_domain *genpd,
 		  struct dev_power_governor *gov, bool is_off);
 int pm_genpd_remove(struct generic_pm_domain *genpd);
+void pm_genpd_queue_power_off(struct generic_pm_domain *genpd);
 int dev_pm_genpd_set_performance_state(struct device *dev, unsigned int state);
 int dev_pm_genpd_add_notifier(struct device *dev, struct notifier_block *nb);
 int dev_pm_genpd_remove_notifier(struct device *dev);
@@ -277,6 +278,9 @@ static inline int pm_genpd_remove(struct generic_pm_domain *genpd)
 {
 	return -EOPNOTSUPP;
 }
+
+static inline void pm_genpd_queue_power_off(struct generic_pm_domain *genpd)
+{ }
 
 static inline int dev_pm_genpd_set_performance_state(struct device *dev,
 						     unsigned int state)
