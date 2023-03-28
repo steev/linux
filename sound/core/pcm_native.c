@@ -3516,23 +3516,28 @@ static void __user **snd_map_bufs(struct snd_pcm_runtime *runtime,
 				  struct iov_iter *iter,
 				  snd_pcm_uframes_t *frames, int max_segs)
 {
+	int nr_segs = iovec_nr_user_vecs(iter);
 	void __user **bufs;
+	struct iovec iov;
 	unsigned long i;
 
 	if (!iter->user_backed)
 		return ERR_PTR(-EFAULT);
-	if (!iter->nr_segs)
+	if (!nr_segs)
 		return ERR_PTR(-EINVAL);
-	if (iter->nr_segs > max_segs || iter->nr_segs != runtime->channels)
+	if (nr_segs > max_segs || nr_segs != runtime->channels)
 		return ERR_PTR(-EINVAL);
-	if (!frame_aligned(runtime, iter->iov->iov_len))
+	iov = iov_iter_iovec(iter);
+	if (!frame_aligned(runtime, iov.iov_len))
 		return ERR_PTR(-EINVAL);
-	bufs = kmalloc_array(iter->nr_segs, sizeof(void *), GFP_KERNEL);
+	bufs = kmalloc_array(nr_segs, sizeof(void *), GFP_KERNEL);
 	if (bufs == NULL)
 		return ERR_PTR(-ENOMEM);
-	for (i = 0; i < iter->nr_segs; ++i)
+	bufs[0] = iov.iov_base;
+	/* we know it's an ITER_IOVEC is nr_segs > 1 */
+	for (i = 1; i < nr_segs; ++i)
 		bufs[i] = iter->iov[i].iov_base;
-	*frames = bytes_to_samples(runtime, iter->iov->iov_len);
+	*frames = bytes_to_samples(runtime, iov.iov_len);
 	return bufs;
 }
 
