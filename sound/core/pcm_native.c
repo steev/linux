@@ -3512,13 +3512,36 @@ static ssize_t snd_pcm_write(struct file *file, const char __user *buf,
 	return result;
 }
 
+static void __user **snd_map_bufs(struct snd_pcm_runtime *runtime,
+				  struct iov_iter *iter,
+				  snd_pcm_uframes_t *frames, int max_segs)
+{
+	void __user **bufs;
+	unsigned long i;
+
+	if (!iter->user_backed)
+		return ERR_PTR(-EFAULT);
+	if (!iter->nr_segs)
+		return ERR_PTR(-EINVAL);
+	if (iter->nr_segs > max_segs || iter->nr_segs != runtime->channels)
+		return ERR_PTR(-EINVAL);
+	if (!frame_aligned(runtime, iter->iov->iov_len))
+		return ERR_PTR(-EINVAL);
+	bufs = kmalloc_array(iter->nr_segs, sizeof(void *), GFP_KERNEL);
+	if (bufs == NULL)
+		return ERR_PTR(-ENOMEM);
+	for (i = 0; i < iter->nr_segs; ++i)
+		bufs[i] = iter->iov[i].iov_base;
+	*frames = bytes_to_samples(runtime, iter->iov->iov_len);
+	return bufs;
+}
+
 static ssize_t snd_pcm_readv(struct kiocb *iocb, struct iov_iter *to)
 {
 	struct snd_pcm_file *pcm_file;
 	struct snd_pcm_substream *substream;
 	struct snd_pcm_runtime *runtime;
 	snd_pcm_sframes_t result;
-	unsigned long i;
 	void __user **bufs;
 	snd_pcm_uframes_t frames;
 
@@ -3530,18 +3553,9 @@ static ssize_t snd_pcm_readv(struct kiocb *iocb, struct iov_iter *to)
 	if (runtime->state == SNDRV_PCM_STATE_OPEN ||
 	    runtime->state == SNDRV_PCM_STATE_DISCONNECTED)
 		return -EBADFD;
-	if (!iter_is_iovec(to))
-		return -EINVAL;
-	if (to->nr_segs > 1024 || to->nr_segs != runtime->channels)
-		return -EINVAL;
-	if (!frame_aligned(runtime, to->iov->iov_len))
-		return -EINVAL;
-	frames = bytes_to_samples(runtime, to->iov->iov_len);
-	bufs = kmalloc_array(to->nr_segs, sizeof(void *), GFP_KERNEL);
-	if (bufs == NULL)
-		return -ENOMEM;
-	for (i = 0; i < to->nr_segs; ++i)
-		bufs[i] = to->iov[i].iov_base;
+	bufs = snd_map_bufs(runtime, to, &frames, 1024);
+	if (IS_ERR(bufs))
+		return PTR_ERR(bufs);
 	result = snd_pcm_lib_readv(substream, bufs, frames);
 	if (result > 0)
 		result = frames_to_bytes(runtime, result);
@@ -3555,7 +3569,6 @@ static ssize_t snd_pcm_writev(struct kiocb *iocb, struct iov_iter *from)
 	struct snd_pcm_substream *substream;
 	struct snd_pcm_runtime *runtime;
 	snd_pcm_sframes_t result;
-	unsigned long i;
 	void __user **bufs;
 	snd_pcm_uframes_t frames;
 
@@ -3567,17 +3580,9 @@ static ssize_t snd_pcm_writev(struct kiocb *iocb, struct iov_iter *from)
 	if (runtime->state == SNDRV_PCM_STATE_OPEN ||
 	    runtime->state == SNDRV_PCM_STATE_DISCONNECTED)
 		return -EBADFD;
-	if (!iter_is_iovec(from))
-		return -EINVAL;
-	if (from->nr_segs > 128 || from->nr_segs != runtime->channels ||
-	    !frame_aligned(runtime, from->iov->iov_len))
-		return -EINVAL;
-	frames = bytes_to_samples(runtime, from->iov->iov_len);
-	bufs = kmalloc_array(from->nr_segs, sizeof(void *), GFP_KERNEL);
-	if (bufs == NULL)
-		return -ENOMEM;
-	for (i = 0; i < from->nr_segs; ++i)
-		bufs[i] = from->iov[i].iov_base;
+	bufs = snd_map_bufs(runtime, from, &frames, 128);
+	if (IS_ERR(bufs))
+		return PTR_ERR(bufs);
 	result = snd_pcm_lib_writev(substream, bufs, frames);
 	if (result > 0)
 		result = frames_to_bytes(runtime, result);
