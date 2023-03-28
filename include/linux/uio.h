@@ -168,6 +168,15 @@ static inline struct iovec iov_iter_iovec(const struct iov_iter *iter)
 	}
 }
 
+static inline int iovec_nr_user_vecs(const struct iov_iter *iter)
+{
+	if (iter_is_ubuf(iter))
+		return 1;
+	else if (iter->iter_type == ITER_IOVEC)
+		return iter->nr_segs;
+	return 0;
+}
+
 size_t copy_page_from_iter_atomic(struct page *page, unsigned offset,
 				  size_t bytes, struct iov_iter *i);
 void iov_iter_advance(struct iov_iter *i, size_t bytes);
