@@ -262,21 +262,22 @@ static ssize_t hfi1_write_iter(struct kiocb *kiocb, struct iov_iter *from)
 	struct hfi1_user_sdma_pkt_q *pq;
 	struct hfi1_user_sdma_comp_q *cq = fd->cq;
 	int done = 0, reqs = 0;
-	unsigned long dim = from->nr_segs;
+	unsigned long dim;
 	int idx;
 
 	if (!HFI1_CAP_IS_KSET(SDMA))
 		return -EINVAL;
+	if (!from->user_backed)
+		return -EFAULT;
+	dim = iovec_nr_user_vecs(from);
+	if (!dim)
+		return -EINVAL;
+
 	idx = srcu_read_lock(&fd->pq_srcu);
 	pq = srcu_dereference(fd->pq, &fd->pq_srcu);
 	if (!cq || !pq) {
 		srcu_read_unlock(&fd->pq_srcu, idx);
 		return -EIO;
-	}
-
-	if (!iter_is_iovec(from) || !dim) {
-		srcu_read_unlock(&fd->pq_srcu, idx);
-		return -EINVAL;
 	}
 
 	trace_hfi1_sdma_request(fd->dd, fd->uctxt->ctxt, fd->subctxt, dim);
@@ -286,20 +287,27 @@ static ssize_t hfi1_write_iter(struct kiocb *kiocb, struct iov_iter *from)
 		return -ENOSPC;
 	}
 
-	while (dim) {
-		int ret;
+	if (dim == 1) {
+		struct iovec iov = iov_iter_iovec(from);
 		unsigned long count = 0;
 
-		ret = hfi1_user_sdma_process_request(
-			fd, (struct iovec *)(from->iov + done),
-			dim, &count);
-		if (ret) {
-			reqs = ret;
-			break;
+		reqs = hfi1_user_sdma_process_request(fd, &iov, 1, &count);
+	} else {
+		while (dim) {
+			int ret;
+			unsigned long count = 0;
+
+			ret = hfi1_user_sdma_process_request(fd,
+					(struct iovec *)(from->iov + done),
+					dim, &count);
+			if (ret) {
+				reqs = ret;
+				break;
+			}
+			dim -= count;
+			done += count;
+			reqs++;
 		}
-		dim -= count;
-		done += count;
-		reqs++;
 	}
 
 	srcu_read_unlock(&fd->pq_srcu, idx);
