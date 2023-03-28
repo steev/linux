@@ -223,6 +223,9 @@ int ssp_set(struct task_struct *target, const struct user_regset *regset,
 	    !ssp_active(target, regset))
 		return -ENODEV;
 
+	if (pos != 0 || count != sizeof(user_ssp))
+		return -EINVAL;
+
 	r = user_regset_copyin(&pos, &count, &kbuf, &ubuf, &user_ssp, 0, -1);
 	if (r)
 		return r;
