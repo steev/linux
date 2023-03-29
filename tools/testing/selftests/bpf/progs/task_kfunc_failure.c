@@ -109,6 +109,7 @@ int BPF_PROG(task_kfunc_acquire_unreleased, struct task_struct *task, u64 clone_
 	acquired = bpf_task_acquire(task);
 
 	/* Acquired task is never released. */
+	__sink(acquired);
 
 	return 0;
 }
@@ -205,7 +206,7 @@ int BPF_PROG(task_kfunc_get_unreleased, struct task_struct *task, u64 clone_flag
 }
 
 SEC("tp_btf/task_newtask")
-__failure __msg("arg#0 is untrusted_ptr_or_null_ expected ptr_ or socket")
+__failure __msg("Possibly NULL pointer passed to trusted arg0")
 int BPF_PROG(task_kfunc_release_untrusted, struct task_struct *task, u64 clone_flags)
 {
 	struct __tasks_kfunc_map_value *v;
@@ -233,7 +234,7 @@ int BPF_PROG(task_kfunc_release_fp, struct task_struct *task, u64 clone_flags)
 }
 
 SEC("tp_btf/task_newtask")
-__failure __msg("arg#0 is ptr_or_null_ expected ptr_ or socket")
+__failure __msg("Possibly NULL pointer passed to trusted arg0")
 int BPF_PROG(task_kfunc_release_null, struct task_struct *task, u64 clone_flags)
 {
 	struct __tasks_kfunc_map_value local, *v;
@@ -276,7 +277,7 @@ int BPF_PROG(task_kfunc_release_unacquired, struct task_struct *task, u64 clone_
 }
 
 SEC("tp_btf/task_newtask")
-__failure __msg("arg#0 is ptr_or_null_ expected ptr_ or socket")
+__failure __msg("Possibly NULL pointer passed to trusted arg0")
 int BPF_PROG(task_kfunc_from_pid_no_null_check, struct task_struct *task, u64 clone_flags)
 {
 	struct task_struct *acquired;
@@ -298,5 +299,41 @@ int BPF_PROG(task_kfunc_from_lsm_task_free, struct task_struct *task)
 	/* the argument of lsm task_free hook is untrusted. */
 	acquired = bpf_task_acquire(task);
 	bpf_task_release(acquired);
+	return 0;
+}
+
+SEC("tp_btf/task_newtask")
+__failure __msg("access beyond the end of member comm")
+int BPF_PROG(task_access_comm1, struct task_struct *task, u64 clone_flags)
+{
+	bpf_strncmp(task->comm, 17, "foo");
+	return 0;
+}
+
+SEC("tp_btf/task_newtask")
+__failure __msg("access beyond the end of member comm")
+int BPF_PROG(task_access_comm2, struct task_struct *task, u64 clone_flags)
+{
+	bpf_strncmp(task->comm + 1, 16, "foo");
+	return 0;
+}
+
+SEC("tp_btf/task_newtask")
+__failure __msg("write into memory")
+int BPF_PROG(task_access_comm3, struct task_struct *task, u64 clone_flags)
+{
+	bpf_probe_read_kernel(task->comm, 16, task->comm);
+	return 0;
+}
+
+SEC("fentry/__set_task_comm")
+__failure __msg("R1 type=ptr_ expected")
+int BPF_PROG(task_access_comm4, struct task_struct *task, const char *buf, bool exec)
+{
+	/*
+	 * task->comm is a legacy ptr_to_btf_id. The verifier cannot guarantee
+	 * its safety. Hence it cannot be accessed with normal load insns.
+	 */
+	bpf_strncmp(task->comm, 16, "foo");
 	return 0;
 }
