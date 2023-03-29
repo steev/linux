@@ -1188,7 +1188,7 @@ int mlx5e_open_rq(struct mlx5e_params *params, struct mlx5e_rq_param *param,
 		__set_bit(MLX5E_RQ_STATE_CSUM_FULL, &rq->state);
 
 	if (params->rx_dim_enabled)
-		__set_bit(MLX5E_RQ_STATE_AM, &rq->state);
+		__set_bit(MLX5E_RQ_STATE_DIM, &rq->state);
 
 	/* We disable csum_complete when XDP is enabled since
 	 * XDP programs might manipulate packets which will render
@@ -1664,7 +1664,7 @@ int mlx5e_open_txqsq(struct mlx5e_channel *c, u32 tisn, int txq_ix,
 		mlx5e_set_sq_maxrate(c->netdev, sq, tx_rate);
 
 	if (params->tx_dim_enabled)
-		sq->state |= BIT(MLX5E_SQ_STATE_AM);
+		sq->state |= BIT(MLX5E_SQ_STATE_DIM);
 
 	return 0;
 
@@ -5725,8 +5725,8 @@ int mlx5e_attach_netdev(struct mlx5e_priv *priv)
 
 	/* Validate the max_wqe_size_sq capability. */
 	if (WARN_ON_ONCE(mlx5e_get_max_sq_wqebbs(priv->mdev) < MLX5E_MAX_TX_WQEBBS)) {
-		mlx5_core_warn(priv->mdev, "MLX5E: Max SQ WQEBBs firmware capability: %u, needed %lu\n",
-			       mlx5e_get_max_sq_wqebbs(priv->mdev), MLX5E_MAX_TX_WQEBBS);
+		mlx5_core_warn(priv->mdev, "MLX5E: Max SQ WQEBBs firmware capability: %u, needed %u\n",
+			       mlx5e_get_max_sq_wqebbs(priv->mdev), (unsigned int)MLX5E_MAX_TX_WQEBBS);
 		return -EIO;
 	}
 

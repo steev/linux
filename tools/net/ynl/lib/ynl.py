@@ -68,6 +68,11 @@ class Netlink:
 
 
 class NlAttr:
+    type_formats = { 'u8' : ('B', 1), 's8' : ('b', 1),
+                     'u16': ('H', 2), 's16': ('h', 2),
+                     'u32': ('I', 4), 's32': ('i', 4),
+                     'u64': ('Q', 8), 's64': ('q', 8) }
+
     def __init__(self, raw, offset):
         self._len, self._type = struct.unpack("HH", raw[offset:offset + 4])
         self.type = self._type & ~Netlink.NLA_TYPE_MASK
@@ -92,6 +97,21 @@ class NlAttr:
 
     def as_bin(self):
         return self.raw
+
+    def as_c_array(self, type):
+        format, _ = self.type_formats[type]
+        return list({ x[0] for x in struct.iter_unpack(format, self.raw) })
+
+    def as_struct(self, members):
+        value = dict()
+        offset = 0
+        for m in members:
+            # TODO: handle non-scalar members
+            format, size = self.type_formats[m.type]
+            decoded = struct.unpack_from(format, self.raw, offset)
+            offset += size
+            value[m.name] = decoded[0]
+        return value
 
     def __repr__(self):
         return f"[type:{self.type} len:{self._len}] {self.raw}"
@@ -258,14 +278,22 @@ def _genl_load_families():
 
 
 class GenlMsg:
-    def __init__(self, nl_msg):
+    def __init__(self, nl_msg, fixed_header_members=[]):
         self.nl = nl_msg
 
         self.hdr = nl_msg.raw[0:4]
-        self.raw = nl_msg.raw[4:]
+        offset = 4
 
         self.genl_cmd, self.genl_version, _ = struct.unpack("BBH", self.hdr)
 
+        self.fixed_header_attrs = dict()
+        for m in fixed_header_members:
+            format, size = NlAttr.type_formats[m.type]
+            decoded = struct.unpack_from(format, nl_msg.raw, offset)
+            offset += size
+            self.fixed_header_attrs[m.name] = decoded[0]
+
+        self.raw = nl_msg.raw[offset:]
         self.raw_attrs = NlAttrs(self.raw)
 
     def __repr__(self):
@@ -334,8 +362,14 @@ class YnlFamily(SpecFamily):
                 attr_payload += self._add_attr(attr['nested-attributes'], subname, subvalue)
         elif attr["type"] == 'flag':
             attr_payload = b''
+        elif attr["type"] == 'u8':
+            attr_payload = struct.pack("B", int(value))
+        elif attr["type"] == 'u16':
+            attr_payload = struct.pack("H", int(value))
         elif attr["type"] == 'u32':
             attr_payload = struct.pack("I", int(value))
+        elif attr["type"] == 'u64':
+            attr_payload = struct.pack("Q", int(value))
         elif attr["type"] == 'string':
             attr_payload = str(value).encode('ascii') + b'\x00'
         elif attr["type"] == 'binary':
@@ -361,6 +395,15 @@ class YnlFamily(SpecFamily):
             value = enum.entries_by_val[raw - i].name
         rsp[attr_spec['name']] = value
 
+    def _decode_binary(self, attr, attr_spec):
+        if attr_spec.struct_name:
+            decoded = attr.as_struct(self.consts[attr_spec.struct_name])
+        elif attr_spec.sub_type:
+            decoded = attr.as_c_array(attr_spec.sub_type)
+        else:
+            decoded = attr.as_bin()
+        return decoded
+
     def _decode(self, attrs, space):
         attr_space = self.attr_sets[space]
         rsp = dict()
@@ -371,6 +414,8 @@ class YnlFamily(SpecFamily):
                 decoded = subdict
             elif attr_spec['type'] == 'u8':
                 decoded = attr.as_u8()
+            elif attr_spec['type'] == 'u16':
+                decoded = attr.as_u16()
             elif attr_spec['type'] == 'u32':
                 decoded = attr.as_u32()
             elif attr_spec['type'] == 'u64':
@@ -378,7 +423,7 @@ class YnlFamily(SpecFamily):
             elif attr_spec["type"] == 'string':
                 decoded = attr.as_strz()
             elif attr_spec["type"] == 'binary':
-                decoded = attr.as_bin()
+                decoded = self._decode_binary(attr, attr_spec)
             elif attr_spec["type"] == 'flag':
                 decoded = True
             else:
@@ -472,6 +517,13 @@ class YnlFamily(SpecFamily):
 
         req_seq = random.randint(1024, 65535)
         msg = _genl_msg(self.family.family_id, nl_flags, op.req_value, 1, req_seq)
+        fixed_header_members = []
+        if op.fixed_header:
+            fixed_header_members = self.consts[op.fixed_header].members
+            for m in fixed_header_members:
+                value = vals.pop(m.name)
+                format, _ = NlAttr.type_formats[m.type]
+                msg += struct.pack(format, value)
         for name, value in vals.items():
             msg += self._add_attr(op.attr_set.name, name, value)
         msg = _genl_msg_finalize(msg)
@@ -498,7 +550,7 @@ class YnlFamily(SpecFamily):
                     done = True
                     break
 
-                gm = GenlMsg(nl_msg)
+                gm = GenlMsg(nl_msg, fixed_header_members)
                 # Check if this is a reply to our request
                 if nl_msg.nl_seq != req_seq or gm.genl_cmd != op.rsp_value:
                     if gm.genl_cmd in self.async_msg_ids:
@@ -508,7 +560,8 @@ class YnlFamily(SpecFamily):
                         print('Unexpected message: ' + repr(gm))
                         continue
 
-                rsp.append(self._decode(gm.raw_attrs, op.attr_set.name))
+                rsp.append(self._decode(gm.raw_attrs, op.attr_set.name)
+                           | gm.fixed_header_attrs)
 
         if not rsp:
             return None
