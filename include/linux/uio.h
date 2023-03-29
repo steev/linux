@@ -11,7 +11,6 @@
 #include <uapi/linux/uio.h>
 
 struct page;
-struct pipe_inode_info;
 
 typedef unsigned int __bitwise iov_iter_extraction_t;
 
@@ -25,7 +24,6 @@ enum iter_type {
 	ITER_IOVEC,
 	ITER_KVEC,
 	ITER_BVEC,
-	ITER_PIPE,
 	ITER_XARRAY,
 	ITER_DISCARD,
 	ITER_UBUF,
@@ -55,15 +53,10 @@ struct iov_iter {
 		const struct kvec *kvec;
 		const struct bio_vec *bvec;
 		struct xarray *xarray;
-		struct pipe_inode_info *pipe;
 		void __user *ubuf;
 	};
 	union {
 		unsigned long nr_segs;
-		struct {
-			unsigned int head;
-			unsigned int start_head;
-		};
 		loff_t xarray_start;
 	};
 };
@@ -99,11 +92,6 @@ static inline bool iov_iter_is_kvec(const struct iov_iter *i)
 static inline bool iov_iter_is_bvec(const struct iov_iter *i)
 {
 	return iov_iter_type(i) == ITER_BVEC;
-}
-
-static inline bool iov_iter_is_pipe(const struct iov_iter *i)
-{
-	return iov_iter_type(i) == ITER_PIPE;
 }
 
 static inline bool iov_iter_is_discard(const struct iov_iter *i)
@@ -143,13 +131,38 @@ static inline size_t iov_length(const struct iovec *iov, unsigned long nr_segs)
 	return ret;
 }
 
+/*
+ * Don't assume we're called with ITER_IOVEC, enable usage of ITER_UBUF
+ * as well by simply filling in the iovec.
+ */
 static inline struct iovec iov_iter_iovec(const struct iov_iter *iter)
 {
-	return (struct iovec) {
-		.iov_base = iter->iov->iov_base + iter->iov_offset,
-		.iov_len = min(iter->count,
-			       iter->iov->iov_len - iter->iov_offset),
-	};
+	if (WARN_ON_ONCE(!iter->user_backed)) {
+		return (struct iovec) {
+			.iov_base = NULL,
+			.iov_len = 0
+		};
+	} else if (iter_is_ubuf(iter)) {
+		return (struct iovec) {
+			.iov_base = iter->ubuf + iter->iov_offset,
+			.iov_len = iter->count
+		};
+	} else {
+		return (struct iovec) {
+			.iov_base = iter->iov->iov_base + iter->iov_offset,
+			.iov_len = min(iter->count,
+				       iter->iov->iov_len - iter->iov_offset),
+		};
+	}
+}
+
+static inline int iovec_nr_user_vecs(const struct iov_iter *iter)
+{
+	if (iter_is_ubuf(iter))
+		return 1;
+	else if (iter->iter_type == ITER_IOVEC)
+		return iter->nr_segs;
+	return 0;
 }
 
 size_t copy_page_from_iter_atomic(struct page *page, unsigned offset,
@@ -249,8 +262,6 @@ void iov_iter_kvec(struct iov_iter *i, unsigned int direction, const struct kvec
 			unsigned long nr_segs, size_t count);
 void iov_iter_bvec(struct iov_iter *i, unsigned int direction, const struct bio_vec *bvec,
 			unsigned long nr_segs, size_t count);
-void iov_iter_pipe(struct iov_iter *i, unsigned int direction, struct pipe_inode_info *pipe,
-			size_t count);
 void iov_iter_discard(struct iov_iter *i, unsigned int direction, size_t count);
 void iov_iter_xarray(struct iov_iter *i, unsigned int direction, struct xarray *xarray,
 		     loff_t start, size_t count);

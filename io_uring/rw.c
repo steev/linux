@@ -283,16 +283,16 @@ static inline int io_fixup_rw_res(struct io_kiocb *req, long res)
 	return res;
 }
 
-static void io_req_rw_complete(struct io_kiocb *req, bool *locked)
+static void io_req_rw_complete(struct io_kiocb *req, struct io_tw_state *ts)
 {
 	io_req_io_end(req);
 
 	if (req->flags & (REQ_F_BUFFER_SELECTED|REQ_F_BUFFER_RING)) {
-		unsigned issue_flags = *locked ? 0 : IO_URING_F_UNLOCKED;
+		unsigned issue_flags = ts->locked ? 0 : IO_URING_F_UNLOCKED;
 
 		req->cqe.flags |= io_put_kbuf(req, issue_flags);
 	}
-	io_req_task_complete(req, locked);
+	io_req_task_complete(req, ts);
 }
 
 static void io_complete_rw(struct kiocb *kiocb, long res)
@@ -402,7 +402,22 @@ static struct iovec *__io_import_iovec(int ddir, struct io_kiocb *req,
 			      req->ctx->compat);
 	if (unlikely(ret < 0))
 		return ERR_PTR(ret);
-	return iovec;
+	if (iter->nr_segs != 1)
+		return iovec;
+	/*
+	 * Convert to non-vectored request if we have a single segment. If we
+	 * need to defer the request, then we no longer have to allocate and
+	 * maintain a struct io_async_rw. Additionally, we won't have cleanup
+	 * to do at completion time
+	 */
+	rw->addr = (unsigned long) iter->iov[0].iov_base;
+	rw->len = iter->iov[0].iov_len;
+	iov_iter_ubuf(iter, ddir, iter->iov[0].iov_base, rw->len);
+	/* readv -> read distance is the same as writev -> write */
+	BUILD_BUG_ON((IORING_OP_READ - IORING_OP_READV) !=
+			(IORING_OP_WRITE - IORING_OP_WRITEV));
+	req->opcode += (IORING_OP_READ - IORING_OP_READV);
+	return NULL;
 }
 
 static inline int io_import_iovec(int rw, struct io_kiocb *req,
@@ -1002,7 +1017,7 @@ void io_rw_fail(struct io_kiocb *req)
 int io_do_iopoll(struct io_ring_ctx *ctx, bool force_nonspin)
 {
 	struct io_wq_work_node *pos, *start, *prev;
-	unsigned int poll_flags = BLK_POLL_NOSLEEP;
+	unsigned int poll_flags = 0;
 	DEFINE_IO_COMP_BATCH(iob);
 	int nr_events = 0;
 
