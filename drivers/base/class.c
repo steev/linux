@@ -87,7 +87,7 @@ static const struct kobj_type class_ktype = {
 static struct kset *class_kset;
 
 
-int class_create_file_ns(struct class *cls, const struct class_attribute *attr,
+int class_create_file_ns(const struct class *cls, const struct class_attribute *attr,
 			 const void *ns)
 {
 	int error;
@@ -101,7 +101,7 @@ int class_create_file_ns(struct class *cls, const struct class_attribute *attr,
 }
 EXPORT_SYMBOL_GPL(class_create_file_ns);
 
-void class_remove_file_ns(struct class *cls, const struct class_attribute *attr,
+void class_remove_file_ns(const struct class *cls, const struct class_attribute *attr,
 			  const void *ns)
 {
 	if (cls)
@@ -142,21 +142,22 @@ static void klist_class_dev_put(struct klist_node *n)
 	put_device(dev);
 }
 
-static int class_add_groups(struct class *cls,
+static int class_add_groups(const struct class *cls,
 			    const struct attribute_group **groups)
 {
 	return sysfs_create_groups(&cls->p->subsys.kobj, groups);
 }
 
-static void class_remove_groups(struct class *cls,
+static void class_remove_groups(const struct class *cls,
 				const struct attribute_group **groups)
 {
 	return sysfs_remove_groups(&cls->p->subsys.kobj, groups);
 }
 
-int __class_register(struct class *cls, struct lock_class_key *key)
+int class_register(struct class *cls)
 {
 	struct subsys_private *cp;
+	struct lock_class_key *key;
 	int error;
 
 	pr_debug("device class '%s': registering\n", cls->name);
@@ -167,6 +168,8 @@ int __class_register(struct class *cls, struct lock_class_key *key)
 	klist_init(&cp->klist_devices, klist_class_dev_get, klist_class_dev_put);
 	INIT_LIST_HEAD(&cp->interfaces);
 	kset_init(&cp->glue_dirs);
+	key = &cp->lock_key;
+	lockdep_register_key(key);
 	__mutex_init(&cp->mutex, "subsys mutex", key);
 	error = kobject_set_name(&cp->subsys.kobj, "%s", cls->name);
 	if (error) {
@@ -178,13 +181,7 @@ int __class_register(struct class *cls, struct lock_class_key *key)
 	if (!cls->dev_kobj)
 		cls->dev_kobj = sysfs_dev_char_kobj;
 
-#if defined(CONFIG_BLOCK)
-	/* let the block class directory show up in the root of sysfs */
-	if (!sysfs_deprecated || cls != &block_class)
-		cp->subsys.kobj.kset = class_kset;
-#else
 	cp->subsys.kobj.kset = class_kset;
-#endif
 	cp->subsys.kobj.ktype = &class_ktype;
 	cp->class = cls;
 	cls->p = cp;
@@ -207,9 +204,9 @@ err_out:
 	cls->p = NULL;
 	return error;
 }
-EXPORT_SYMBOL_GPL(__class_register);
+EXPORT_SYMBOL_GPL(class_register);
 
-void class_unregister(struct class *cls)
+void class_unregister(const struct class *cls)
 {
 	pr_debug("device class '%s': unregistering\n", cls->name);
 	class_remove_groups(cls, cls->class_groups);
@@ -224,10 +221,8 @@ static void class_create_release(struct class *cls)
 }
 
 /**
- * __class_create - create a struct class structure
- * @owner: pointer to the module that is to "own" this struct class
+ * class_create - create a struct class structure
  * @name: pointer to a string for the name of this class.
- * @key: the lock_class_key for this class; used by mutex lock debugging
  *
  * This is used to create a struct class pointer that can then be used
  * in calls to device_create().
@@ -237,8 +232,7 @@ static void class_create_release(struct class *cls)
  * Note, the pointer created here is to be destroyed when finished by
  * making a call to class_destroy().
  */
-struct class *__class_create(struct module *owner, const char *name,
-			     struct lock_class_key *key)
+struct class *class_create(const char *name)
 {
 	struct class *cls;
 	int retval;
@@ -250,10 +244,9 @@ struct class *__class_create(struct module *owner, const char *name,
 	}
 
 	cls->name = name;
-	cls->owner = owner;
 	cls->class_release = class_create_release;
 
-	retval = __class_register(cls, key);
+	retval = class_register(cls);
 	if (retval)
 		goto error;
 
@@ -263,7 +256,7 @@ error:
 	kfree(cls);
 	return ERR_PTR(retval);
 }
-EXPORT_SYMBOL_GPL(__class_create);
+EXPORT_SYMBOL_GPL(class_create);
 
 /**
  * class_destroy - destroys a struct class structure
@@ -272,7 +265,7 @@ EXPORT_SYMBOL_GPL(__class_create);
  * Note, the pointer to be destroyed must have been created with a call
  * to class_create().
  */
-void class_destroy(struct class *cls)
+void class_destroy(const struct class *cls)
 {
 	if (IS_ERR_OR_NULL(cls))
 		return;
@@ -293,8 +286,8 @@ EXPORT_SYMBOL_GPL(class_destroy);
  * otherwise if it is NULL, the iteration starts at the beginning of
  * the list.
  */
-void class_dev_iter_init(struct class_dev_iter *iter, struct class *class,
-			 struct device *start, const struct device_type *type)
+void class_dev_iter_init(struct class_dev_iter *iter, const struct class *class,
+			 const struct device *start, const struct device_type *type)
 {
 	struct klist_node *start_knode = NULL;
 
@@ -364,7 +357,7 @@ EXPORT_SYMBOL_GPL(class_dev_iter_exit);
  * @fn is allowed to do anything including calling back into class
  * code.  There's no locking restriction.
  */
-int class_for_each_device(struct class *class, struct device *start,
+int class_for_each_device(const struct class *class, const struct device *start,
 			  void *data, int (*fn)(struct device *, void *))
 {
 	struct class_dev_iter iter;
@@ -411,7 +404,7 @@ EXPORT_SYMBOL_GPL(class_for_each_device);
  * @match is allowed to do anything including calling back into class
  * code.  There's no locking restriction.
  */
-struct device *class_find_device(struct class *class, struct device *start,
+struct device *class_find_device(const struct class *class, const struct device *start,
 				 const void *data,
 				 int (*match)(struct device *, const void *))
 {
