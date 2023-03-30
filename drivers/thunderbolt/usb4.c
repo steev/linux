@@ -9,6 +9,7 @@
 
 #include <linux/delay.h>
 #include <linux/ktime.h>
+#include <linux/units.h>
 
 #include "sb_regs.h"
 #include "tb.h"
@@ -851,7 +852,7 @@ bool usb4_switch_query_dp_resource(struct tb_switch *sw, struct tb_port *in)
 	 */
 	if (ret == -EOPNOTSUPP)
 		return true;
-	else if (ret)
+	if (ret)
 		return false;
 
 	return !status;
@@ -877,7 +878,7 @@ int usb4_switch_alloc_dp_resource(struct tb_switch *sw, struct tb_port *in)
 			     &status);
 	if (ret == -EOPNOTSUPP)
 		return 0;
-	else if (ret)
+	if (ret)
 		return ret;
 
 	return status ? -EBUSY : 0;
@@ -900,7 +901,7 @@ int usb4_switch_dealloc_dp_resource(struct tb_switch *sw, struct tb_port *in)
 			     &status);
 	if (ret == -EOPNOTSUPP)
 		return 0;
-	else if (ret)
+	if (ret)
 		return ret;
 
 	return status ? -EIO : 0;
@@ -1995,7 +1996,7 @@ static unsigned int usb3_bw_to_mbps(u32 bw, u8 scale)
 	unsigned long uframes;
 
 	uframes = bw * 512UL << scale;
-	return DIV_ROUND_CLOSEST(uframes * 8000, 1000 * 1000);
+	return DIV_ROUND_CLOSEST(uframes * 8000, MEGA);
 }
 
 static u32 mbps_to_usb3_bw(unsigned int mbps, u8 scale)
@@ -2003,7 +2004,7 @@ static u32 mbps_to_usb3_bw(unsigned int mbps, u8 scale)
 	unsigned long uframes;
 
 	/* 1 uframe is 1/8 ms (125 us) -> 1 / 8000 s */
-	uframes = ((unsigned long)mbps * 1000 *  1000) / 8000;
+	uframes = ((unsigned long)mbps * MEGA) / 8000;
 	return DIV_ROUND_UP(uframes, 512UL << scale);
 }
 
