@@ -1271,7 +1271,6 @@ int hl_device_resume(struct hl_device *hdev)
 	return 0;
 
 disable_device:
-	pci_clear_master(hdev->pdev);
 	pci_disable_device(hdev->pdev);
 
 	return rc;
@@ -1387,7 +1386,7 @@ static void handle_reset_trigger(struct hl_device *hdev, u32 flags)
 
 	/* No consecutive mechanism when user context exists */
 	if (hdev->is_compute_ctx_active)
-		return;
+		goto disable_pci;
 
 	/*
 	 * 'reset cause' is being updated here, because getting here
@@ -1426,6 +1425,8 @@ static void handle_reset_trigger(struct hl_device *hdev, u32 flags)
 	 * If F/W is performing the reset, no need to send it a message to disable
 	 * PCI access
 	 */
+
+disable_pci:
 	if ((flags & HL_DRV_RESET_HARD) &&
 			!(flags & (HL_DRV_RESET_HEARTBEAT | HL_DRV_RESET_BYPASS_REQ_TO_FW))) {
 		/* Disable PCI access from device F/W so he won't send
@@ -1823,9 +1824,7 @@ kill_processes:
 			dev_info(hdev->dev, "Performing hard reset scheduled during compute reset\n");
 			flags = hdev->reset_info.hard_reset_schedule_flags;
 			hdev->reset_info.hard_reset_schedule_flags = 0;
-			hdev->disabled = true;
 			hard_reset = true;
-			handle_reset_trigger(hdev, flags);
 			goto escalate_reset_flow;
 		}
 	}
