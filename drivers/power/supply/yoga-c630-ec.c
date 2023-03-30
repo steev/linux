@@ -443,8 +443,8 @@ static void yoga_c630_ec_put_switch(void *data)
 	typec_switch_put(data);
 }
 
-static int yoga_c630_ec_probe(struct i2c_client *client,
-			      const struct i2c_device_id *id)
+static int yoga_c630_ec_probe(struct i2c_client *client) /*, */
+/*			      const struct i2c_device_id *id) */
 {
 	struct power_supply_config adp_cfg = {};
 	struct power_supply_config bat_cfg = {};
