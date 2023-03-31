@@ -1159,7 +1159,7 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
 	if (!pstates)
 		return -ENOMEM;
 
-	if (!crtc_state->enable || !crtc_state->active) {
+	if (!crtc_state->enable || !drm_atomic_crtc_effectively_active(crtc_state)) {
 		DRM_DEBUG_ATOMIC("crtc%d -> enable %d, active %d, skip atomic_check\n",
 				crtc->base.id, crtc_state->enable,
 				crtc_state->active);
