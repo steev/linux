@@ -1462,7 +1462,7 @@
 			pins = "gpio101";
 			function = "gpio";
 			bias-disable;
-			drive-strengh = <16>;
+			drive-strength = <16>;
 			output-high;
 		};
 
@@ -1479,7 +1479,7 @@
 			pins = "gpio48";
 			function = "gpio";
 			bias-disable;
-			drive-strengh = <16>;
+			drive-strength = <16>;
 			output-high;
 		};
 
