@@ -382,6 +382,7 @@ static struct clk_regmap *gpu_cc_sc8280xp_clocks[] = {
 static struct gdsc cx_gdsc = {
 	.gdscr = 0x106c,
 	.gds_hw_ctrl = 0x1540,
+	.clk_dis_wait_val = 0x8,
 	.pd = {
 		.name = "cx_gdsc",
 	},
