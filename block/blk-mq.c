@@ -2138,24 +2138,6 @@ out:
 	return true;
 }
 
-/**
- * __blk_mq_run_hw_queue - Run a hardware queue.
- * @hctx: Pointer to the hardware queue to run.
- *
- * Send pending requests to the hardware.
- */
-static void __blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx)
-{
-	/*
-	 * We can't run the queue inline with ints disabled. Ensure that
-	 * we catch bad users of this early.
-	 */
-	WARN_ON_ONCE(in_interrupt());
-
-	blk_mq_run_dispatch_ops(hctx->queue,
-			blk_mq_sched_dispatch_requests(hctx));
-}
-
 static inline int blk_mq_first_mapped_cpu(struct blk_mq_hw_ctx *hctx)
 {
 	int cpu = cpumask_first_and(hctx->cpumask, cpu_online_mask);
@@ -2212,32 +2194,6 @@ select_cpu:
 }
 
 /**
- * __blk_mq_delay_run_hw_queue - Run (or schedule to run) a hardware queue.
- * @hctx: Pointer to the hardware queue to run.
- * @async: If we want to run the queue asynchronously.
- * @msecs: Milliseconds of delay to wait before running the queue.
- *
- * If !@async, try to run the queue now. Else, run the queue asynchronously and
- * with a delay of @msecs.
- */
-static void __blk_mq_delay_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async,
-					unsigned long msecs)
-{
-	if (unlikely(blk_mq_hctx_stopped(hctx)))
-		return;
-
-	if (!async && !(hctx->flags & BLK_MQ_F_BLOCKING)) {
-		if (cpumask_test_cpu(raw_smp_processor_id(), hctx->cpumask)) {
-			__blk_mq_run_hw_queue(hctx);
-			return;
-		}
-	}
-
-	kblockd_mod_delayed_work_on(blk_mq_hctx_next_cpu(hctx), &hctx->run_work,
-				    msecs_to_jiffies(msecs));
-}
-
-/**
  * blk_mq_delay_run_hw_queue - Run a hardware queue asynchronously.
  * @hctx: Pointer to the hardware queue to run.
  * @msecs: Milliseconds of delay to wait before running the queue.
@@ -2246,7 +2202,10 @@ static void __blk_mq_delay_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async,
  */
 void blk_mq_delay_run_hw_queue(struct blk_mq_hw_ctx *hctx, unsigned long msecs)
 {
-	__blk_mq_delay_run_hw_queue(hctx, true, msecs);
+	if (unlikely(blk_mq_hctx_stopped(hctx)))
+		return;
+	kblockd_mod_delayed_work_on(blk_mq_hctx_next_cpu(hctx), &hctx->run_work,
+				    msecs_to_jiffies(msecs));
 }
 EXPORT_SYMBOL(blk_mq_delay_run_hw_queue);
 
@@ -2264,6 +2223,11 @@ void blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async)
 	bool need_run;
 
 	/*
+	 * We can't run the queue inline with interrupts disabled.
+	 */
+	WARN_ON_ONCE(!async && in_interrupt());
+
+	/*
 	 * When queue is quiesced, we may be switching io scheduler, or
 	 * updating nr_hw_queues, or other things, and we can't run queue
 	 * any more, even __blk_mq_hctx_has_pending() can't be called safely.
@@ -2275,8 +2239,17 @@ void blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async)
 		need_run = !blk_queue_quiesced(hctx->queue) &&
 		blk_mq_hctx_has_pending(hctx));
 
-	if (need_run)
-		__blk_mq_delay_run_hw_queue(hctx, async, 0);
+	if (!need_run)
+		return;
+
+	if (async || (hctx->flags & BLK_MQ_F_BLOCKING) ||
+	    !cpumask_test_cpu(raw_smp_processor_id(), hctx->cpumask)) {
+		blk_mq_delay_run_hw_queue(hctx, 0);
+		return;
+	}
+
+	blk_mq_run_dispatch_ops(hctx->queue,
+				blk_mq_sched_dispatch_requests(hctx));
 }
 EXPORT_SYMBOL(blk_mq_run_hw_queue);
 
@@ -2441,17 +2414,11 @@ EXPORT_SYMBOL(blk_mq_start_stopped_hw_queues);
 
 static void blk_mq_run_work_fn(struct work_struct *work)
 {
-	struct blk_mq_hw_ctx *hctx;
+	struct blk_mq_hw_ctx *hctx =
+		container_of(work, struct blk_mq_hw_ctx, run_work.work);
 
-	hctx = container_of(work, struct blk_mq_hw_ctx, run_work.work);
-
-	/*
-	 * If we are stopped, don't run the queue.
-	 */
-	if (blk_mq_hctx_stopped(hctx))
-		return;
-
-	__blk_mq_run_hw_queue(hctx);
+	blk_mq_run_dispatch_ops(hctx->queue,
+				blk_mq_sched_dispatch_requests(hctx));
 }
 
 /**
