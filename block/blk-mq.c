@@ -32,12 +32,10 @@
 
 #include <trace/events/block.h>
 
-#include <linux/blk-mq.h>
 #include <linux/t10-pi.h>
 #include "blk.h"
 #include "blk-mq.h"
 #include "blk-mq-debugfs.h"
-#include "blk-mq-tag.h"
 #include "blk-pm.h"
 #include "blk-stat.h"
 #include "blk-mq-sched.h"
@@ -45,6 +43,10 @@
 #include "blk-ioprio.h"
 
 static DEFINE_PER_CPU(struct llist_head, blk_cpu_done);
+
+static void blk_mq_insert_request(struct request *rq, blk_insert_t flags);
+static void blk_mq_try_issue_list_directly(struct blk_mq_hw_ctx *hctx,
+		struct list_head *list);
 
 static inline struct blk_mq_hw_ctx *blk_qc_to_hctx(struct request_queue *q,
 		blk_qc_t qc)
@@ -1289,6 +1291,8 @@ static void blk_add_rq_to_plug(struct blk_plug *plug, struct request *rq)
  */
 void blk_execute_rq_nowait(struct request *rq, bool at_head)
 {
+	struct blk_mq_hw_ctx *hctx = rq->mq_hctx;
+
 	WARN_ON(irqs_disabled());
 	WARN_ON(!blk_rq_is_passthrough(rq));
 
@@ -1299,10 +1303,13 @@ void blk_execute_rq_nowait(struct request *rq, bool at_head)
 	 * device, directly accessing the plug instead of using blk_mq_plug()
 	 * should not have any consequences.
 	 */
-	if (current->plug)
+	if (current->plug && !at_head) {
 		blk_add_rq_to_plug(current->plug, rq);
-	else
-		blk_mq_sched_insert_request(rq, at_head, true, false);
+		return;
+	}
+
+	blk_mq_insert_request(rq, at_head ? BLK_MQ_INSERT_AT_HEAD : 0);
+	blk_mq_run_hw_queue(hctx, false);
 }
 EXPORT_SYMBOL_GPL(blk_execute_rq_nowait);
 
@@ -1352,6 +1359,7 @@ static void blk_rq_poll_completion(struct request *rq, struct completion *wait)
  */
 blk_status_t blk_execute_rq(struct request *rq, bool at_head)
 {
+	struct blk_mq_hw_ctx *hctx = rq->mq_hctx;
 	struct blk_rq_wait wait = {
 		.done = COMPLETION_INITIALIZER_ONSTACK(wait.done),
 	};
@@ -1363,7 +1371,8 @@ blk_status_t blk_execute_rq(struct request *rq, bool at_head)
 	rq->end_io = blk_end_sync_rq;
 
 	blk_account_io_start(rq);
-	blk_mq_sched_insert_request(rq, at_head, true, false);
+	blk_mq_insert_request(rq, at_head ? BLK_MQ_INSERT_AT_HEAD : 0);
+	blk_mq_run_hw_queue(hctx, false);
 
 	if (blk_rq_is_poll(rq)) {
 		blk_rq_poll_completion(rq, &wait.done);
@@ -1403,12 +1412,17 @@ static void __blk_mq_requeue_request(struct request *rq)
 
 void blk_mq_requeue_request(struct request *rq, bool kick_requeue_list)
 {
+	struct request_queue *q = rq->q;
+
 	__blk_mq_requeue_request(rq);
 
 	/* this request will be re-inserted to io scheduler queue */
 	blk_mq_sched_requeue_request(rq);
 
-	blk_mq_add_to_requeue_list(rq, true, kick_requeue_list);
+	blk_mq_add_to_requeue_list(rq, BLK_MQ_INSERT_AT_HEAD);
+
+	if (kick_requeue_list)
+		blk_mq_kick_requeue_list(q);
 }
 EXPORT_SYMBOL(blk_mq_requeue_request);
 
@@ -1424,33 +1438,33 @@ static void blk_mq_requeue_work(struct work_struct *work)
 	spin_unlock_irq(&q->requeue_lock);
 
 	list_for_each_entry_safe(rq, next, &rq_list, queuelist) {
-		if (!(rq->rq_flags & (RQF_SOFTBARRIER | RQF_DONTPREP)))
-			continue;
-
-		rq->rq_flags &= ~RQF_SOFTBARRIER;
-		list_del_init(&rq->queuelist);
 		/*
-		 * If RQF_DONTPREP, rq has contained some driver specific
-		 * data, so insert it to hctx dispatch list to avoid any
-		 * merge.
+		 * If RQF_DONTPREP ist set, the request has been started by the
+		 * driver already and might have driver-specific data allocated
+		 * already.  Insert it into the hctx dispatch list to avoid
+		 * block layer merges for the request.
 		 */
-		if (rq->rq_flags & RQF_DONTPREP)
-			blk_mq_request_bypass_insert(rq, false, false);
-		else
-			blk_mq_sched_insert_request(rq, true, false, false);
+		if (rq->rq_flags & RQF_DONTPREP) {
+			rq->rq_flags &= ~RQF_SOFTBARRIER;
+			list_del_init(&rq->queuelist);
+			blk_mq_request_bypass_insert(rq, 0);
+		} else if (rq->rq_flags & RQF_SOFTBARRIER) {
+			rq->rq_flags &= ~RQF_SOFTBARRIER;
+			list_del_init(&rq->queuelist);
+			blk_mq_insert_request(rq, BLK_MQ_INSERT_AT_HEAD);
+		}
 	}
 
 	while (!list_empty(&rq_list)) {
 		rq = list_entry(rq_list.next, struct request, queuelist);
 		list_del_init(&rq->queuelist);
-		blk_mq_sched_insert_request(rq, false, false, false);
+		blk_mq_insert_request(rq, 0);
 	}
 
 	blk_mq_run_hw_queues(q, false);
 }
 
-void blk_mq_add_to_requeue_list(struct request *rq, bool at_head,
-				bool kick_requeue_list)
+void blk_mq_add_to_requeue_list(struct request *rq, blk_insert_t insert_flags)
 {
 	struct request_queue *q = rq->q;
 	unsigned long flags;
@@ -1462,16 +1476,13 @@ void blk_mq_add_to_requeue_list(struct request *rq, bool at_head,
 	BUG_ON(rq->rq_flags & RQF_SOFTBARRIER);
 
 	spin_lock_irqsave(&q->requeue_lock, flags);
-	if (at_head) {
+	if (insert_flags & BLK_MQ_INSERT_AT_HEAD) {
 		rq->rq_flags |= RQF_SOFTBARRIER;
 		list_add(&rq->queuelist, &q->requeue_list);
 	} else {
 		list_add_tail(&rq->queuelist, &q->requeue_list);
 	}
 	spin_unlock_irqrestore(&q->requeue_lock, flags);
-
-	if (kick_requeue_list)
-		blk_mq_kick_requeue_list(q);
 }
 
 void blk_mq_kick_requeue_list(struct request_queue *q)
@@ -2443,65 +2454,43 @@ static void blk_mq_run_work_fn(struct work_struct *work)
 	__blk_mq_run_hw_queue(hctx);
 }
 
-static inline void __blk_mq_insert_req_list(struct blk_mq_hw_ctx *hctx,
-					    struct request *rq,
-					    bool at_head)
-{
-	struct blk_mq_ctx *ctx = rq->mq_ctx;
-	enum hctx_type type = hctx->type;
-
-	lockdep_assert_held(&ctx->lock);
-
-	trace_block_rq_insert(rq);
-
-	if (at_head)
-		list_add(&rq->queuelist, &ctx->rq_lists[type]);
-	else
-		list_add_tail(&rq->queuelist, &ctx->rq_lists[type]);
-}
-
-void __blk_mq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
-			     bool at_head)
-{
-	struct blk_mq_ctx *ctx = rq->mq_ctx;
-
-	lockdep_assert_held(&ctx->lock);
-
-	__blk_mq_insert_req_list(hctx, rq, at_head);
-	blk_mq_hctx_mark_pending(hctx, ctx);
-}
-
 /**
  * blk_mq_request_bypass_insert - Insert a request at dispatch list.
  * @rq: Pointer to request to be inserted.
- * @at_head: true if the request should be inserted at the head of the list.
- * @run_queue: If we should run the hardware queue after inserting the request.
+ * @flags: BLK_MQ_INSERT_*
  *
  * Should only be used carefully, when the caller knows we want to
  * bypass a potential IO scheduler on the target device.
  */
-void blk_mq_request_bypass_insert(struct request *rq, bool at_head,
-				  bool run_queue)
+void blk_mq_request_bypass_insert(struct request *rq, blk_insert_t flags)
 {
 	struct blk_mq_hw_ctx *hctx = rq->mq_hctx;
 
 	spin_lock(&hctx->lock);
-	if (at_head)
+	if (flags & BLK_MQ_INSERT_AT_HEAD)
 		list_add(&rq->queuelist, &hctx->dispatch);
 	else
 		list_add_tail(&rq->queuelist, &hctx->dispatch);
 	spin_unlock(&hctx->lock);
-
-	if (run_queue)
-		blk_mq_run_hw_queue(hctx, false);
 }
 
-void blk_mq_insert_requests(struct blk_mq_hw_ctx *hctx, struct blk_mq_ctx *ctx,
-			    struct list_head *list)
-
+static void blk_mq_insert_requests(struct blk_mq_hw_ctx *hctx,
+		struct blk_mq_ctx *ctx, struct list_head *list,
+		bool run_queue_async)
 {
 	struct request *rq;
 	enum hctx_type type = hctx->type;
+
+	/*
+	 * Try to issue requests directly if the hw queue isn't busy to save an
+	 * extra enqueue & dequeue to the sw queue.
+	 */
+	if (!hctx->dispatch_busy && !run_queue_async) {
+		blk_mq_run_dispatch_ops(hctx->queue,
+			blk_mq_try_issue_list_directly(hctx, list));
+		if (list_empty(list))
+			goto out;
+	}
 
 	/*
 	 * preemption doesn't flush plug list, so it's possible ctx->cpu is
@@ -2516,6 +2505,70 @@ void blk_mq_insert_requests(struct blk_mq_hw_ctx *hctx, struct blk_mq_ctx *ctx,
 	list_splice_tail_init(list, &ctx->rq_lists[type]);
 	blk_mq_hctx_mark_pending(hctx, ctx);
 	spin_unlock(&ctx->lock);
+out:
+	blk_mq_run_hw_queue(hctx, run_queue_async);
+}
+
+static void blk_mq_insert_request(struct request *rq, blk_insert_t flags)
+{
+	struct request_queue *q = rq->q;
+	struct blk_mq_ctx *ctx = rq->mq_ctx;
+	struct blk_mq_hw_ctx *hctx = rq->mq_hctx;
+
+	if (blk_rq_is_passthrough(rq)) {
+		/*
+		 * Passthrough request have to be added to hctx->dispatch
+		 * directly.  The device may be in a situation where it can't
+		 * handle FS request, and always returns BLK_STS_RESOURCE for
+		 * them, which gets them added to hctx->dispatch.
+		 *
+		 * If a passthrough request is required to unblock the queues,
+		 * and it is added to the scheduler queue, there is no chance to
+		 * dispatch it given we prioritize requests in hctx->dispatch.
+		 */
+		blk_mq_request_bypass_insert(rq, flags);
+	} else if (rq->rq_flags & RQF_FLUSH_SEQ) {
+		/*
+		 * Firstly normal IO request is inserted to scheduler queue or
+		 * sw queue, meantime we add flush request to dispatch queue(
+		 * hctx->dispatch) directly and there is at most one in-flight
+		 * flush request for each hw queue, so it doesn't matter to add
+		 * flush request to tail or front of the dispatch queue.
+		 *
+		 * Secondly in case of NCQ, flush request belongs to non-NCQ
+		 * command, and queueing it will fail when there is any
+		 * in-flight normal IO request(NCQ command). When adding flush
+		 * rq to the front of hctx->dispatch, it is easier to introduce
+		 * extra time to flush rq's latency because of S_SCHED_RESTART
+		 * compared with adding to the tail of dispatch queue, then
+		 * chance of flush merge is increased, and less flush requests
+		 * will be issued to controller. It is observed that ~10% time
+		 * is saved in blktests block/004 on disk attached to AHCI/NCQ
+		 * drive when adding flush rq to the front of hctx->dispatch.
+		 *
+		 * Simply queue flush rq to the front of hctx->dispatch so that
+		 * intensive flush workloads can benefit in case of NCQ HW.
+		 */
+		blk_mq_request_bypass_insert(rq, BLK_MQ_INSERT_AT_HEAD);
+	} else if (q->elevator) {
+		LIST_HEAD(list);
+
+		WARN_ON_ONCE(rq->tag != BLK_MQ_NO_TAG);
+
+		list_add(&rq->queuelist, &list);
+		q->elevator->type->ops.insert_requests(hctx, &list, flags);
+	} else {
+		trace_block_rq_insert(rq);
+
+		spin_lock(&ctx->lock);
+		if (flags & BLK_MQ_INSERT_AT_HEAD)
+			list_add(&rq->queuelist, &ctx->rq_lists[hctx->type]);
+		else
+			list_add_tail(&rq->queuelist,
+				      &ctx->rq_lists[hctx->type]);
+		blk_mq_hctx_mark_pending(hctx, ctx);
+		spin_unlock(&ctx->lock);
+	}
 }
 
 static void blk_mq_bio_to_request(struct request *rq, struct bio *bio,
@@ -2569,49 +2622,19 @@ static blk_status_t __blk_mq_issue_directly(struct blk_mq_hw_ctx *hctx,
 	return ret;
 }
 
-static blk_status_t __blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
-						struct request *rq,
-						bool bypass_insert, bool last)
+static bool blk_mq_get_budget_and_tag(struct request *rq)
 {
-	struct request_queue *q = rq->q;
-	bool run_queue = true;
 	int budget_token;
 
-	/*
-	 * RCU or SRCU read lock is needed before checking quiesced flag.
-	 *
-	 * When queue is stopped or quiesced, ignore 'bypass_insert' from
-	 * blk_mq_request_issue_directly(), and return BLK_STS_OK to caller,
-	 * and avoid driver to try to dispatch again.
-	 */
-	if (blk_mq_hctx_stopped(hctx) || blk_queue_quiesced(q)) {
-		run_queue = false;
-		bypass_insert = false;
-		goto insert;
-	}
-
-	if ((rq->rq_flags & RQF_ELV) && !bypass_insert)
-		goto insert;
-
-	budget_token = blk_mq_get_dispatch_budget(q);
+	budget_token = blk_mq_get_dispatch_budget(rq->q);
 	if (budget_token < 0)
-		goto insert;
-
+		return false;
 	blk_mq_set_rq_budget_token(rq, budget_token);
-
 	if (!blk_mq_get_driver_tag(rq)) {
-		blk_mq_put_dispatch_budget(q, budget_token);
-		goto insert;
+		blk_mq_put_dispatch_budget(rq->q, budget_token);
+		return false;
 	}
-
-	return __blk_mq_issue_directly(hctx, rq, last);
-insert:
-	if (bypass_insert)
-		return BLK_STS_RESOURCE;
-
-	blk_mq_sched_insert_request(rq, false, run_queue, false);
-
-	return BLK_STS_OK;
+	return true;
 }
 
 /**
@@ -2627,18 +2650,46 @@ insert:
 static void blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
 		struct request *rq)
 {
-	blk_status_t ret =
-		__blk_mq_try_issue_directly(hctx, rq, false, true);
+	blk_status_t ret;
 
-	if (ret == BLK_STS_RESOURCE || ret == BLK_STS_DEV_RESOURCE)
-		blk_mq_request_bypass_insert(rq, false, true);
-	else if (ret != BLK_STS_OK)
+	if (blk_mq_hctx_stopped(hctx) || blk_queue_quiesced(rq->q)) {
+		blk_mq_insert_request(rq, 0);
+		return;
+	}
+
+	if ((rq->rq_flags & RQF_ELV) || !blk_mq_get_budget_and_tag(rq)) {
+		blk_mq_insert_request(rq, 0);
+		blk_mq_run_hw_queue(hctx, false);
+		return;
+	}
+
+	ret = __blk_mq_issue_directly(hctx, rq, true);
+	switch (ret) {
+	case BLK_STS_OK:
+		break;
+	case BLK_STS_RESOURCE:
+	case BLK_STS_DEV_RESOURCE:
+		blk_mq_request_bypass_insert(rq, 0);
+		blk_mq_run_hw_queue(hctx, false);
+		break;
+	default:
 		blk_mq_end_request(rq, ret);
+		break;
+	}
 }
 
 static blk_status_t blk_mq_request_issue_directly(struct request *rq, bool last)
 {
-	return __blk_mq_try_issue_directly(rq->mq_hctx, rq, true, last);
+	struct blk_mq_hw_ctx *hctx = rq->mq_hctx;
+
+	if (blk_mq_hctx_stopped(hctx) || blk_queue_quiesced(rq->q)) {
+		blk_mq_insert_request(rq, 0);
+		return BLK_STS_OK;
+	}
+
+	if (!blk_mq_get_budget_and_tag(rq))
+		return BLK_STS_RESOURCE;
+	return __blk_mq_issue_directly(hctx, rq, last);
 }
 
 static void blk_mq_plug_issue_direct(struct blk_plug *plug)
@@ -2666,7 +2717,8 @@ static void blk_mq_plug_issue_direct(struct blk_plug *plug)
 			break;
 		case BLK_STS_RESOURCE:
 		case BLK_STS_DEV_RESOURCE:
-			blk_mq_request_bypass_insert(rq, false, true);
+			blk_mq_request_bypass_insert(rq, 0);
+			blk_mq_run_hw_queue(hctx, false);
 			goto out;
 		default:
 			blk_mq_end_request(rq, ret);
@@ -2712,7 +2764,16 @@ static void blk_mq_dispatch_plug_list(struct blk_plug *plug, bool from_sched)
 
 	plug->mq_list = requeue_list;
 	trace_block_unplug(this_hctx->queue, depth, !from_sched);
-	blk_mq_sched_insert_requests(this_hctx, this_ctx, &list, from_sched);
+
+	percpu_ref_get(&this_hctx->queue->q_usage_counter);
+	if (this_hctx->queue->elevator) {
+		this_hctx->queue->elevator->type->ops.insert_requests(this_hctx,
+				&list, 0);
+		blk_mq_run_hw_queue(this_hctx, from_sched);
+	} else {
+		blk_mq_insert_requests(this_hctx, this_ctx, &list, from_sched);
+	}
+	percpu_ref_put(&this_hctx->queue->q_usage_counter);
 }
 
 void blk_mq_flush_plug_list(struct blk_plug *plug, bool from_schedule)
@@ -2758,7 +2819,7 @@ void blk_mq_flush_plug_list(struct blk_plug *plug, bool from_schedule)
 	} while (!rq_list_empty(plug->mq_list));
 }
 
-void blk_mq_try_issue_list_directly(struct blk_mq_hw_ctx *hctx,
+static void blk_mq_try_issue_list_directly(struct blk_mq_hw_ctx *hctx,
 		struct list_head *list)
 {
 	int queued = 0;
@@ -2776,8 +2837,9 @@ void blk_mq_try_issue_list_directly(struct blk_mq_hw_ctx *hctx,
 			break;
 		case BLK_STS_RESOURCE:
 		case BLK_STS_DEV_RESOURCE:
-			blk_mq_request_bypass_insert(rq, false,
-						     list_empty(list));
+			blk_mq_request_bypass_insert(rq, 0);
+			if (list_empty(list))
+				blk_mq_run_hw_queue(hctx, false);
 			goto out;
 		default:
 			blk_mq_end_request(rq, ret);
@@ -2904,6 +2966,7 @@ void blk_mq_submit_bio(struct bio *bio)
 	struct request_queue *q = bdev_get_queue(bio->bi_bdev);
 	struct blk_plug *plug = blk_mq_plug(bio);
 	const int is_sync = op_is_sync(bio->bi_opf);
+	struct blk_mq_hw_ctx *hctx;
 	struct request *rq;
 	unsigned int nr_segs = 1;
 	blk_status_t ret;
@@ -2948,15 +3011,19 @@ void blk_mq_submit_bio(struct bio *bio)
 		return;
 	}
 
-	if (plug)
+	if (plug) {
 		blk_add_rq_to_plug(plug, rq);
-	else if ((rq->rq_flags & RQF_ELV) ||
-		 (rq->mq_hctx->dispatch_busy &&
-		  (q->nr_hw_queues == 1 || !is_sync)))
-		blk_mq_sched_insert_request(rq, false, true, true);
-	else
-		blk_mq_run_dispatch_ops(rq->q,
-				blk_mq_try_issue_directly(rq->mq_hctx, rq));
+		return;
+	}
+
+	hctx = rq->mq_hctx;
+	if ((rq->rq_flags & RQF_ELV) ||
+	    (hctx->dispatch_busy && (q->nr_hw_queues == 1 || !is_sync))) {
+		blk_mq_insert_request(rq, 0);
+		blk_mq_run_hw_queue(hctx, true);
+	} else {
+		blk_mq_run_dispatch_ops(q, blk_mq_try_issue_directly(hctx, rq));
+	}
 }
 
 #ifdef CONFIG_BLK_MQ_STACKING

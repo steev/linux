@@ -7,12 +7,10 @@
 #include <linux/blkdev.h>
 #include <linux/debugfs.h>
 
-#include <linux/blk-mq.h>
 #include "blk.h"
 #include "blk-mq.h"
 #include "blk-mq-debugfs.h"
 #include "blk-mq-sched.h"
-#include "blk-mq-tag.h"
 #include "blk-rq-qos.h"
 
 static int queue_poll_stat_show(void *data, struct seq_file *m)
