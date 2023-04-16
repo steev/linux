@@ -62,10 +62,12 @@
 			L2_0: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 				L3_0: l3-cache {
 					compatible = "cache";
 					cache-level = <3>;
+					cache-unified;
 				};
 			};
 		};
@@ -88,6 +90,7 @@
 			L2_100: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 
@@ -111,6 +114,7 @@
 			L2_200: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -133,6 +137,7 @@
 			L2_300: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -155,6 +160,7 @@
 			L2_400: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -177,6 +183,7 @@
 			L2_500: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -199,6 +206,7 @@
 			L2_600: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
@@ -221,6 +229,7 @@
 			L2_700: l2-cache {
 				compatible = "cache";
 				cache-level = <2>;
+				cache-unified;
 				next-level-cache = <&L3_0>;
 			};
 		};
