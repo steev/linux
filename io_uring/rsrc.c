@@ -31,11 +31,6 @@ static int io_sqe_buffer_register(struct io_ring_ctx *ctx, struct iovec *iov,
 #define IORING_MAX_FIXED_FILES	(1U << 20)
 #define IORING_MAX_REG_BUFFERS	(1U << 14)
 
-static inline bool io_put_rsrc_data_ref(struct io_rsrc_data *rsrc_data)
-{
-	return !--rsrc_data->refs;
-}
-
 int __io_account_mem(struct user_struct *user, unsigned long nr_pages)
 {
 	unsigned long page_limit, cur_pages, new_pages;
@@ -170,14 +165,6 @@ static void __io_rsrc_put_work(struct io_rsrc_node *ref_node)
 	}
 
 	io_rsrc_node_destroy(rsrc_data->ctx, ref_node);
-	if (io_put_rsrc_data_ref(rsrc_data))
-		complete(&rsrc_data->done);
-}
-
-void io_wait_rsrc_data(struct io_rsrc_data *data)
-{
-	if (data && !io_put_rsrc_data_ref(data))
-		wait_for_completion(&data->done);
 }
 
 void io_rsrc_node_destroy(struct io_ring_ctx *ctx, struct io_rsrc_node *node)
@@ -191,17 +178,17 @@ void io_rsrc_node_ref_zero(struct io_rsrc_node *node)
 {
 	struct io_ring_ctx *ctx = node->rsrc_data->ctx;
 
-	node->done = true;
 	while (!list_empty(&ctx->rsrc_ref_list)) {
 		node = list_first_entry(&ctx->rsrc_ref_list,
 					    struct io_rsrc_node, node);
 		/* recycle ref nodes in order */
-		if (!node->done)
+		if (node->refs)
 			break;
-
 		list_del(&node->node);
 		__io_rsrc_put_work(node);
 	}
+	if (list_empty(&ctx->rsrc_ref_list) && unlikely(ctx->rsrc_quiesce))
+		wake_up_all(&ctx->rsrc_quiesce_wq);
 }
 
 struct io_rsrc_node *io_rsrc_node_alloc(struct io_ring_ctx *ctx)
@@ -222,7 +209,6 @@ struct io_rsrc_node *io_rsrc_node_alloc(struct io_ring_ctx *ctx)
 	ref_node->refs = 1;
 	INIT_LIST_HEAD(&ref_node->node);
 	INIT_LIST_HEAD(&ref_node->item_list);
-	ref_node->done = false;
 	ref_node->inline_items = 0;
 	return ref_node;
 }
@@ -237,7 +223,6 @@ void io_rsrc_node_switch(struct io_ring_ctx *ctx,
 	if (WARN_ON_ONCE(!backup))
 		return;
 
-	data_to_kill->refs++;
 	node->rsrc_data = data_to_kill;
 	list_add_tail(&node->node, &ctx->rsrc_ref_list);
 	/* put master ref */
@@ -245,21 +230,20 @@ void io_rsrc_node_switch(struct io_ring_ctx *ctx,
 	ctx->rsrc_node = backup;
 }
 
-int io_rsrc_node_switch_start(struct io_ring_ctx *ctx)
+int __io_rsrc_node_switch_start(struct io_ring_ctx *ctx)
 {
-	if (io_alloc_cache_empty(&ctx->rsrc_node_cache)) {
-		struct io_rsrc_node *node = kzalloc(sizeof(*node), GFP_KERNEL);
+	struct io_rsrc_node *node = kzalloc(sizeof(*node), GFP_KERNEL);
 
-		if (!node)
-			return -ENOMEM;
-		io_alloc_cache_put(&ctx->rsrc_node_cache, &node->cache);
-	}
+	if (!node)
+		return -ENOMEM;
+	io_alloc_cache_put(&ctx->rsrc_node_cache, &node->cache);
 	return 0;
 }
 
 __cold static int io_rsrc_ref_quiesce(struct io_rsrc_data *data,
 				      struct io_ring_ctx *ctx)
 {
+	DEFINE_WAIT(we);
 	int ret;
 
 	/* As we may drop ->uring_lock, other task may have started quiesce */
@@ -270,38 +254,42 @@ __cold static int io_rsrc_ref_quiesce(struct io_rsrc_data *data,
 		return ret;
 	io_rsrc_node_switch(ctx, data);
 
-	/* kill initial ref */
-	if (io_put_rsrc_data_ref(data))
+	if (list_empty(&ctx->rsrc_ref_list))
 		return 0;
 
+	if (ctx->flags & IORING_SETUP_DEFER_TASKRUN) {
+		atomic_set(&ctx->cq_wait_nr, 1);
+		smp_mb();
+	}
+
+	ctx->rsrc_quiesce++;
 	data->quiesce = true;
-	mutex_unlock(&ctx->uring_lock);
 	do {
+		prepare_to_wait(&ctx->rsrc_quiesce_wq, &we, TASK_INTERRUPTIBLE);
+		mutex_unlock(&ctx->uring_lock);
+
 		ret = io_run_task_work_sig(ctx);
 		if (ret < 0) {
 			mutex_lock(&ctx->uring_lock);
-			if (!data->refs) {
+			if (list_empty(&ctx->rsrc_ref_list))
 				ret = 0;
-			} else {
-				/* restore the master reference */
-				data->refs++;
-			}
 			break;
 		}
-		ret = wait_for_completion_interruptible(&data->done);
-		if (!ret) {
-			mutex_lock(&ctx->uring_lock);
-			if (!data->refs)
-				break;
-			/*
-			 * it has been revived by another thread while
-			 * we were unlocked
-			 */
-			mutex_unlock(&ctx->uring_lock);
-		}
-	} while (1);
-	data->quiesce = false;
 
+		schedule();
+		__set_current_state(TASK_RUNNING);
+		mutex_lock(&ctx->uring_lock);
+		ret = 0;
+	} while (!list_empty(&ctx->rsrc_ref_list));
+
+	finish_wait(&ctx->rsrc_quiesce_wq, &we);
+	data->quiesce = false;
+	ctx->rsrc_quiesce--;
+
+	if (ctx->flags & IORING_SETUP_DEFER_TASKRUN) {
+		atomic_set(&ctx->cq_wait_nr, 0);
+		smp_mb();
+	}
 	return ret;
 }
 
@@ -366,7 +354,6 @@ __cold static int io_rsrc_data_alloc(struct io_ring_ctx *ctx,
 	data->nr = nr;
 	data->ctx = ctx;
 	data->do_put = do_put;
-	data->refs = 1;
 	if (utags) {
 		ret = -EFAULT;
 		for (i = 0; i < nr; i++) {
@@ -377,7 +364,6 @@ __cold static int io_rsrc_data_alloc(struct io_ring_ctx *ctx,
 				goto fail;
 		}
 	}
-	init_completion(&data->done);
 	*pdata = data;
 	return 0;
 fail:
@@ -483,7 +469,6 @@ static int __io_sqe_buffers_update(struct io_ring_ctx *ctx,
 
 	for (done = 0; done < nr_args; done++) {
 		struct io_mapped_ubuf *imu;
-		int offset = up->offset + done;
 		u64 tag = 0;
 
 		err = io_copy_iov(ctx, &iov, iovs, done);
@@ -504,7 +489,7 @@ static int __io_sqe_buffers_update(struct io_ring_ctx *ctx,
 		if (err)
 			break;
 
-		i = array_index_nospec(offset, ctx->nr_user_bufs);
+		i = array_index_nospec(up->offset + done, ctx->nr_user_bufs);
 		if (ctx->user_bufs[i] != ctx->dummy_ubuf) {
 			err = io_queue_rsrc_removal(ctx->buf_data, i,
 						    ctx->rsrc_node, ctx->user_bufs[i]);
@@ -517,7 +502,7 @@ static int __io_sqe_buffers_update(struct io_ring_ctx *ctx,
 		}
 
 		ctx->user_bufs[i] = imu;
-		*io_get_tag_slot(ctx->buf_data, offset) = tag;
+		*io_get_tag_slot(ctx->buf_data, i) = tag;
 	}
 
 	if (needs_switch)
@@ -700,7 +685,6 @@ int io_queue_rsrc_removal(struct io_rsrc_data *data, unsigned idx,
 {
 	u64 *tag_slot = io_get_tag_slot(data, idx);
 	struct io_rsrc_put *prsrc;
-	bool inline_item = true;
 
 	if (!node->inline_items) {
 		prsrc = &node->item;
@@ -709,14 +693,12 @@ int io_queue_rsrc_removal(struct io_rsrc_data *data, unsigned idx,
 		prsrc = kzalloc(sizeof(*prsrc), GFP_KERNEL);
 		if (!prsrc)
 			return -ENOMEM;
-		inline_item = false;
+		list_add(&prsrc->list, &node->item_list);
 	}
 
 	prsrc->tag = *tag_slot;
 	*tag_slot = 0;
 	prsrc->rsrc = rsrc;
-	if (!inline_item)
-		list_add(&prsrc->list, &node->item_list);
 	return 0;
 }
 
