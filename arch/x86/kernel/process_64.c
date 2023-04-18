@@ -760,7 +760,7 @@ static int prctl_enable_tagged_addr(struct mm_struct *mm, unsigned long nr_bits)
 
 	if (mm_valid_pasid(mm) &&
 	    !test_bit(MM_CONTEXT_FORCE_TAGGED_SVA, &mm->context.flags))
-		return -EINTR;
+		return -EINVAL;
 
 	if (mmap_write_lock_killable(mm))
 		return -EINTR;
@@ -885,6 +885,8 @@ long do_arch_prctl_64(struct task_struct *task, int option, unsigned long arg2)
 	case ARCH_ENABLE_TAGGED_ADDR:
 		return prctl_enable_tagged_addr(task->mm, arg2);
 	case ARCH_FORCE_TAGGED_SVA:
+		if (current != task)
+			return -EINVAL;
 		set_bit(MM_CONTEXT_FORCE_TAGGED_SVA, &task->mm->context.flags);
 		return 0;
 	case ARCH_GET_MAX_TAG_BITS:
