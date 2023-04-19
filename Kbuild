@@ -91,6 +91,7 @@ obj-$(CONFIG_BLOCK)	+= block/
 obj-$(CONFIG_IO_URING)	+= io_uring/
 obj-$(CONFIG_RUST)	+= rust/
 obj-y			+= $(ARCH_LIB)
+obj-$(CONFIG_RUST)	+= rust/
 obj-y			+= drivers/
 obj-y			+= sound/
 obj-$(CONFIG_SAMPLES)	+= samples/
