@@ -176,7 +176,12 @@ nla_put_failure:
 static int ctnetlink_dump_timeout(struct sk_buff *skb, const struct nf_conn *ct,
 				  bool skip_zero)
 {
-	long timeout = nf_ct_expires(ct) / HZ;
+	long timeout;
+
+	if (nf_ct_is_confirmed(ct))
+		timeout = nf_ct_expires(ct) / HZ;
+	else
+		timeout = ct->timeout / HZ;
 
 	if (skip_zero && timeout == 0)
 		return 0;
@@ -2315,6 +2320,9 @@ ctnetlink_create_conntrack(struct net *net,
 	nf_ct_labels_ext_add(ct);
 	nfct_seqadj_ext_add(ct);
 	nfct_synproxy_ext_add(ct);
+
+	/* we must add conntrack extensions before confirmation. */
+	ct->status |= IPS_CONFIRMED;
 
 	if (cda[CTA_STATUS]) {
 		err = ctnetlink_change_status(ct, cda);
