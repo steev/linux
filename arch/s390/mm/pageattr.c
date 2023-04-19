@@ -41,7 +41,7 @@ void __storage_key_init_range(unsigned long start, unsigned long end)
 }
 
 #ifdef CONFIG_PROC_FS
-atomic_long_t direct_pages_count[PG_DIRECT_MAP_MAX];
+atomic_long_t __bootdata_preserved(direct_pages_count[PG_DIRECT_MAP_MAX]);
 
 void arch_report_meminfo(struct seq_file *m)
 {
@@ -300,8 +300,6 @@ static int change_page_attr(unsigned long addr, unsigned long end,
 
 	if (addr == end)
 		return 0;
-	if (end >= MODULES_END)
-		return -EINVAL;
 	mutex_lock(&cpa_mutex);
 	pgdp = pgd_offset_k(addr);
 	do {
