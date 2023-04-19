@@ -20,7 +20,7 @@ MACHINE ?= $(shell echo $(uname_M) | sed -e 's/aarch64.*/arm64/' -e 's/ppc64.*/p
 # Avoid accidental wrong builds, due to built-in rules working just a little
 # bit too well--but not quite as well as required for our situation here.
 #
-# In other words, "make userfaultfd" is supposed to fail to build at all,
+# In other words, "make $SOME_TEST" is supposed to fail to build at all,
 # because this Makefile only supports either "make" (all), or "make /full/path".
 # However,  the built-in rules, if not suppressed, will pick up CFLAGS and the
 # initial LDLIBS (but not the target-specific LDLIBS, because those are only
@@ -31,34 +31,37 @@ MAKEFLAGS += --no-builtin-rules
 
 CFLAGS = -Wall -I $(top_srcdir) $(EXTRA_CFLAGS) $(KHDR_INCLUDES)
 LDLIBS = -lrt -lpthread
-TEST_GEN_FILES = cow
-TEST_GEN_FILES += compaction_test
-TEST_GEN_FILES += gup_test
-TEST_GEN_FILES += hmm-tests
-TEST_GEN_FILES += hugetlb-madvise
-TEST_GEN_FILES += hugepage-mmap
-TEST_GEN_FILES += hugepage-mremap
-TEST_GEN_FILES += hugepage-shm
-TEST_GEN_FILES += hugepage-vmemmap
-TEST_GEN_FILES += khugepaged
-TEST_GEN_PROGS = madv_populate
-TEST_GEN_FILES += map_fixed_noreplace
-TEST_GEN_FILES += map_hugetlb
-TEST_GEN_FILES += map_populate
-TEST_GEN_FILES += memfd_secret
-TEST_GEN_FILES += migration
-TEST_GEN_FILES += mlock-random-test
-TEST_GEN_FILES += mlock2-tests
-TEST_GEN_FILES += mrelease_test
-TEST_GEN_FILES += mremap_dontunmap
-TEST_GEN_FILES += mremap_test
-TEST_GEN_FILES += on-fault-limit
-TEST_GEN_FILES += thuge-gen
-TEST_GEN_FILES += transhuge-stress
-TEST_GEN_FILES += userfaultfd
+
+TEST_GEN_PROGS = cow
+TEST_GEN_PROGS += compaction_test
+TEST_GEN_PROGS += gup_test
+TEST_GEN_PROGS += hmm-tests
+TEST_GEN_PROGS += hugetlb-madvise
+TEST_GEN_PROGS += hugepage-mmap
+TEST_GEN_PROGS += hugepage-mremap
+TEST_GEN_PROGS += hugepage-shm
+TEST_GEN_PROGS += hugepage-vmemmap
+TEST_GEN_PROGS += khugepaged
+TEST_GEN_PROGS += madv_populate
+TEST_GEN_PROGS += map_fixed_noreplace
+TEST_GEN_PROGS += map_hugetlb
+TEST_GEN_PROGS += map_populate
+TEST_GEN_PROGS += memfd_secret
+TEST_GEN_PROGS += migration
+TEST_GEN_PROGS += mkdirty
+TEST_GEN_PROGS += mlock-random-test
+TEST_GEN_PROGS += mlock2-tests
+TEST_GEN_PROGS += mrelease_test
+TEST_GEN_PROGS += mremap_dontunmap
+TEST_GEN_PROGS += mremap_test
+TEST_GEN_PROGS += on-fault-limit
+TEST_GEN_PROGS += thuge-gen
+TEST_GEN_PROGS += transhuge-stress
+TEST_GEN_PROGS += uffd-stress
+TEST_GEN_PROGS += uffd-unit-tests
 TEST_GEN_PROGS += soft-dirty
 TEST_GEN_PROGS += split_huge_page_test
-TEST_GEN_FILES += ksm_tests
+TEST_GEN_PROGS += ksm_tests
 TEST_GEN_PROGS += ksm_functional_tests
 TEST_GEN_PROGS += mdwe_test
 
@@ -76,41 +79,38 @@ CFLAGS += -no-pie
 endif
 
 ifeq ($(CAN_BUILD_I386),1)
-TEST_GEN_FILES += $(BINARIES_32)
+TEST_GEN_PROGS += $(BINARIES_32)
 endif
 
 ifeq ($(CAN_BUILD_X86_64),1)
-TEST_GEN_FILES += $(BINARIES_64)
+TEST_GEN_PROGS += $(BINARIES_64)
 endif
 else
 
 ifneq (,$(findstring $(MACHINE),ppc64))
-TEST_GEN_FILES += protection_keys
+TEST_GEN_PROGS += protection_keys
 endif
 
 endif
 
 ifneq (,$(filter $(MACHINE),arm64 ia64 mips64 parisc64 ppc64 riscv64 s390x sh64 sparc64 x86_64))
-TEST_GEN_FILES += va_128TBswitch
-TEST_GEN_FILES += virtual_address_range
-TEST_GEN_FILES += write_to_hugetlbfs
+TEST_GEN_PROGS += va_high_addr_switch
+TEST_GEN_PROGS += virtual_address_range
+TEST_GEN_PROGS += write_to_hugetlbfs
 endif
 
 TEST_PROGS := run_vmtests.sh
 
 TEST_FILES := test_vmalloc.sh
 TEST_FILES += test_hmm.sh
-TEST_FILES += va_128TBswitch.sh
+TEST_FILES += va_high_addr_switch.sh
 
 include ../lib.mk
 
-$(OUTPUT)/cow: vm_util.c
-$(OUTPUT)/khugepaged: vm_util.c
-$(OUTPUT)/ksm_functional_tests: vm_util.c
-$(OUTPUT)/madv_populate: vm_util.c
-$(OUTPUT)/soft-dirty: vm_util.c
-$(OUTPUT)/split_huge_page_test: vm_util.c
-$(OUTPUT)/userfaultfd: vm_util.c
+$(TEST_GEN_PROGS): vm_util.c
+
+$(OUTPUT)/uffd-stress: uffd-common.c
+$(OUTPUT)/uffd-unit-tests: uffd-common.c
 
 ifeq ($(MACHINE),x86_64)
 BINARIES_32 := $(patsubst %,$(OUTPUT)/%,$(BINARIES_32))
