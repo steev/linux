@@ -472,8 +472,8 @@ static const struct iwl_hcmd_names iwl_mvm_legacy_names[] = {
 	HCMD_NAME(SCAN_OFFLOAD_PROFILES_QUERY_CMD),
 	HCMD_NAME(BT_COEX_UPDATE_REDUCED_TXP),
 	HCMD_NAME(BT_COEX_CI),
-	HCMD_NAME(WNM_80211V_TIMING_MEASUREMENT_CONFIRM_NOTIFICATION),
 	HCMD_NAME(WNM_80211V_TIMING_MEASUREMENT_NOTIFICATION),
+	HCMD_NAME(WNM_80211V_TIMING_MEASUREMENT_CONFIRM_NOTIFICATION),
 	HCMD_NAME(PHY_CONFIGURATION_CMD),
 	HCMD_NAME(CALIB_RES_NOTIF_PHY_DB),
 	HCMD_NAME(PHY_DB_CMD),
@@ -1366,6 +1366,8 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_cfg *cfg,
 		       sizeof(struct mvm_statistics_rx_v3));
 	else
 		memset(&mvm->rx_stats, 0, sizeof(struct mvm_statistics_rx));
+
+	iwl_mvm_ftm_initiator_smooth_config(mvm);
 
 	iwl_mvm_init_time_sync(&mvm->time_sync);
 

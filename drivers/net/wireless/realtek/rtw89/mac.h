@@ -359,6 +359,7 @@ enum rtw89_mac_c2h_ofld_func {
 	RTW89_MAC_C2H_FUNC_MACID_PAUSE,
 	RTW89_MAC_C2H_FUNC_TSF32_TOGL_RPT = 0x6,
 	RTW89_MAC_C2H_FUNC_SCANOFLD_RSP = 0x9,
+	RTW89_MAC_C2H_FUNC_BCNFLTR_RPT = 0xd,
 	RTW89_MAC_C2H_FUNC_OFLD_MAX,
 };
 
@@ -815,6 +816,7 @@ struct rtw89_mac_size_set {
 	const struct rtw89_ple_quota ple_qt47;
 	const struct rtw89_ple_quota ple_qt58;
 	const struct rtw89_ple_quota ple_qt_52a_wow;
+	const struct rtw89_ple_quota ple_qt_52b_wow;
 };
 
 extern const struct rtw89_mac_size_set rtw89_mac_size;
@@ -1116,6 +1118,7 @@ enum rtw89_mac_xtal_si_offset {
 	XTAL_SI_XTAL_XMD_4 = 0x26,
 #define XTAL_SI_LPS_CAP		GENMASK(3, 0)
 	XTAL_SI_CV = 0x41,
+#define XTAL_SI_ACV_MASK	GENMASK(3, 0)
 	XTAL_SI_LOW_ADDR = 0x62,
 #define XTAL_SI_LOW_ADDR_MASK	GENMASK(7, 0)
 	XTAL_SI_CTRL = 0x63,

@@ -98,6 +98,7 @@ struct iwl_mvm_scan_params {
 	bool scan_6ghz;
 	bool enable_6ghz_passive;
 	bool respect_p2p_go, respect_p2p_go_hb;
+	u8 bssid[ETH_ALEN] __aligned(2);
 };
 
 static inline void *iwl_mvm_get_scan_req_umac_data(struct iwl_mvm *mvm)
@@ -240,8 +241,9 @@ iwl_mvm_scan_type _iwl_mvm_get_scan_type(struct iwl_mvm *mvm,
 		 * set all scan requests as fast-balance scan
 		 */
 		if (vif && vif->type == NL80211_IFTYPE_STATION &&
-		    vif->bss_conf.dtim_period < 220 &&
-		    data.is_dcm_with_p2p_go)
+		    data.is_dcm_with_p2p_go &&
+		    ((vif->bss_conf.beacon_int *
+		      vif->bss_conf.dtim_period) < 220))
 			return IWL_SCAN_TYPE_FAST_BALANCE;
 	}
 
@@ -759,7 +761,7 @@ iwl_mvm_build_scan_probe(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	frame->frame_control = cpu_to_le16(IEEE80211_STYPE_PROBE_REQ);
 	eth_broadcast_addr(frame->da);
-	eth_broadcast_addr(frame->bssid);
+	ether_addr_copy(frame->bssid, params->bssid);
 	frame->seq_ctrl = 0;
 
 	pos = frame->u.probe_req.variable;
@@ -2081,6 +2083,11 @@ static u8 iwl_mvm_scan_umac_flags2(struct iwl_mvm *mvm,
 				IWL_UMAC_SCAN_GEN_PARAMS_FLAGS2_RESPECT_P2P_GO_HB;
 	}
 
+	if (params->scan_6ghz &&
+	    fw_has_capa(&mvm->fw->ucode_capa,
+			IWL_UCODE_TLV_CAPA_SCAN_DONT_TOGGLE_ANT))
+		flags |= IWL_UMAC_SCAN_GEN_PARAMS_FLAGS2_DONT_TOGGLE_ANT;
+
 	return flags;
 }
 
@@ -2292,7 +2299,7 @@ iwl_mvm_scan_umac_fill_general_p_v11(struct iwl_mvm *mvm,
 
 	iwl_mvm_scan_umac_dwell_v11(mvm, gp, params);
 
-	IWL_DEBUG_SCAN(mvm, "Gerenal: flags=0x%x, flags2=0x%x\n",
+	IWL_DEBUG_SCAN(mvm, "General: flags=0x%x, flags2=0x%x\n",
 		       gen_flags, gen_flags2);
 
 	gp->flags = cpu_to_le16(gen_flags);
@@ -2795,6 +2802,7 @@ int iwl_mvm_reg_scan_start(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	params.pass_all = true;
 	params.n_match_sets = 0;
 	params.match_sets = NULL;
+	ether_addr_copy(params.bssid, req->bssid);
 
 	params.scan_plans = &scan_plan;
 	params.n_scan_plans = 1;
@@ -2888,6 +2896,7 @@ int iwl_mvm_sched_scan_start(struct iwl_mvm *mvm,
 	params.pass_all =  iwl_mvm_scan_pass_all(mvm, req);
 	params.n_match_sets = req->n_match_sets;
 	params.match_sets = req->match_sets;
+	eth_broadcast_addr(params.bssid);
 	if (!req->n_scan_plans)
 		return -EINVAL;
 
