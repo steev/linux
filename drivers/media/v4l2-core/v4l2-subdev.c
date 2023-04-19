@@ -510,8 +510,11 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 	struct video_device *vdev = video_devdata(file);
 	struct v4l2_subdev *sd = vdev_to_v4l2_subdev(vdev);
 	struct v4l2_fh *vfh = file->private_data;
+	struct v4l2_subdev_fh *subdev_fh = to_v4l2_subdev_fh(vfh);
 	bool ro_subdev = test_bit(V4L2_FL_SUBDEV_RO_DEVNODE, &vdev->flags);
 	bool streams_subdev = sd->flags & V4L2_SUBDEV_FL_STREAMS;
+	bool client_supports_streams = subdev_fh->client_caps &
+				       V4L2_SUBDEV_CLIENT_CAP_STREAMS;
 	int rval;
 
 	switch (cmd) {
@@ -636,6 +639,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 	case VIDIOC_SUBDEV_G_FMT: {
 		struct v4l2_subdev_format *format = arg;
 
+		if (!client_supports_streams)
+			format->stream = 0;
+
 		memset(format->reserved, 0, sizeof(format->reserved));
 		memset(format->format.reserved, 0, sizeof(format->format.reserved));
 		return v4l2_subdev_call(sd, pad, get_fmt, state, format);
@@ -647,6 +653,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 		if (format->which != V4L2_SUBDEV_FORMAT_TRY && ro_subdev)
 			return -EPERM;
 
+		if (!client_supports_streams)
+			format->stream = 0;
+
 		memset(format->reserved, 0, sizeof(format->reserved));
 		memset(format->format.reserved, 0, sizeof(format->format.reserved));
 		return v4l2_subdev_call(sd, pad, set_fmt, state, format);
@@ -655,6 +664,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 	case VIDIOC_SUBDEV_G_CROP: {
 		struct v4l2_subdev_crop *crop = arg;
 		struct v4l2_subdev_selection sel;
+
+		if (!client_supports_streams)
+			crop->stream = 0;
 
 		memset(crop->reserved, 0, sizeof(crop->reserved));
 		memset(&sel, 0, sizeof(sel));
@@ -677,6 +689,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 		if (crop->which != V4L2_SUBDEV_FORMAT_TRY && ro_subdev)
 			return -EPERM;
 
+		if (!client_supports_streams)
+			crop->stream = 0;
+
 		memset(crop->reserved, 0, sizeof(crop->reserved));
 		memset(&sel, 0, sizeof(sel));
 		sel.which = crop->which;
@@ -695,6 +710,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 	case VIDIOC_SUBDEV_ENUM_MBUS_CODE: {
 		struct v4l2_subdev_mbus_code_enum *code = arg;
 
+		if (!client_supports_streams)
+			code->stream = 0;
+
 		memset(code->reserved, 0, sizeof(code->reserved));
 		return v4l2_subdev_call(sd, pad, enum_mbus_code, state,
 					code);
@@ -703,6 +721,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 	case VIDIOC_SUBDEV_ENUM_FRAME_SIZE: {
 		struct v4l2_subdev_frame_size_enum *fse = arg;
 
+		if (!client_supports_streams)
+			fse->stream = 0;
+
 		memset(fse->reserved, 0, sizeof(fse->reserved));
 		return v4l2_subdev_call(sd, pad, enum_frame_size, state,
 					fse);
@@ -710,6 +731,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 
 	case VIDIOC_SUBDEV_G_FRAME_INTERVAL: {
 		struct v4l2_subdev_frame_interval *fi = arg;
+
+		if (!client_supports_streams)
+			fi->stream = 0;
 
 		memset(fi->reserved, 0, sizeof(fi->reserved));
 		return v4l2_subdev_call(sd, video, g_frame_interval, arg);
@@ -721,12 +745,18 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 		if (ro_subdev)
 			return -EPERM;
 
+		if (!client_supports_streams)
+			fi->stream = 0;
+
 		memset(fi->reserved, 0, sizeof(fi->reserved));
 		return v4l2_subdev_call(sd, video, s_frame_interval, arg);
 	}
 
 	case VIDIOC_SUBDEV_ENUM_FRAME_INTERVAL: {
 		struct v4l2_subdev_frame_interval_enum *fie = arg;
+
+		if (!client_supports_streams)
+			fie->stream = 0;
 
 		memset(fie->reserved, 0, sizeof(fie->reserved));
 		return v4l2_subdev_call(sd, pad, enum_frame_interval, state,
@@ -735,6 +765,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 
 	case VIDIOC_SUBDEV_G_SELECTION: {
 		struct v4l2_subdev_selection *sel = arg;
+
+		if (!client_supports_streams)
+			sel->stream = 0;
 
 		memset(sel->reserved, 0, sizeof(sel->reserved));
 		return v4l2_subdev_call(
@@ -746,6 +779,9 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 
 		if (sel->which != V4L2_SUBDEV_FORMAT_TRY && ro_subdev)
 			return -EPERM;
+
+		if (!client_supports_streams)
+			sel->stream = 0;
 
 		memset(sel->reserved, 0, sizeof(sel->reserved));
 		return v4l2_subdev_call(
@@ -886,6 +922,33 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 
 		return v4l2_subdev_call(sd, pad, set_routing, state,
 					routing->which, &krouting);
+	}
+
+	case VIDIOC_SUBDEV_G_CLIENT_CAP: {
+		struct v4l2_subdev_client_capability *client_cap = arg;
+
+		client_cap->capabilities = subdev_fh->client_caps;
+
+		return 0;
+	}
+
+	case VIDIOC_SUBDEV_S_CLIENT_CAP: {
+		struct v4l2_subdev_client_capability *client_cap = arg;
+
+		/*
+		 * Clear V4L2_SUBDEV_CLIENT_CAP_STREAMS if streams API is not
+		 * enabled. Remove this when streams API is no longer
+		 * experimental.
+		 */
+		if (!v4l2_subdev_enable_streams_api)
+			client_cap->capabilities &= ~V4L2_SUBDEV_CLIENT_CAP_STREAMS;
+
+		/* Filter out unsupported capabilities */
+		client_cap->capabilities &= V4L2_SUBDEV_CLIENT_CAP_STREAMS;
+
+		subdev_fh->client_caps = client_cap->capabilities;
+
+		return 0;
 	}
 
 	default:
@@ -1708,7 +1771,8 @@ int v4l2_subdev_routing_validate(struct v4l2_subdev *sd,
 	unsigned int i, j;
 	int ret = -EINVAL;
 
-	if (disallow & V4L2_SUBDEV_ROUTING_NO_STREAM_MIX) {
+	if (disallow & (V4L2_SUBDEV_ROUTING_NO_STREAM_MIX |
+			V4L2_SUBDEV_ROUTING_NO_MULTIPLEXING)) {
 		remote_pads = kcalloc(sd->entity.num_pads, sizeof(*remote_pads),
 				      GFP_KERNEL);
 		if (!remote_pads)
@@ -1737,10 +1801,10 @@ int v4l2_subdev_routing_validate(struct v4l2_subdev *sd,
 		}
 
 		/*
-		 * V4L2_SUBDEV_ROUTING_NO_STREAM_MIX: Streams on the same pad
-		 * may not be routed to streams on different pads.
+		 * V4L2_SUBDEV_ROUTING_NO_SINK_STREAM_MIX: all streams from a
+		 * sink pad must be routed to a single source pad.
 		 */
-		if (disallow & V4L2_SUBDEV_ROUTING_NO_STREAM_MIX) {
+		if (disallow & V4L2_SUBDEV_ROUTING_NO_SINK_STREAM_MIX) {
 			if (remote_pads[route->sink_pad] != U32_MAX &&
 			    remote_pads[route->sink_pad] != route->source_pad) {
 				dev_dbg(sd->dev,
@@ -1748,7 +1812,13 @@ int v4l2_subdev_routing_validate(struct v4l2_subdev *sd,
 					i, "sink");
 				goto out;
 			}
+		}
 
+		/*
+		 * V4L2_SUBDEV_ROUTING_NO_SOURCE_STREAM_MIX: all streams on a
+		 * source pad must originate from a single sink pad.
+		 */
+		if (disallow & V4L2_SUBDEV_ROUTING_NO_SOURCE_STREAM_MIX) {
 			if (remote_pads[route->source_pad] != U32_MAX &&
 			    remote_pads[route->source_pad] != route->sink_pad) {
 				dev_dbg(sd->dev,
@@ -1756,7 +1826,37 @@ int v4l2_subdev_routing_validate(struct v4l2_subdev *sd,
 					i, "source");
 				goto out;
 			}
+		}
 
+		/*
+		 * V4L2_SUBDEV_ROUTING_NO_SINK_MULTIPLEXING: Pads on the sink
+		 * side can not do stream multiplexing, i.e. there can be only
+		 * a single stream in a sink pad.
+		 */
+		if (disallow & V4L2_SUBDEV_ROUTING_NO_SINK_MULTIPLEXING) {
+			if (remote_pads[route->sink_pad] != U32_MAX) {
+				dev_dbg(sd->dev,
+					"route %u attempts to multiplex on %s pad %u\n",
+					i, "sink", route->sink_pad);
+				goto out;
+			}
+		}
+
+		/*
+		 * V4L2_SUBDEV_ROUTING_NO_SOURCE_MULTIPLEXING: Pads on the
+		 * source side can not do stream multiplexing, i.e. there can
+		 * be only a single stream in a source pad.
+		 */
+		if (disallow & V4L2_SUBDEV_ROUTING_NO_SOURCE_MULTIPLEXING) {
+			if (remote_pads[route->source_pad] != U32_MAX) {
+				dev_dbg(sd->dev,
+					"route %u attempts to multiplex on %s pad %u\n",
+					i, "source", route->source_pad);
+				goto out;
+			}
+		}
+
+		if (remote_pads) {
 			remote_pads[route->sink_pad] = route->source_pad;
 			remote_pads[route->source_pad] = route->sink_pad;
 		}
