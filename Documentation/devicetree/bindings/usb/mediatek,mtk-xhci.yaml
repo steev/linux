@@ -11,7 +11,7 @@ maintainers:
   - Chunfeng Yun <chunfeng.yun@mediatek.com>
 
 allOf:
-  - $ref: "usb-xhci.yaml"
+  - $ref: usb-xhci.yaml
 
 description: |
   There are two scenarios:
@@ -86,14 +86,6 @@ properties:
       - const: mcu_ck
       - const: dma_ck
       - const: xhci_ck
-
-  assigned-clocks:
-    minItems: 1
-    maxItems: 5
-
-  assigned-clock-parents:
-    minItems: 1
-    maxItems: 5
 
   phys:
     description:
