@@ -49,6 +49,19 @@ TRACE_DEFINE_ENUM(AF_INET6);
 		{ AF_INET,		"AF_INET" },		\
 		{ AF_INET6,		"AF_INET6" })
 
+/*
+ * From https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
+ */
+#define rpc_show_tls_content_type(type) \
+	__print_symbolic(type, \
+		{ 20,		"change cipher spec" }, \
+		{ 21,		"alert" }, \
+		{ 22,		"handshake" }, \
+		{ 23,		"application data" }, \
+		{ 24,		"heartbeat" }, \
+		{ 25,		"tls12_cid" }, \
+		{ 26,		"ACK" })
+
 DECLARE_EVENT_CLASS(rpc_xdr_buf_class,
 	TP_PROTO(
 		const struct rpc_task *task,
@@ -1790,6 +1803,31 @@ DEFINE_EVENT(svc_rqst_status, svc_send,
 	TP_PROTO(const struct svc_rqst *rqst, int status),
 	TP_ARGS(rqst, status));
 
+TRACE_EVENT(svc_replace_page_err,
+	TP_PROTO(const struct svc_rqst *rqst),
+
+	TP_ARGS(rqst),
+	TP_STRUCT__entry(
+		SVC_RQST_ENDPOINT_FIELDS(rqst)
+
+		__field(const void *, begin)
+		__field(const void *, respages)
+		__field(const void *, nextpage)
+	),
+
+	TP_fast_assign(
+		SVC_RQST_ENDPOINT_ASSIGNMENTS(rqst);
+
+		__entry->begin = rqst->rq_pages;
+		__entry->respages = rqst->rq_respages;
+		__entry->nextpage = rqst->rq_next_page;
+	),
+
+	TP_printk(SVC_RQST_ENDPOINT_FORMAT " begin=%p respages=%p nextpage=%p",
+		SVC_RQST_ENDPOINT_VARARGS,
+		__entry->begin, __entry->respages, __entry->nextpage)
+);
+
 TRACE_EVENT(svc_stats_latency,
 	TP_PROTO(
 		const struct svc_rqst *rqst
@@ -2253,6 +2291,32 @@ DECLARE_EVENT_CLASS(svcsock_accept_class,
 
 DEFINE_ACCEPT_EVENT(accept);
 DEFINE_ACCEPT_EVENT(getpeername);
+
+TRACE_EVENT(svcsock_tls_ctype,
+	TP_PROTO(
+		const struct svc_xprt *xprt,
+		unsigned char ctype
+	),
+
+	TP_ARGS(xprt, ctype),
+
+	TP_STRUCT__entry(
+		SVC_XPRT_ENDPOINT_FIELDS(xprt)
+
+		__field(unsigned long, ctype)
+	),
+
+	TP_fast_assign(
+		SVC_XPRT_ENDPOINT_ASSIGNMENTS(xprt);
+
+		__entry->ctype = ctype;
+	),
+
+	TP_printk(SVC_XPRT_ENDPOINT_FORMAT " %s",
+		SVC_XPRT_ENDPOINT_VARARGS,
+		rpc_show_tls_content_type(__entry->ctype)
+	)
+);
 
 DECLARE_EVENT_CLASS(cache_event,
 	TP_PROTO(
