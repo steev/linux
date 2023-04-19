@@ -2612,7 +2612,7 @@ int block_truncate_page(struct address_space *mapping,
 	struct inode *inode = mapping->host;
 	struct page *page;
 	struct buffer_head *bh;
-	int err;
+	int err = 0;
 
 	blocksize = i_blocksize(inode);
 	length = offset & (blocksize - 1);
@@ -2625,9 +2625,8 @@ int block_truncate_page(struct address_space *mapping,
 	iblock = (sector_t)index << (PAGE_SHIFT - inode->i_blkbits);
 	
 	page = grab_cache_page(mapping, index);
-	err = -ENOMEM;
 	if (!page)
-		goto out;
+		return -ENOMEM;
 
 	if (!page_has_buffers(page))
 		create_empty_buffers(page, blocksize, 0);
@@ -2641,7 +2640,6 @@ int block_truncate_page(struct address_space *mapping,
 		pos += blocksize;
 	}
 
-	err = 0;
 	if (!buffer_mapped(bh)) {
 		WARN_ON(bh->b_size != blocksize);
 		err = get_block(inode, iblock, bh, 0);
@@ -2665,12 +2663,11 @@ int block_truncate_page(struct address_space *mapping,
 
 	zero_user(page, offset, length);
 	mark_buffer_dirty(bh);
-	err = 0;
 
 unlock:
 	unlock_page(page);
 	put_page(page);
-out:
+
 	return err;
 }
 EXPORT_SYMBOL(block_truncate_page);
