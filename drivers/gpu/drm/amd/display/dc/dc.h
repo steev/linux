@@ -879,6 +879,8 @@ struct dc_debug_options {
 	uint32_t fpo_vactive_margin_us;
 	bool disable_fpo_vactive;
 	bool disable_boot_optimizations;
+	bool override_odm_optimization;
+	bool minimize_dispclk_using_odm;
 };
 
 struct gpu_info_soc_bounding_box_v1_0;
@@ -1454,6 +1456,7 @@ struct dc_link {
 
 	struct ddc_service *ddc;
 
+	enum dp_panel_mode panel_mode;
 	bool aux_mode;
 
 	/* Private to DC core */
@@ -2224,5 +2227,8 @@ void dc_process_dmub_dpia_hpd_int_enable(const struct dc *dc,
 
 /* Disable acc mode Interfaces */
 void dc_disable_accelerated_mode(struct dc *dc);
+
+bool dc_is_timing_changed(struct dc_stream_state *cur_stream,
+		       struct dc_stream_state *new_stream);
 
 #endif /* DC_INTERFACE_H_ */
