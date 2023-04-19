@@ -93,17 +93,17 @@ static enum count_type __read_io_type(struct page *page)
 /* postprocessing steps for read bios */
 enum bio_post_read_step {
 #ifdef CONFIG_FS_ENCRYPTION
-	STEP_DECRYPT	= 1 << 0,
+	STEP_DECRYPT	= BIT(0),
 #else
 	STEP_DECRYPT	= 0,	/* compile out the decryption-related code */
 #endif
 #ifdef CONFIG_F2FS_FS_COMPRESSION
-	STEP_DECOMPRESS	= 1 << 1,
+	STEP_DECOMPRESS	= BIT(1),
 #else
 	STEP_DECOMPRESS	= 0,	/* compile out the decompression-related code */
 #endif
 #ifdef CONFIG_FS_VERITY
-	STEP_VERITY	= 1 << 2,
+	STEP_VERITY	= BIT(2),
 #else
 	STEP_VERITY	= 0,	/* compile out the verity-related code */
 #endif
@@ -420,7 +420,7 @@ int f2fs_target_device_index(struct f2fs_sb_info *sbi, block_t blkaddr)
 
 static blk_opf_t f2fs_io_flags(struct f2fs_io_info *fio)
 {
-	unsigned int temp_mask = (1 << NR_TEMP_TYPE) - 1;
+	unsigned int temp_mask = GENMASK(NR_TEMP_TYPE - 1, 0);
 	unsigned int fua_flag, meta_flag, io_flag;
 	blk_opf_t op_flags = 0;
 
@@ -442,9 +442,9 @@ static blk_opf_t f2fs_io_flags(struct f2fs_io_info *fio)
 	 *    5 |    4 |   3 |    2 |    1 |   0 |
 	 * Cold | Warm | Hot | Cold | Warm | Hot |
 	 */
-	if ((1 << fio->temp) & meta_flag)
+	if (BIT(fio->temp) & meta_flag)
 		op_flags |= REQ_META;
-	if ((1 << fio->temp) & fua_flag)
+	if (BIT(fio->temp) & fua_flag)
 		op_flags |= REQ_FUA;
 	return op_flags;
 }
@@ -873,6 +873,8 @@ void f2fs_submit_merged_ipu_write(struct f2fs_sb_info *sbi,
 	enum temp_type temp;
 	bool found = false;
 	struct bio *target = bio ? *bio : NULL;
+
+	f2fs_bug_on(sbi, !target && !page);
 
 	for (temp = HOT; temp < NR_TEMP_TYPE && !found; temp++) {
 		struct f2fs_bio_info *io = sbi->write_io[DATA] + temp;
@@ -2235,6 +2237,10 @@ int f2fs_read_multi_pages(struct compress_ctx *cc, struct bio **bio_ret,
 	if (ret)
 		goto out;
 
+	if (unlikely(f2fs_cp_error(sbi))) {
+		ret = -EIO;
+		goto out_put_dnode;
+	}
 	f2fs_bug_on(sbi, dn.data_blkaddr != COMPRESS_ADDR);
 
 skip_reading_dnode:
@@ -2798,7 +2804,8 @@ int f2fs_write_single_data_page(struct page *page, int *submitted,
 		 * don't drop any dirty dentry pages for keeping lastest
 		 * directory structure.
 		 */
-		if (S_ISDIR(inode->i_mode))
+		if (S_ISDIR(inode->i_mode) &&
+				!is_sbi_flag_set(sbi, SBI_IS_CLOSE))
 			goto redirty_out;
 		goto out;
 	}
@@ -2898,7 +2905,8 @@ out:
 
 	if (unlikely(f2fs_cp_error(sbi))) {
 		f2fs_submit_merged_write(sbi, DATA);
-		f2fs_submit_merged_ipu_write(sbi, bio, NULL);
+		if (bio && *bio)
+			f2fs_submit_merged_ipu_write(sbi, bio, NULL);
 		submitted = NULL;
 	}
 
@@ -3123,12 +3131,9 @@ continue_unlock:
 			}
 
 			if (folio_test_writeback(folio)) {
-				if (wbc->sync_mode != WB_SYNC_NONE)
-					f2fs_wait_on_page_writeback(
-							&folio->page,
-							DATA, true, true);
-				else
+				if (wbc->sync_mode == WB_SYNC_NONE)
 					goto continue_unlock;
+				f2fs_wait_on_page_writeback(&folio->page, DATA, true, true);
 			}
 
 			if (!folio_clear_dirty_for_io(folio))
@@ -3725,37 +3730,16 @@ void f2fs_invalidate_folio(struct folio *folio, size_t offset, size_t length)
 			f2fs_remove_dirty_inode(inode);
 		}
 	}
-
-	clear_page_private_reference(&folio->page);
-	clear_page_private_gcing(&folio->page);
-
-	if (test_opt(sbi, COMPRESS_CACHE) &&
-			inode->i_ino == F2FS_COMPRESS_INO(sbi))
-		clear_page_private_data(&folio->page);
-
-	folio_detach_private(folio);
+	clear_page_private_all(&folio->page);
 }
 
 bool f2fs_release_folio(struct folio *folio, gfp_t wait)
 {
-	struct f2fs_sb_info *sbi;
-
 	/* If this is dirty folio, keep private data */
 	if (folio_test_dirty(folio))
 		return false;
 
-	sbi = F2FS_M_SB(folio->mapping);
-	if (test_opt(sbi, COMPRESS_CACHE)) {
-		struct inode *inode = folio->mapping->host;
-
-		if (inode->i_ino == F2FS_COMPRESS_INO(sbi))
-			clear_page_private_data(&folio->page);
-	}
-
-	clear_page_private_reference(&folio->page);
-	clear_page_private_gcing(&folio->page);
-
-	folio_detach_private(folio);
+	clear_page_private_all(&folio->page);
 	return true;
 }
 
