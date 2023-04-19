@@ -62,6 +62,9 @@ LX_GDBPARSED(hrtimer_resolution)
 LX_GDBPARSED(IRQD_LEVEL)
 LX_GDBPARSED(IRQ_HIDDEN)
 
+/* linux/module.h */
+LX_GDBPARSED(MOD_TEXT)
+
 /* linux/mount.h */
 LX_VALUE(MNT_NOSUID)
 LX_VALUE(MNT_NODEV)

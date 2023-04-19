@@ -1580,6 +1580,5 @@ static int __init zswap_init(void)
 /* must be late so crypto has time to come up */
 late_initcall(zswap_init);
 
-MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Seth Jennings <sjennings@variantweb.net>");
 MODULE_DESCRIPTION("Compressed cache for swap pages");
