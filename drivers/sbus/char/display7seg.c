@@ -31,8 +31,8 @@ static int sol_compat = 0;		/* Solaris compatibility mode	*/
 
 /* Solaris compatibility flag -
  * The Solaris implementation omits support for several
- * documented driver features (ref Sun doc 806-0180-03).  
- * By default, this module supports the documented driver 
+ * documented driver features (ref Sun doc 806-0180-03).
+ * By default, this module supports the documented driver
  * abilities, rather than the Solaris implementation:
  *
  * 	1) Device ALWAYS reverts to OBP-specified FLIPPED mode
@@ -44,7 +44,7 @@ static int sol_compat = 0;		/* Solaris compatibility mode	*/
  * omitting above features, set this parameter to non-zero.
  */
 module_param(sol_compat, int, 0);
-MODULE_PARM_DESC(sol_compat, 
+MODULE_PARM_DESC(sol_compat,
 		 "Disables documented functionality omitted from Solaris driver");
 
 MODULE_AUTHOR("Eric Brower <ebrower@usa.net>");
@@ -63,7 +63,7 @@ struct d7s *d7s_device;
  * | DP | ALARM | FLIP | 4 | 3 | 2 | 1 | 0 |
  * -----------------------------------------
  *
- * DP 		- Toggles decimal point on/off 
+ * DP 		- Toggles decimal point on/off
  * ALARM	- Toggles "Alarm" LED green/red
  * FLIP		- Inverts display for upside-down mounted board
  * bits 0-4	- 7-segment display contents
@@ -200,9 +200,8 @@ static int d7s_probe(struct platform_device *op)
 	 */
 	regs = readb(p->regs);
 	opts = of_find_node_by_path("/options");
-	if (opts &&
-	    of_get_property(opts, "d7s-flipped?", NULL))
-		p->flipped = true;
+	if (opts)
+	    p->flipped = of_property_read_bool(opts, "d7s-flipped?");
 
 	if (p->flipped)
 		regs |= D7S_FLIP;

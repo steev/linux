@@ -36,6 +36,7 @@
 #include <linux/io.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
+#include <linux/platform_device.h>
 
 #include <acpi/processor.h>
 
