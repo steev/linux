@@ -46,12 +46,10 @@
 #include <linux/kmod.h>
 #include <linux/mlx5/mlx5_ifc.h>
 #include <linux/mlx5/vport.h>
-#ifdef CONFIG_RFS_ACCEL
-#include <linux/cpu_rmap.h>
-#endif
 #include <linux/version.h>
 #include <net/devlink.h>
 #include "mlx5_core.h"
+#include "thermal.h"
 #include "lib/eq.h"
 #include "fs_core.h"
 #include "lib/mpfs.h"
@@ -102,15 +100,19 @@ enum {
 static struct mlx5_profile profile[] = {
 	[0] = {
 		.mask           = 0,
+		.num_cmd_caches = MLX5_NUM_COMMAND_CACHES,
 	},
 	[1] = {
 		.mask		= MLX5_PROF_MASK_QP_SIZE,
 		.log_max_qp	= 12,
+		.num_cmd_caches = MLX5_NUM_COMMAND_CACHES,
+
 	},
 	[2] = {
 		.mask		= MLX5_PROF_MASK_QP_SIZE |
 				  MLX5_PROF_MASK_MR_CACHE,
 		.log_max_qp	= LOG_MAX_SUPPORTED_QPS,
+		.num_cmd_caches = MLX5_NUM_COMMAND_CACHES,
 		.mr_cache[0]	= {
 			.size	= 500,
 			.limit	= 250
@@ -176,6 +178,11 @@ static struct mlx5_profile profile[] = {
 			.limit	= 4
 		},
 	},
+	[3] = {
+		.mask		= MLX5_PROF_MASK_QP_SIZE,
+		.log_max_qp	= LOG_MAX_SUPPORTED_QPS,
+		.num_cmd_caches = 0,
+	},
 };
 
 static int wait_fw_init(struct mlx5_core_dev *dev, u32 max_wait_mili,
@@ -191,7 +198,7 @@ static int wait_fw_init(struct mlx5_core_dev *dev, u32 max_wait_mili,
 		if (!(fw_initializing >> 31))
 			break;
 		if (time_after(jiffies, end) ||
-		    test_and_clear_bit(MLX5_BREAK_FW_WAIT, &dev->intf_state)) {
+		    test_bit(MLX5_BREAK_FW_WAIT, &dev->intf_state)) {
 			err = -EBUSY;
 			break;
 		}
@@ -920,7 +927,6 @@ static int mlx5_pci_init(struct mlx5_core_dev *dev, struct pci_dev *pdev,
 	return 0;
 
 err_clr_master:
-	pci_clear_master(dev->pdev);
 	release_bar(dev->pdev);
 err_disable:
 	mlx5_pci_disable_device(dev);
@@ -935,7 +941,6 @@ static void mlx5_pci_close(struct mlx5_core_dev *dev)
 	 */
 	mlx5_drain_health_wq(dev);
 	iounmap(dev->iseg);
-	pci_clear_master(dev->pdev);
 	release_bar(dev->pdev);
 	mlx5_pci_disable_device(dev);
 }
@@ -1405,15 +1410,15 @@ int mlx5_init_one(struct mlx5_core_dev *dev)
 		goto function_teardown;
 	}
 
+	err = mlx5_devlink_params_register(priv_to_devlink(dev));
+	if (err)
+		goto err_devlink_params_reg;
+
 	err = mlx5_load(dev);
 	if (err)
 		goto err_load;
 
 	set_bit(MLX5_INTERFACE_STATE_UP, &dev->intf_state);
-
-	err = mlx5_devlink_params_register(priv_to_devlink(dev));
-	if (err)
-		goto err_devlink_params_reg;
 
 	err = mlx5_register_device(dev);
 	if (err)
@@ -1424,11 +1429,11 @@ int mlx5_init_one(struct mlx5_core_dev *dev)
 	return 0;
 
 err_register:
-	mlx5_devlink_params_unregister(priv_to_devlink(dev));
-err_devlink_params_reg:
 	clear_bit(MLX5_INTERFACE_STATE_UP, &dev->intf_state);
 	mlx5_unload(dev);
 err_load:
+	mlx5_devlink_params_unregister(priv_to_devlink(dev));
+err_devlink_params_reg:
 	mlx5_cleanup_once(dev);
 function_teardown:
 	mlx5_function_teardown(dev, true);
@@ -1447,7 +1452,6 @@ void mlx5_uninit_one(struct mlx5_core_dev *dev)
 	mutex_lock(&dev->intf_state_mutex);
 
 	mlx5_unregister_device(dev);
-	mlx5_devlink_params_unregister(priv_to_devlink(dev));
 
 	if (!test_bit(MLX5_INTERFACE_STATE_UP, &dev->intf_state)) {
 		mlx5_core_warn(dev, "%s: interface is down, NOP\n",
@@ -1458,6 +1462,7 @@ void mlx5_uninit_one(struct mlx5_core_dev *dev)
 
 	clear_bit(MLX5_INTERFACE_STATE_UP, &dev->intf_state);
 	mlx5_unload(dev);
+	mlx5_devlink_params_unregister(priv_to_devlink(dev));
 	mlx5_cleanup_once(dev);
 	mlx5_function_teardown(dev, true);
 out:
@@ -1771,6 +1776,10 @@ static int probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (err)
 		dev_err(&pdev->dev, "mlx5_crdump_enable failed with error code %d\n", err);
 
+	err = mlx5_thermal_init(dev);
+	if (err)
+		dev_err(&pdev->dev, "mlx5_thermal_init failed with error code %d\n", err);
+
 	pci_save_state(pdev);
 	devlink_register(devlink);
 	return 0;
@@ -1799,6 +1808,7 @@ static void remove_one(struct pci_dev *pdev)
 	mlx5_drain_fw_reset(dev);
 	devlink_unregister(devlink);
 	mlx5_sriov_disable(pdev);
+	mlx5_thermal_uninit(dev);
 	mlx5_crdump_disable(dev);
 	mlx5_drain_health_wq(dev);
 	mlx5_uninit_one(dev);

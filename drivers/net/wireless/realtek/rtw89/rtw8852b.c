@@ -1422,6 +1422,7 @@ static void rtw8852b_set_channel_bb(struct rtw89_dev *rtwdev, const struct rtw89
 {
 	bool cck_en = chan->channel <= 14;
 	u8 pri_ch_idx = chan->pri_ch_idx;
+	u8 band = chan->band_type, chan_idx;
 
 	if (cck_en)
 		rtw8852b_ctrl_sco_cck(rtwdev,  chan->primary_channel);
@@ -1444,8 +1445,8 @@ static void rtw8852b_set_channel_bb(struct rtw89_dev *rtwdev, const struct rtw89
 				       B_BT_DYN_DC_EST_EN_MSK, 0x0);
 		rtw89_phy_write32_mask(rtwdev, R_GNT_BT_WGT_EN, B_GNT_BT_WGT_EN, 0x0);
 	}
-	rtw89_phy_write32_mask(rtwdev, R_MAC_PIN_SEL, B_CH_IDX_SEG0,
-			       chan->primary_channel);
+	chan_idx = rtw89_encode_chan_idx(rtwdev, chan->primary_channel, band);
+	rtw89_phy_write32_mask(rtwdev, R_MAC_PIN_SEL, B_CH_IDX_SEG0, chan_idx);
 	rtw8852b_5m_mask(rtwdev, chan, phy_idx);
 	rtw8852b_bb_set_pop(rtwdev);
 	rtw8852b_bb_reset_all(rtwdev, phy_idx);
@@ -2283,15 +2284,64 @@ static void rtw8852b_btc_wl_s1_standby(struct rtw89_dev *rtwdev, bool state)
 
 	/* set WL standby = Rx for GNT_BT_Tx = 1->0 settle issue */
 	if (state)
-		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x579);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x179);
 	else
 		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x20);
 
 	rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWE, RFREG_MASK, 0x0);
 }
 
+static void rtw8852b_btc_set_wl_lna2(struct rtw89_dev *rtwdev, u8 level)
+{
+	switch (level) {
+	case 0: /* default */
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWE, RFREG_MASK, 0x1000);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x0);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x15);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x1);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x17);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x2);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x15);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x3);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x17);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWE, RFREG_MASK, 0x0);
+		break;
+	case 1: /* Fix LNA2=5  */
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWE, RFREG_MASK, 0x1000);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x0);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x15);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x1);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x5);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x2);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x15);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWA, RFREG_MASK, 0x3);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWD0, RFREG_MASK, 0x5);
+		rtw89_write_rf(rtwdev, RF_PATH_B, RR_LUTWE, RFREG_MASK, 0x0);
+		break;
+	}
+}
+
 static void rtw8852b_btc_set_wl_rx_gain(struct rtw89_dev *rtwdev, u32 level)
 {
+	struct rtw89_btc *btc = &rtwdev->btc;
+
+	switch (level) {
+	case 0: /* original */
+	default:
+		rtw8852b_bb_ctrl_btc_preagc(rtwdev, false);
+		btc->dm.wl_lna2 = 0;
+		break;
+	case 1: /* for FDD free-run */
+		rtw8852b_bb_ctrl_btc_preagc(rtwdev, true);
+		btc->dm.wl_lna2 = 0;
+		break;
+	case 2: /* for BTG Co-Rx*/
+		rtw8852b_bb_ctrl_btc_preagc(rtwdev, false);
+		btc->dm.wl_lna2 = 1;
+		break;
+	}
+
+	rtw8852b_btc_set_wl_lna2(rtwdev, btc->dm.wl_lna2);
 }
 
 static void rtw8852b_fill_freq_with_ppdu(struct rtw89_dev *rtwdev,
@@ -2299,13 +2349,14 @@ static void rtw8852b_fill_freq_with_ppdu(struct rtw89_dev *rtwdev,
 					 struct ieee80211_rx_status *status)
 {
 	u16 chan = phy_ppdu->chan_idx;
-	u8 band;
+	enum nl80211_band band;
+	u8 ch;
 
 	if (chan == 0)
 		return;
 
-	band = chan <= 14 ? NL80211_BAND_2GHZ : NL80211_BAND_5GHZ;
-	status->freq = ieee80211_channel_to_frequency(chan, band);
+	rtw89_decode_chan_idx(rtwdev, chan, &ch, &band);
+	status->freq = ieee80211_channel_to_frequency(ch, band);
 	status->band = band;
 }
 
@@ -2506,8 +2557,10 @@ const struct rtw89_chip_info rtw8852b_chip_info = {
 	.h2c_desc_size		= sizeof(struct rtw89_txwd_body),
 	.txwd_body_size		= sizeof(struct rtw89_txwd_body),
 	.h2c_ctrl_reg		= R_AX_H2CREG_CTRL,
+	.h2c_counter_reg	= {R_AX_UDM1 + 1, B_AX_UDM1_HALMAC_H2C_DEQ_CNT_MASK >> 8},
 	.h2c_regs		= rtw8852b_h2c_regs,
 	.c2h_ctrl_reg		= R_AX_C2HREG_CTRL,
+	.c2h_counter_reg	= {R_AX_UDM1 + 1, B_AX_UDM1_HALMAC_C2H_ENQ_CNT_MASK >> 8},
 	.c2h_regs		= rtw8852b_c2h_regs,
 	.page_regs		= &rtw8852b_page_regs,
 	.cfo_src_fd		= true,
@@ -2519,6 +2572,7 @@ const struct rtw89_chip_info rtw8852b_chip_info = {
 	.dma_ch_mask		= BIT(RTW89_DMA_ACH4) | BIT(RTW89_DMA_ACH5) |
 				  BIT(RTW89_DMA_ACH6) | BIT(RTW89_DMA_ACH7) |
 				  BIT(RTW89_DMA_B1MG) | BIT(RTW89_DMA_B1HI),
+	.edcca_lvl_reg		= R_SEG0R_EDCCA_LVL_V1,
 };
 EXPORT_SYMBOL(rtw8852b_chip_info);
 

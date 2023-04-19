@@ -18,6 +18,7 @@ menuconfig PHYLIB
 	depends on NETDEVICES
 	select MDIO_DEVICE
 	select MDIO_DEVRES
+	depends on LEDS_CLASS || LEDS_CLASS=n
 	help
 	  Ethernet controllers are usually attached to PHY
 	  devices.  This option provides infrastructure for
@@ -70,6 +71,7 @@ config AMD_PHY
 config MESON_GXL_PHY
 	tristate "Amlogic Meson GXL Internal PHY"
 	depends on ARCH_MESON || COMPILE_TEST
+	select SMSC_PHY
 	help
 	  Currently has a driver for the Amlogic Meson GXL Internal PHY
 

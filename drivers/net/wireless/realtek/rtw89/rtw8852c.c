@@ -852,76 +852,6 @@ static void rtw8852c_set_gain_error(struct rtw89_dev *rtwdev,
 	}
 }
 
-static
-const u8 rtw8852c_ch_base_table[16] = {1, 0xff,
-				       36, 100, 132, 149, 0xff,
-				       1, 33, 65, 97, 129, 161, 193, 225, 0xff};
-#define RTW8852C_CH_BASE_IDX_2G		0
-#define RTW8852C_CH_BASE_IDX_5G_FIRST	2
-#define RTW8852C_CH_BASE_IDX_5G_LAST	5
-#define RTW8852C_CH_BASE_IDX_6G_FIRST	7
-#define RTW8852C_CH_BASE_IDX_6G_LAST	14
-
-#define RTW8852C_CH_BASE_IDX_MASK	GENMASK(7, 4)
-#define RTW8852C_CH_OFFSET_MASK		GENMASK(3, 0)
-
-static u8 rtw8852c_encode_chan_idx(struct rtw89_dev *rtwdev, u8 central_ch, u8 band)
-{
-	u8 chan_idx;
-	u8 last, first;
-	u8 idx;
-
-	switch (band) {
-	case RTW89_BAND_2G:
-		chan_idx = FIELD_PREP(RTW8852C_CH_BASE_IDX_MASK, RTW8852C_CH_BASE_IDX_2G) |
-			   FIELD_PREP(RTW8852C_CH_OFFSET_MASK, central_ch);
-		return chan_idx;
-	case RTW89_BAND_5G:
-		first = RTW8852C_CH_BASE_IDX_5G_FIRST;
-		last = RTW8852C_CH_BASE_IDX_5G_LAST;
-		break;
-	case RTW89_BAND_6G:
-		first = RTW8852C_CH_BASE_IDX_6G_FIRST;
-		last = RTW8852C_CH_BASE_IDX_6G_LAST;
-		break;
-	default:
-		rtw89_warn(rtwdev, "Unsupported band %d\n", band);
-		return 0;
-	}
-
-	for (idx = last; idx >= first; idx--)
-		if (central_ch >= rtw8852c_ch_base_table[idx])
-			break;
-
-	if (idx < first) {
-		rtw89_warn(rtwdev, "Unknown band %d channel %d\n", band, central_ch);
-		return 0;
-	}
-
-	chan_idx = FIELD_PREP(RTW8852C_CH_BASE_IDX_MASK, idx) |
-		   FIELD_PREP(RTW8852C_CH_OFFSET_MASK,
-			      (central_ch - rtw8852c_ch_base_table[idx]) >> 1);
-	return chan_idx;
-}
-
-static void rtw8852c_decode_chan_idx(struct rtw89_dev *rtwdev, u8 chan_idx,
-				     u8 *ch, enum nl80211_band *band)
-{
-	u8 idx, offset;
-
-	idx = FIELD_GET(RTW8852C_CH_BASE_IDX_MASK, chan_idx);
-	offset = FIELD_GET(RTW8852C_CH_OFFSET_MASK, chan_idx);
-
-	if (idx == RTW8852C_CH_BASE_IDX_2G) {
-		*band = NL80211_BAND_2GHZ;
-		*ch = offset;
-		return;
-	}
-
-	*band = idx <= RTW8852C_CH_BASE_IDX_5G_LAST ? NL80211_BAND_5GHZ : NL80211_BAND_6GHZ;
-	*ch = rtw8852c_ch_base_table[idx] + (offset << 1);
-}
-
 static void rtw8852c_set_gain_offset(struct rtw89_dev *rtwdev,
 				     const struct rtw89_chan *chan,
 				     enum rtw89_phy_idx phy_idx,
@@ -1084,7 +1014,7 @@ static void rtw8852c_ctrl_ch(struct rtw89_dev *rtwdev,
 		}
 	}
 
-	chan_idx = rtw8852c_encode_chan_idx(rtwdev, chan->primary_channel, band);
+	chan_idx = rtw89_encode_chan_idx(rtwdev, chan->primary_channel, band);
 	rtw89_phy_write32_idx(rtwdev, R_MAC_PIN_SEL, B_CH_IDX_SEG0, chan_idx, phy_idx);
 }
 
@@ -2703,20 +2633,25 @@ static void rtw8852c_set_wl_lna2(struct rtw89_dev *rtwdev, u8 level)
 
 static void rtw8852c_btc_set_wl_rx_gain(struct rtw89_dev *rtwdev, u32 level)
 {
+	struct rtw89_btc *btc = &rtwdev->btc;
+
 	switch (level) {
 	case 0: /* original */
+	default:
 		rtw8852c_bb_ctrl_btc_preagc(rtwdev, false);
-		rtw8852c_set_wl_lna2(rtwdev, 0);
+		btc->dm.wl_lna2 = 0;
 		break;
 	case 1: /* for FDD free-run */
 		rtw8852c_bb_ctrl_btc_preagc(rtwdev, true);
-		rtw8852c_set_wl_lna2(rtwdev, 0);
+		btc->dm.wl_lna2 = 0;
 		break;
 	case 2: /* for BTG Co-Rx*/
 		rtw8852c_bb_ctrl_btc_preagc(rtwdev, false);
-		rtw8852c_set_wl_lna2(rtwdev, 1);
+		btc->dm.wl_lna2 = 1;
 		break;
 	}
+
+	rtw8852c_set_wl_lna2(rtwdev, btc->dm.wl_lna2);
 }
 
 static void rtw8852c_fill_freq_with_ppdu(struct rtw89_dev *rtwdev,
@@ -2730,7 +2665,7 @@ static void rtw8852c_fill_freq_with_ppdu(struct rtw89_dev *rtwdev,
 	if (chan_idx == 0)
 		return;
 
-	rtw8852c_decode_chan_idx(rtwdev, chan_idx, &ch, &band);
+	rtw89_decode_chan_idx(rtwdev, chan_idx, &ch, &band);
 	status->freq = ieee80211_channel_to_frequency(ch, band);
 	status->band = band;
 }
@@ -2937,8 +2872,10 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.h2c_desc_size		= sizeof(struct rtw89_rxdesc_short),
 	.txwd_body_size		= sizeof(struct rtw89_txwd_body_v1),
 	.h2c_ctrl_reg		= R_AX_H2CREG_CTRL_V1,
+	.h2c_counter_reg	= {R_AX_UDM1 + 1, B_AX_UDM1_HALMAC_H2C_DEQ_CNT_MASK >> 8},
 	.h2c_regs		= rtw8852c_h2c_regs,
 	.c2h_ctrl_reg		= R_AX_C2HREG_CTRL_V1,
+	.c2h_counter_reg	= {R_AX_UDM1 + 1, B_AX_UDM1_HALMAC_C2H_ENQ_CNT_MASK >> 8},
 	.c2h_regs		= rtw8852c_c2h_regs,
 	.page_regs		= &rtw8852c_page_regs,
 	.cfo_src_fd		= false,
@@ -2948,6 +2885,7 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.rrsr_cfgs		= &rtw8852c_rrsr_cfgs,
 	.bss_clr_map_reg	= R_BSS_CLR_MAP,
 	.dma_ch_mask		= 0,
+	.edcca_lvl_reg		= R_SEG0R_EDCCA_LVL,
 #ifdef CONFIG_PM
 	.wowlan_stub		= &rtw_wowlan_stub_8852c,
 #endif
