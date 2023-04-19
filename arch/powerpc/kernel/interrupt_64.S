@@ -728,20 +728,19 @@ DEFINE_FIXED_SYMBOL(__end_soft_masked, text)
 #ifdef CONFIG_PPC_BOOK3S
 _GLOBAL(ret_from_fork_scv)
 	bl	schedule_tail
-	REST_NVGPRS(r1)
+	HANDLER_RESTORE_NVGPRS()
 	li	r3,0	/* fork() return value */
 	b	.Lsyscall_vectored_common_exit
 #endif
 
 _GLOBAL(ret_from_fork)
 	bl	schedule_tail
-	REST_NVGPRS(r1)
+	HANDLER_RESTORE_NVGPRS()
 	li	r3,0	/* fork() return value */
 	b	.Lsyscall_exit
 
-_GLOBAL(ret_from_kernel_thread)
+_GLOBAL(ret_from_kernel_user_thread)
 	bl	schedule_tail
-	REST_NVGPRS(r1)
 	mtctr	r14
 	mr	r3,r15
 #ifdef CONFIG_PPC64_ELF_ABI_V2
@@ -749,4 +748,25 @@ _GLOBAL(ret_from_kernel_thread)
 #endif
 	bctrl
 	li	r3,0
+	/*
+	 * It does not matter whether this returns via the scv or sc path
+	 * because it returns as execve() and therefore has no calling ABI
+	 * (i.e., it sets registers according to the exec()ed entry point).
+	 */
 	b	.Lsyscall_exit
+
+_GLOBAL(start_kernel_thread)
+	bl	schedule_tail
+	mtctr	r14
+	mr	r3,r15
+#ifdef CONFIG_PPC64_ELF_ABI_V2
+	mr	r12,r14
+#endif
+	bctrl
+	/*
+	 * This must not return. We actually want to BUG here, not WARN,
+	 * because BUG will exit the process which is what the kernel thread
+	 * should have done, which may give some hope of continuing.
+	 */
+100:	trap
+	EMIT_BUG_ENTRY 100b,__FILE__,__LINE__,0
