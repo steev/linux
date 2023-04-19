@@ -1120,8 +1120,8 @@ struct ext4_inode_info {
 
 	/* mballoc */
 	atomic_t i_prealloc_active;
-	struct list_head i_prealloc_list;
-	spinlock_t i_prealloc_lock;
+	struct rb_root i_prealloc_node;
+	rwlock_t i_prealloc_lock;
 
 	/* extents status tree */
 	struct ext4_es_tree i_es_tree;
@@ -1613,7 +1613,6 @@ struct ext4_sb_info {
 	unsigned int s_mb_stats;
 	unsigned int s_mb_order2_reqs;
 	unsigned int s_mb_group_prealloc;
-	unsigned int s_mb_max_inode_prealloc;
 	unsigned int s_max_dir_size_kb;
 	/* where last allocation was done - for stream allocation */
 	unsigned long s_mb_last_group;
@@ -2676,16 +2675,16 @@ struct mmpd_data {
 
 /* bitmap.c */
 extern unsigned int ext4_count_free(char *bitmap, unsigned numchars);
-void ext4_inode_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+void ext4_inode_bitmap_csum_set(struct super_block *sb,
 				struct ext4_group_desc *gdp,
 				struct buffer_head *bh, int sz);
-int ext4_inode_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+int ext4_inode_bitmap_csum_verify(struct super_block *sb,
 				  struct ext4_group_desc *gdp,
 				  struct buffer_head *bh, int sz);
-void ext4_block_bitmap_csum_set(struct super_block *sb, ext4_group_t group,
+void ext4_block_bitmap_csum_set(struct super_block *sb,
 				struct ext4_group_desc *gdp,
 				struct buffer_head *bh);
-int ext4_block_bitmap_csum_verify(struct super_block *sb, ext4_group_t group,
+int ext4_block_bitmap_csum_verify(struct super_block *sb,
 				  struct ext4_group_desc *gdp,
 				  struct buffer_head *bh);
 
@@ -3550,7 +3549,7 @@ extern int ext4_init_inline_data(handle_t *handle, struct inode *inode,
 				 unsigned int len);
 extern int ext4_destroy_inline_data(handle_t *handle, struct inode *inode);
 
-extern int ext4_readpage_inline(struct inode *inode, struct page *page);
+int ext4_readpage_inline(struct inode *inode, struct folio *folio);
 extern int ext4_try_to_write_inline_data(struct address_space *mapping,
 					 struct inode *inode,
 					 loff_t pos, unsigned len,
@@ -3647,7 +3646,7 @@ static inline void ext4_set_de_type(struct super_block *sb,
 
 /* readpages.c */
 extern int ext4_mpage_readpages(struct inode *inode,
-		struct readahead_control *rac, struct page *page);
+		struct readahead_control *rac, struct folio *folio);
 extern int __init ext4_init_post_read_processing(void);
 extern void ext4_exit_post_read_processing(void);
 
@@ -3757,9 +3756,8 @@ extern void ext4_io_submit_init(struct ext4_io_submit *io,
 				struct writeback_control *wbc);
 extern void ext4_end_io_rsv_work(struct work_struct *work);
 extern void ext4_io_submit(struct ext4_io_submit *io);
-extern int ext4_bio_write_page(struct ext4_io_submit *io,
-			       struct page *page,
-			       int len);
+int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *page,
+		size_t len);
 extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
 extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
 

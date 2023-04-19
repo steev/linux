@@ -1325,9 +1325,9 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
 	inode_set_iversion(&ei->vfs_inode, 1);
 	ei->i_flags = 0;
 	spin_lock_init(&ei->i_raw_lock);
-	INIT_LIST_HEAD(&ei->i_prealloc_list);
+	ei->i_prealloc_node = RB_ROOT;
 	atomic_set(&ei->i_prealloc_active, 0);
-	spin_lock_init(&ei->i_prealloc_lock);
+	rwlock_init(&ei->i_prealloc_lock);
 	ext4_es_init_tree(&ei->i_es_tree);
 	rwlock_init(&ei->i_es_lock);
 	INIT_LIST_HEAD(&ei->i_es_list);
@@ -6290,6 +6290,17 @@ static int ext4_freeze(struct super_block *sb)
 		 * flush the journal.
 		 */
 		error = jbd2_journal_flush(journal, 0);
+		if (error < 0)
+			goto out;
+
+		/*
+		 * Do another sync. We really should not have any dirty data
+		 * anymore but our checkpointing code does not clear page dirty
+		 * bits due to locking constraints so writeback still can get
+		 * started for inodes with journalled data which triggers
+		 * annoying warnings.
+		 */
+		error = sync_filesystem(sb);
 		if (error < 0)
 			goto out;
 
