@@ -22,6 +22,7 @@ properties:
   compatible:
     enum:
       - qcom,sc8280xp-lpasscc
+      - qcom,sc8280xp-lpassaudiocc
 
   '#reset-cells':
     const: 1
@@ -45,6 +46,16 @@ required:
 additionalProperties: false
 
 examples:
+  - |
+    #include <dt-bindings/clock/qcom,lpasscc-sc8280xp.h>
+    lpass_audiocc: clock-controller@3300000 {
+      compatible = "qcom,sc8280xp-lpassaudiocc";
+      reg = <0x32a9000 0x1000>;
+      #reset-cells = <1>;
+      #clock-cells = <1>;
+      qcom,adsp-pil-mode;
+    };
+
   - |
     #include <dt-bindings/clock/qcom,lpasscc-sc8280xp.h>
     lpasscc: clock-controller@3900000 {
