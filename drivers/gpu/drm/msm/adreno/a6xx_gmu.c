@@ -1472,9 +1472,6 @@ void a6xx_gmu_remove(struct a6xx_gpu *a6xx_gpu)
 	struct a6xx_gmu *gmu = &a6xx_gpu->gmu;
 	struct platform_device *pdev = to_platform_device(gmu->dev);
 
-	if (!gmu->initialized)
-		return;
-
 	pm_runtime_force_suspend(gmu->dev);
 
 	/*
