@@ -1684,6 +1684,7 @@ static void a6xx_destroy(struct msm_gpu *gpu)
 {
 	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
 	struct a6xx_gpu *a6xx_gpu = to_a6xx_gpu(adreno_gpu);
+	struct a6xx_gmu *gmu = &a6xx_gpu->gmu;
 
 	if (a6xx_gpu->sqe_bo) {
 		msm_gem_unpin_iova(a6xx_gpu->sqe_bo, gpu->aspace);
@@ -1697,9 +1698,11 @@ static void a6xx_destroy(struct msm_gpu *gpu)
 
 	a6xx_llc_slices_destroy(a6xx_gpu);
 
-	mutex_lock(&a6xx_gpu->gmu.lock);
-	a6xx_gmu_remove(a6xx_gpu);
-	mutex_unlock(&a6xx_gpu->gmu.lock);
+	if (gmu->initialized) {
+		mutex_lock(&gmu->lock);
+		a6xx_gmu_remove(a6xx_gpu);
+		mutex_unlock(&gmu->lock);
+	}
 
 	adreno_gpu_cleanup(adreno_gpu);
 
