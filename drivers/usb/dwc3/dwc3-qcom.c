@@ -430,17 +430,23 @@ static void dwc3_qcom_enable_interrupts(struct dwc3_qcom *qcom)
 
 static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
 {
+	struct dwc3 *dwc;
 	u32 val;
 	int i, ret;
-	struct dwc3 *dwc = platform_get_drvdata(qcom->dwc3);
 
 	if (qcom->is_suspended)
 		return 0;
 
-	for (i = 0; i < dwc->num_usb2_ports; i++) {
-		val = readl(qcom->qscratch_base + pwr_evnt_irq_stat_reg_offset[i]);
-		if (!(val & PWR_EVNT_LPM_IN_L2_MASK))
-			dev_err(qcom->dev, "HS-PHY%d not in L2\n", i);
+	/*
+	 * FIXME: Fix this layering violation.
+	 */
+	dwc = platform_get_drvdata(qcom->dwc3);
+	if (dwc) {
+		for (i = 0; i < dwc->num_usb2_ports; i++) {
+			val = readl(qcom->qscratch_base + pwr_evnt_irq_stat_reg_offset[i]);
+			if (!(val & PWR_EVNT_LPM_IN_L2_MASK))
+				dev_err(qcom->dev, "HS-PHY%d not in L2\n", i);
+		}
 	}
 
 	for (i = qcom->num_clocks - 1; i >= 0; i--)
@@ -466,9 +472,9 @@ static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
 
 static int dwc3_qcom_resume(struct dwc3_qcom *qcom, bool wakeup)
 {
+	struct dwc3 *dwc;
 	int ret;
 	int i;
-	struct dwc3 *dwc = platform_get_drvdata(qcom->dwc3);
 
 	if (!qcom->is_suspended)
 		return 0;
@@ -489,11 +495,18 @@ static int dwc3_qcom_resume(struct dwc3_qcom *qcom, bool wakeup)
 	if (ret)
 		dev_warn(qcom->dev, "failed to enable interconnect: %d\n", ret);
 
-	/* Clear existing events from PHY related to L2 in/out */
-	for (i = 0; i < dwc->num_usb2_ports; i++)
-		dwc3_qcom_setbits(qcom->qscratch_base,
-			pwr_evnt_irq_stat_reg_offset[i],
-			PWR_EVNT_LPM_IN_L2_MASK | PWR_EVNT_LPM_OUT_L2_MASK);
+	/*
+	 * FIXME: Fix this layering violation.
+	 */
+	dwc = platform_get_drvdata(qcom->dwc3);
+	if (dwc) {
+		/* Clear existing events from PHY related to L2 in/out */
+		for (i = 0; i < dwc->num_usb2_ports; i++) {
+			dwc3_qcom_setbits(qcom->qscratch_base,
+					pwr_evnt_irq_stat_reg_offset[i],
+					PWR_EVNT_LPM_IN_L2_MASK | PWR_EVNT_LPM_OUT_L2_MASK);
+		}
+	}
 
 	qcom->is_suspended = false;
 
