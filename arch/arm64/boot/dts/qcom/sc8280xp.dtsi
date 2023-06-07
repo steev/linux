@@ -3561,6 +3561,8 @@
 					<&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_USB3_1 0>;
 			interconnect-names = "usb-ddr", "apps-usb";
 
+			wakeup-source;
+
 			status = "disabled";
 
 			usb_2_dwc3: usb@a400000 {
