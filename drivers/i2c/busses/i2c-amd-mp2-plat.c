@@ -183,7 +183,6 @@ static const struct i2c_algorithm i2c_amd_algorithm = {
 	.functionality = i2c_amd_func,
 };
 
-#ifdef CONFIG_PM
 static int i2c_amd_suspend(struct amd_i2c_common *i2c_common)
 {
 	struct amd_i2c_dev *i2c_dev = amd_i2c_dev_common(i2c_common);
@@ -198,7 +197,6 @@ static int i2c_amd_resume(struct amd_i2c_common *i2c_common)
 
 	return i2c_amd_enable_set(i2c_dev, true);
 }
-#endif
 
 static const u32 supported_speeds[] = {
 	I2C_MAX_HIGH_SPEED_MODE_FREQ,
@@ -276,10 +274,8 @@ static int i2c_amd_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, i2c_dev);
 
 	i2c_dev->common.cmd_completion = &i2c_amd_cmd_completion;
-#ifdef CONFIG_PM
-	i2c_dev->common.suspend = &i2c_amd_suspend;
-	i2c_dev->common.resume = &i2c_amd_resume;
-#endif
+	i2c_dev->common.suspend = pm_ptr(&i2c_amd_suspend);
+	i2c_dev->common.resume = pm_ptr(&i2c_amd_resume);
 
 	/* Register the adapter */
 	amd_mp2_pm_runtime_get(mp2_dev);

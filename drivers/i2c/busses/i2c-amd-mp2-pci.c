@@ -382,7 +382,6 @@ static void amd_mp2_pci_remove(struct pci_dev *pci_dev)
 	amd_mp2_clear_reg(privdata);
 }
 
-#ifdef CONFIG_PM
 static int amd_mp2_pci_suspend(struct device *dev)
 {
 	struct pci_dev *pci_dev = to_pci_dev(dev);
@@ -434,9 +433,10 @@ static int amd_mp2_pci_resume(struct device *dev)
 	return ret;
 }
 
-static UNIVERSAL_DEV_PM_OPS(amd_mp2_pci_pm_ops, amd_mp2_pci_suspend,
-			    amd_mp2_pci_resume, NULL);
-#endif /* CONFIG_PM */
+static const struct dev_pm_ops amd_mp2_pci_pm_ops = {
+	SYSTEM_SLEEP_PM_OPS(amd_mp2_pci_suspend, amd_mp2_pci_resume)
+	RUNTIME_PM_OPS(amd_mp2_pci_suspend, amd_mp2_pci_resume, NULL)
+};
 
 static const struct pci_device_id amd_mp2_pci_tbl[] = {
 	{PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_MP2)},
@@ -449,11 +449,7 @@ static struct pci_driver amd_mp2_pci_driver = {
 	.id_table	= amd_mp2_pci_tbl,
 	.probe		= amd_mp2_pci_probe,
 	.remove		= amd_mp2_pci_remove,
-#ifdef CONFIG_PM
-	.driver = {
-		.pm	= &amd_mp2_pci_pm_ops,
-	},
-#endif
+	.driver.pm	= pm_ptr(&amd_mp2_pci_pm_ops),
 };
 module_pci_driver(amd_mp2_pci_driver);
 

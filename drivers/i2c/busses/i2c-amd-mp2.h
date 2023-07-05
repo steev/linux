@@ -160,10 +160,8 @@ struct amd_i2c_common {
 	enum speed_enum i2c_speed;
 	u8 *dma_buf;
 	dma_addr_t dma_addr;
-#ifdef CONFIG_PM
 	int (*suspend)(struct amd_i2c_common *i2c_common);
 	int (*resume)(struct amd_i2c_common *i2c_common);
-#endif /* CONFIG_PM */
 };
 
 /**
