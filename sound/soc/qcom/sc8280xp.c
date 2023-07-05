@@ -26,7 +26,17 @@ struct sc8280xp_snd_data {
 
 static int sc8280xp_snd_init(struct snd_soc_pcm_runtime *rtd)
 {
+	struct snd_soc_card *card = rtd->card;
 	struct sc8280xp_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
+	int ret;
+
+	ret = snd_soc_limit_volume(card, "RX_RX0 Digital Volume", 80);
+	if (ret)
+		dev_err(card->dev, "Unable to limit HPHL digital volume\n");
+
+	snd_soc_limit_volume(card, "RX_RX1 Digital Volume", 80);
+	if (ret)
+		dev_err(card->dev, "Unable to limit HPHR digital volume\n");
 
 	return qcom_snd_wcd_jack_setup(rtd, &data->jack, &data->jack_setup);
 }
