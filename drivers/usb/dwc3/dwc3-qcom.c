@@ -575,7 +575,7 @@ static int dwc3_qcom_get_irq(struct platform_device *pdev,
 static int dwc3_qcom_setup_mp_irq(struct platform_device *pdev)
 {
 	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
-	char irq_name[15];
+	const char *irq_name;
 	int irq;
 	int ret;
 	int i;
@@ -584,7 +584,10 @@ static int dwc3_qcom_setup_mp_irq(struct platform_device *pdev)
 		if (qcom->dp_hs_phy_irq[i])
 			continue;
 
-		sprintf(irq_name, "dp%d_hs_phy_irq", i+1);
+		irq_name = devm_kasprintf(&pdev->dev, GFP_KERNEL, "dp%d_hs_phy_irq", i + 1);
+		if (!irq_name)
+			return -ENOMEM;
+
 		irq = dwc3_qcom_get_irq(pdev, irq_name, -1);
 		if (irq > 0) {
 			irq_set_status_flags(irq, IRQ_NOAUTOEN);
@@ -605,7 +608,10 @@ static int dwc3_qcom_setup_mp_irq(struct platform_device *pdev)
 		if (qcom->dm_hs_phy_irq[i])
 			continue;
 
-		sprintf(irq_name, "dm%d_hs_phy_irq", i+1);
+		irq_name = devm_kasprintf(&pdev->dev, GFP_KERNEL, "dm%d_hs_phy_irq", i + 1);
+		if (!irq_name)
+			return -ENOMEM;
+
 		irq = dwc3_qcom_get_irq(pdev, irq_name, -1);
 		if (irq > 0) {
 			irq_set_status_flags(irq, IRQ_NOAUTOEN);
@@ -626,7 +632,10 @@ static int dwc3_qcom_setup_mp_irq(struct platform_device *pdev)
 		if (qcom->ss_phy_irq[i])
 			continue;
 
-		sprintf(irq_name, "ss%d_phy_irq", i+1);
+		irq_name = devm_kasprintf(&pdev->dev, GFP_KERNEL, "ss%d_phy_irq", i + 1);
+		if (!irq_name)
+			return -ENOMEM;
+
 		irq = dwc3_qcom_get_irq(pdev, irq_name, -1);
 		if (irq > 0) {
 			irq_set_status_flags(irq, IRQ_NOAUTOEN);
