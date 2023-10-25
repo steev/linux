@@ -1775,6 +1775,12 @@ static int wsa884x_set_stream(struct snd_soc_dai *dai,
 			      void *stream, int direction)
 {
 	struct wsa884x_priv *wsa884x = dev_get_drvdata(dai->dev);
+	struct sdw_stream_runtime *sruntime = stream;
+	struct sdw_slave *sdw = dev_to_sdw_dev(dai->dev);
+
+	/* Check if this belongs to same bus */
+	if (sdw->bus->dev != sruntime->dev)
+		return 0;
 
 	wsa884x->sruntime = stream;
 
