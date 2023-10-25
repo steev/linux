@@ -1023,6 +1023,7 @@ struct sdw_stream_params {
  * master_list can contain only one m_rt per Master instance
  * for a stream
  * @m_rt_count: Count of Master runtime(s) in this stream
+ * @dev: SoundWire controller owning this runtime stream
  */
 struct sdw_stream_runtime {
 	const char *name;
@@ -1031,6 +1032,7 @@ struct sdw_stream_runtime {
 	enum sdw_stream_type type;
 	struct list_head master_list;
 	int m_rt_count;
+	struct device *dev;
 };
 
 struct sdw_stream_runtime *sdw_alloc_stream(const char *stream_name);

@@ -1271,6 +1271,7 @@ static int qcom_swrm_startup(struct snd_pcm_substream *substream,
 		goto err_alloc;
 	}
 
+	sruntime->dev = ctrl->bus.dev;
 	ctrl->sruntime[dai->id] = sruntime;
 
 	for_each_rtd_codec_dais(rtd, i, codec_dai) {
