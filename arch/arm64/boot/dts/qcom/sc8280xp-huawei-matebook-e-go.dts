@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Copyright (c) 2023, Chenxuecong (chenxuecong2009@outlook.com)
+ * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Linaro Limited
  */
 
 /dts-v1/;
@@ -11,23 +12,25 @@
 #include <dt-bindings/iio/qcom,spmi-adc7-pmr735a.h>
 #include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/input.h>
-#include <dt-bindings/leds/common.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include <dt-bindings/phy/phy.h>
+
 
 #include "sc8280xp.dtsi"
 #include "sc8280xp-pmics.dtsi"
 
 / {
-	model = "Huawei MateBook E Go";
+	model = "Matebook E Go";
 	compatible = "huawei,matebook-e-go", "qcom,sc8280xp";
-
+	
 	aliases {
-		i2c4 = &i2c4;
-		i2c21 = &i2c21;
 		serial1 = &uart2;
-		display0 = &framebuffer0;	    
+		i2c4 = &i2c4;
+		i2c21 = &i2c21;	
+		spi6 = &spi6;
+		display0 = &framebuffer0;			
 	};
-
+	
 	framebuffer0: framebuffer@C6200000 {
 		compatible = "simple-framebuffer";
 		reg = <0x0 0xC6200000 0x0 (2560 * 1600 * 4)>;
@@ -62,17 +65,17 @@
 
 		#sound-dai-cells = <1>;
 	};
+	
+	// backlight: backlight {
+	// 	compatible = "pwm-backlight";
+	// 	pwms = <&pmc8280c_lpg 3 800000>;
+	// 	enable-gpios = <&pmc8280_1_gpios 8 GPIO_ACTIVE_HIGH>;
+	// 	power-supply = <&vreg_edp_bl>;
 
-	backlight: backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pmc8280c_lpg 3 1000000>;
-		enable-gpios = <&pmc8280_1_gpios 8 GPIO_ACTIVE_HIGH>;
-		power-supply = <&vreg_edp_bl>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
-	};
-
+	// 	pinctrl-names = "default";
+	// 	pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
+	// };
+	
 	gpio-keys {
 		compatible = "gpio-keys";
 
@@ -86,22 +89,7 @@
 			wakeup-source;
 			wakeup-event-action = <EV_ACT_DEASSERTED>;
 		};
-	};
-
-	leds {
-		compatible = "gpio-leds";
-
-		led-camera-indicator {
-			label = "white:camera-indicator";
-			function = LED_FUNCTION_INDICATOR;
-			color = <LED_COLOR_ID_WHITE>;
-			gpios = <&tlmm 28 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "none";
-			default-state = "off";
-			/* Reuse as a panic indicator until we get a "camera on" trigger */
-			panic-indicator;
-		};
-	};
+	};	
 
 	pmic-glink {
 		compatible = "qcom,sc8280xp-pmic-glink", "qcom,pmic-glink";
@@ -180,23 +168,17 @@
 			};
 		};
 	};
-
-	vreg_edp_3p3: regulator-edp-3p3 {
+	
+	vreg_vph_pwr: regulator-vph-pwr {
 		compatible = "regulator-fixed";
 
-		regulator-name = "VCC3LCD";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
+		regulator-name = "VPH_VCC3R9";
+		regulator-min-microvolt = <3900000>;
+		regulator-max-microvolt = <3900000>;
 
-		gpio = <&tlmm 25 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&edp_reg_en>;
-
-		regulator-boot-on;
-	};
-
+		regulator-always-on;
+	};	
+	
 	vreg_edp_bl: regulator-edp-bl {
 		compatible = "regulator-fixed";
 
@@ -211,50 +193,7 @@
 		pinctrl-0 = <&edp_bl_reg_en>;
 
 		regulator-boot-on;
-	};
-
-	vreg_misc_3p3: regulator-misc-3p3 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VCC3B";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&pmc8280_1_gpios 1 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&misc_3p3_reg_en>;
-
-		regulator-boot-on;
-		regulator-always-on;
-	};
-
-	vreg_nvme: regulator-nvme {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VCC3_SSD";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&tlmm 135 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&nvme_reg_en>;
-
-		regulator-boot-on;
-	};
-
-	vreg_vph_pwr: regulator-vph-pwr {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VPH_VCC3R9";
-		regulator-min-microvolt = <3900000>;
-		regulator-max-microvolt = <3900000>;
-
-		regulator-always-on;
-	};
+	};	
 
 	vreg_wlan: regulator-wlan {
 		compatible = "regulator-fixed";
@@ -288,13 +227,45 @@
 		regulator-boot-on;
 	};
 
+	vreg_nvme: regulator-nvme {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VCC3_SSD";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 135 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&nvme_reg_en>;
+
+		regulator-boot-on;
+	};
+
+	vreg_misc_3p3: regulator-misc-3p3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VCC3B";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&pmc8280_1_gpios 1 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&misc_3p3_reg_en>;
+
+		regulator-boot-on;
+		regulator-always-on;
+	};
+	
 	reserved-memory {
-    framebuffer_mem: memory@C6200000 {
+                framebuffer_mem: memory@C6200000 {
 			reg = < 0x0 0xC6200000 0x0 (2560 * 1600 * 4)>;
 			no-map;
-		};    
-		
-    gpu_mem: gpu-mem@8bf00000 {
+		};
+		gpu_mem: gpu-mem@8bf00000 {
 			reg = <0 0x8bf00000 0 0x2000>;
 			no-map;
 		};
@@ -315,13 +286,13 @@
 
 			trips {
 				skin_temp_alert0: trip-point0 {
-					temperature = <60000>;
+					temperature = <55000>;
 					hysteresis = <1000>;
 					type = "passive";
 				};
 
 				skin_temp_alert1: trip-point1 {
-					temperature = <65000>;
+					temperature = <58000>;
 					hysteresis = <1000>;
 					type = "passive";
 				};
@@ -392,7 +363,8 @@
 			};
 		};
 	};
-};
+	
+};	
 
 &apps_rsc {
 	regulators-0 {
@@ -584,9 +556,11 @@
 	};
 };
 
+
 &dispcc0 {
 	status = "okay";
 };
+
 
 &gpu {
 	status = "okay";
@@ -595,6 +569,34 @@
 		memory-region = <&gpu_mem>;
 		firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcdxkmsuc8280.mbn";
 	};
+};
+
+&mdss_dsi0 {
+	status = "okay";
+	
+	panel@0 {
+		compatible = "mdss,hx83121-ppc357db11-wqxga";
+		reg = <0>;
+
+		reset-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
+		status = "okay";
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&mdss_dsi0_out>;
+			};
+		};
+	};
+};
+
+&mdss_dsi0_out {
+	data-lanes = <0 1 2 3>;
+	remote-endpoint = <&panel_in>;
+};
+
+&mdss_dsi0_phy {
+	phy-type = <PHY_TYPE_CPHY>;
+	status = "okay";
 };
 
 &mdss0 {
@@ -619,45 +621,6 @@
 	remote-endpoint = <&usb_1_qmpphy_dp_in>;
 };
 
-&mdss0_dp3 {
-	compatible = "qcom,sc8280xp-edp";
-
-	data-lanes = <0 1 2 3>;
-
-	status = "okay";
-
-	aux-bus {
-		panel {
-			compatible = "edp-panel";
-
-			backlight = <&backlight>;
-			power-supply = <&vreg_edp_3p3>;
-
-			port {
-				edp_panel_in: endpoint {
-					remote-endpoint = <&mdss0_dp3_out>;
-				};
-			};
-		};
-	};
-
-	ports {
-		port@1 {
-			reg = <1>;
-			mdss0_dp3_out: endpoint {
-				remote-endpoint = <&edp_panel_in>;
-			};
-		};
-	};
-};
-
-&mdss0_dp3_phy {
-	vdda-phy-supply = <&vreg_l6b>;
-	vdda-pll-supply = <&vreg_l3b>;
-
-	status = "okay";
-};
-
 &i2c4 {
 	clock-frequency = <400000>;
 
@@ -667,9 +630,9 @@
 	status = "okay";
 
 	/* FIXME: verify */
-	touchscreen@10 {
+	touchscreen@4f {
 		compatible = "hid-over-i2c";
-		reg = <0x10>;
+		reg = <0x4f>;
 
 		hid-descr-addr = <0x1>;
 		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
@@ -678,63 +641,6 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&ts0_default>;
-	};
-};
-
-pm8008_bus: &i2c11 {
-	clock-frequency = <400000>;
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c11_default>;
-
-	status = "okay";
-};
-
-&i2c21 {
-	clock-frequency = <400000>;
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c21_default>, <&tpad_default>;
-
-	status = "okay";
-
-	touchpad@15 {
-		compatible = "hid-over-i2c";
-		reg = <0x15>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 182 IRQ_TYPE_LEVEL_LOW>;
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_s10b>;
-
-		wakeup-source;
-	};
-
-	touchpad@2c {
-		compatible = "hid-over-i2c";
-		reg = <0x2c>;
-
-		hid-descr-addr = <0x20>;
-		interrupts-extended = <&tlmm 182 IRQ_TYPE_LEVEL_LOW>;
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_s10b>;
-
-		wakeup-source;
-	};
-
-	keyboard@68 {
-		compatible = "hid-over-i2c";
-		reg = <0x68>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 104 IRQ_TYPE_LEVEL_LOW>;
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_s10b>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&kybd_default>;
-
-		wakeup-source;
 	};
 };
 
@@ -787,22 +693,22 @@ pm8008_bus: &i2c11 {
 
 	status = "okay";
 
-	pcie@0 {
-		device_type = "pci";
-		reg = <0x0 0x0 0x0 0x0 0x0>;
-		#address-cells = <3>;
-		#size-cells = <2>;
-		ranges;
+	// pcie@0 {
+	// 	device_type = "pci";
+	// 	reg = <0x0 0x0 0x0 0x0 0x0>;
+	// 	#address-cells = <3>;
+	// 	#size-cells = <2>;
+	// 	ranges;
 
-		bus-range = <0x01 0xff>;
+	// 	bus-range = <0x01 0xff>;
 
-		wifi@0 {
-			compatible = "pci17cb,1103";
-			reg = <0x10000 0x0 0x0 0x0 0x0>;
+	// 	wifi@0 {
+	// 		compatible = "pci17cb,1103";
+	// 		reg = <0x10000 0x0 0x0 0x0 0x0>;
 
-			qcom,ath11k-calibration-variant = "LE_X13S";
-		};
-	};
+	// 		qcom,ath11k-calibration-variant = "LE_X13S";
+	// 	};
+	// };
 };
 
 &pcie4_phy {
@@ -810,58 +716,6 @@ pm8008_bus: &i2c11 {
 	vdda-pll-supply = <&vreg_l4d>;
 
 	status = "okay";
-};
-
-#include "pm8008.dtsi"
-
-&pm8008 {
-	interrupts-extended = <&tlmm 41 IRQ_TYPE_EDGE_RISING>;
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&pm8008_default>;
-
-	reset-gpios = <&tlmm 42 GPIO_ACTIVE_LOW>;
-
-	vdd_l1_l2-supply = <&vreg_s11b>;
-	vdd_l3_l4-supply = <&vreg_bob>;
-	vdd_l5-supply = <&vreg_bob>;
-	vdd_l6-supply = <&vreg_bob>;
-	vdd_l7-supply = <&vreg_bob>;
-};
-
-&pm8008_l1 {
-	regulator-min-microvolt = <1200000>;
-	regulator-max-microvolt = <1200000>;
-};
-
-&pm8008_l2 {
-	regulator-min-microvolt = <1200000>;
-	regulator-max-microvolt = <1200000>;
-};
-
-&pm8008_l3 {
-	regulator-min-microvolt = <2800000>;
-	regulator-max-microvolt = <2800000>;
-};
-
-&pm8008_l4 {
-	regulator-min-microvolt = <2800000>;
-	regulator-max-microvolt = <2800000>;
-};
-
-&pm8008_l5 {
-	regulator-min-microvolt = <1800000>;
-	regulator-max-microvolt = <1800000>;
-};
-
-&pm8008_l6 {
-	regulator-min-microvolt = <1800000>;
-	regulator-max-microvolt = <1800000>;
-};
-
-&pm8008_l7 {
-	regulator-min-microvolt = <2800000>;
-	regulator-max-microvolt = <2800000>;
 };
 
 &pmc8280c_lpg {
@@ -1050,11 +904,6 @@ pm8008_bus: &i2c11 {
 	};
 };
 
-
-&q6apm {
-	firmware-name = "qcom/sc8280xp/LENOVO/21BX/audioreach-tplg.bin";
-};
-
 &qup0 {
 	status = "okay";
 };
@@ -1085,7 +934,7 @@ pm8008_bus: &i2c11 {
 
 &sound {
 	compatible = "qcom,sc8280xp-sndcard";
-	model = "SC8280XP-LENOVO-X13S";
+	model = "SC8280XP-HUAWEI-MATEBOOKEGO";
 	audio-routing =
 		"SpkrLeft IN", "WSA_SPK1 OUT",
 		"SpkrRight IN", "WSA_SPK2 OUT",
@@ -1259,7 +1108,6 @@ pm8008_bus: &i2c11 {
 	vdda-phy-supply = <&vreg_l9d>;
 	vdda-pll-supply = <&vreg_l4d>;
 
-	orientation-switch;
 
 	status = "okay";
 };
@@ -1322,48 +1170,26 @@ pm8008_bus: &i2c11 {
 };
 
 &usb_2_hsphy0 {
-	vdda-pll-supply = <&vreg_l1b>;
-	vdda18-supply = <&vreg_l1c>;
-	vdda33-supply = <&vreg_l7d>;
-
 	status = "okay";
 };
 
 &usb_2_hsphy1 {
-	vdda-pll-supply = <&vreg_l8d>;
-	vdda18-supply = <&vreg_l1c>;
-	vdda33-supply = <&vreg_l7d>;
-
 	status = "okay";
 };
 
 &usb_2_hsphy2 {
-	vdda-pll-supply = <&vreg_l10d>;
-	vdda18-supply = <&vreg_l8c>;
-	vdda33-supply = <&vreg_l2d>;
-
 	status = "okay";
 };
 
 &usb_2_hsphy3 {
-	vdda-pll-supply = <&vreg_l10d>;
-	vdda18-supply = <&vreg_l8c>;
-	vdda33-supply = <&vreg_l2d>;
-
 	status = "okay";
 };
 
 &usb_2_qmpphy0 {
-	vdda-phy-supply = <&vreg_l1b>;
-	vdda-pll-supply = <&vreg_l4d>;
-
 	status = "okay";
 };
 
 &usb_2_qmpphy1 {
-	vdda-phy-supply = <&vreg_l8d>;
-	vdda-pll-supply = <&vreg_l4d>;
-
 	status = "okay";
 };
 
@@ -1434,9 +1260,10 @@ pm8008_bus: &i2c11 {
 		function = "normal";
 	};
 };
+	
+&tlmm {	
 
-&tlmm {
-	gpio-reserved-ranges = <70 2>, <74 6>, <125 2>, <128 2>, <154 4>;
+	gpio-reserved-ranges = <70 2>, <74 6>, <83 4>, <125 2>, <128 2>, <154 7>;
 
 	bt_default: bt-default-state {
 		hstp-bt-en-pins {
@@ -1453,60 +1280,19 @@ pm8008_bus: &i2c11 {
 		};
 	};
 
-	edp_reg_en: edp-reg-en-state {
-		pins = "gpio25";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-disable;
-	};
-
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio107";
 		function = "gpio";
 		bias-disable;
 	};
-
+	
 	i2c4_default: i2c4-default-state {
 		pins = "gpio171", "gpio172";
 		function = "qup4";
 		drive-strength = <16>;
 		bias-disable;
 	};
-
-	i2c11_default: i2c11-default-state {
-		pins = "gpio18", "gpio19";
-		function = "qup11";
-		drive-strength = <16>;
-		bias-disable;
-	};
-
-	i2c21_default: i2c21-default-state {
-		pins = "gpio81", "gpio82";
-		function = "qup21";
-		drive-strength = <16>;
-		bias-disable;
-	};
-
-	kybd_default: kybd-default-state {
-		disable-pins {
-			pins = "gpio102";
-			function = "gpio";
-			output-low;
-		};
-
-		int-n-pins {
-			pins = "gpio104";
-			function = "gpio";
-			bias-disable;
-		};
-
-		reset-pins {
-			pins = "gpio105";
-			function = "gpio";
-			bias-disable;
-		};
-	};
-
+	
 	nvme_reg_en: nvme-reg-en-state {
 		pins = "gpio135";
 		function = "gpio";
@@ -1582,23 +1368,7 @@ pm8008_bus: &i2c11 {
 			bias-pull-up;
 		};
 	};
-
-	pm8008_default: pm8008-default-state {
-		int-pins {
-			pins = "gpio41";
-			function = "gpio";
-			drive-strength = <2>;
-			bias-pull-down;
-		};
-
-		reset-n-pins {
-			pins = "gpio42";
-			function = "gpio";
-			drive-strength = <2>;
-			bias-disable;
-		};
-	};
-
+	
 	spkr_1_sd_n_default: spkr-1-sd-n-default-state {
 		perst-n-pins {
 			pins = "gpio178";
@@ -1618,15 +1388,7 @@ pm8008_bus: &i2c11 {
 			output-high;
 		};
 	};
-
-	tpad_default: tpad-default-state {
-		int-n-pins {
-			pins = "gpio182";
-			function = "gpio";
-			bias-disable;
-		};
-	};
-
+	
 	ts0_default: ts0-default-state {
 		int-n-pins {
 			pins = "gpio175";
@@ -1641,7 +1403,7 @@ pm8008_bus: &i2c11 {
 			drive-strength = <16>;
 		};
 	};
-
+	
 	uart2_default: uart2-default-state {
 		cts-pins {
 			pins = "gpio121";
@@ -1712,3 +1474,5 @@ pm8008_bus: &i2c11 {
 		};
 	};
 };
+	
+	
