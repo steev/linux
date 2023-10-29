@@ -1,0 +1,59 @@
+name: build devicetree and kernel
+
+on:
+  workflow_dispatch:
+
+  release:
+    types: [published]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      CONFIG: johan_defconfig
+
+    steps:        
+    - name: Checkout
+      uses: actions/checkout@master
+      
+    - name: Initialization environment
+      run: |
+        sudo apt install build-essential flex bison libssl-dev bc kmod gcc-aarch64-linux-gnu debhelper
+        
+    - name:  setup build environment
+      run: |
+        export ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+        make $CONFIG
+
+    - name: make Kernel images 
+      run: |
+        make -j$(nproc)
+
+    - name:  make dtbs
+      run: |
+        make -j$(nproc) dtbs
+
+    - name:  make debian packages
+      run: |
+        make -j$(nproc) deb-pkg
+        sudo cp ../*.deb .
+        
+    - name : Upload devicetree
+      uses: actions/upload-artifact@master
+      with:
+        name:  devicetree
+        path: arch/arm64/boot/dts/qcom/sc8280xp-huawei-matebook-e-go.dtb
+
+    - name : Upload kernel image
+      uses: actions/upload-artifact@master
+      with:
+        name:  kernel images
+        path: arch/arm64/boot/Image*        
+        
+    - name : Upload debian packages
+      uses: actions/upload-artifact@master
+      with:
+        name:  debian packages
+        path: linux*.deb        
