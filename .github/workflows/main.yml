@@ -2,7 +2,8 @@ name: build devicetree and kernel
 
 on:
   workflow_dispatch:
-  branches: [ "huawei-matebook-e-go-v6.6.0-rc5" ]
+  push:  
+    branches: [ "matebook-e-go-linux-6.4.y" ]
 
   release:
     types: [published]
