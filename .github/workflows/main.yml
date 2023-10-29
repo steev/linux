@@ -2,11 +2,6 @@ name: build devicetree and kernel
 
 on:
   workflow_dispatch:
-  push:  
-    branches: [ "matebook-e-go-linux-6.4.y" ]
-
-  release:
-    types: [published]
 
 jobs:
 
