@@ -19,21 +19,12 @@ jobs:
       run: |
         sudo apt install build-essential flex bison libssl-dev bc kmod gcc-aarch64-linux-gnu debhelper
         
-    - name:  setup build environment
+    - name: build Kernel
       run: |
         export ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
-        make $CONFIG
-
-    - name: make Kernel images 
-      run: |
+        make $CONFIG      
         make -j$(nproc)
-
-    - name:  make dtbs
-      run: |
         make -j$(nproc) dtbs
-
-    - name:  make debian packages
-      run: |
         make -j$(nproc) deb-pkg
         sudo cp ../*.deb .
         
