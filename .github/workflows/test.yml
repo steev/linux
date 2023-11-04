@@ -1,0 +1,40 @@
+name: Unstable Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      CONFIG: chenxuecong_defconfig
+
+    steps:        
+    - name: Checkout
+      uses: actions/checkout@master
+      
+    - name: Initialization environment
+      run: |
+        sudo apt install build-essential flex bison libssl-dev bc kmod gcc-aarch64-linux-gnu debhelper
+        
+    - name: build Kernel
+      run: |
+        export ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+        make $CONFIG      
+        make -j$(nproc)
+        make -j$(nproc) dtbs
+
+        
+    - name : Upload devicetree
+      uses: actions/upload-artifact@master
+      with:
+        name:  devicetree
+        path: arch/arm64/boot/dts/qcom/sc8280xp-huawei-matebook-e-go.dtb
+
+    - name : Upload kernel image
+      uses: actions/upload-artifact@master
+      with:
+        name:  kernel images
+        path: arch/arm64/boot/Image*        
