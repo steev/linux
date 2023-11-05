@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CONFIG: chenxuecong_defconfig
+      CONFIG: laptops_defconfig
 
     steps:        
     - name: Checkout
