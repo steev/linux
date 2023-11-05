@@ -1,4 +1,4 @@
-name: build devicetree and kernel
+name: build devicetree kernel debian packages
 
 on:
   workflow_dispatch:
