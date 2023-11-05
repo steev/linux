@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CONFIG: johan_defconfig
+      CONFIG: chenxuecong_defconfig
 
     steps:        
     - name: Checkout
