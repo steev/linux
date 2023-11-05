@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CONFIG: chenxuecong_defconfig
+      CONFIG: laptop_defconfig
 
     steps:        
     - name: Checkout
@@ -17,21 +17,13 @@ jobs:
       
     - name: Initialization environment
       run: |
-        sudo apt install build-essential flex bison libssl-dev bc kmod gcc-aarch64-linux-gnu debhelper
+        sudo apt install build-essential flex bison libssl-dev bc kmod gcc-aarch64-linux-gnu
         
     - name: build Kernel
       run: |
         export ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
         make $CONFIG      
         make -j$(nproc)
-        make -j$(nproc) dtbs
-
-        
-    - name : Upload devicetree
-      uses: actions/upload-artifact@master
-      with:
-        name:  devicetree
-        path: arch/arm64/boot/dts/qcom/sc8280xp-huawei-matebook-e-go.dtb
 
     - name : Upload kernel image
       uses: actions/upload-artifact@master
