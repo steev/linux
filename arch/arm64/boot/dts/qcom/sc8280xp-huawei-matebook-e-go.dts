@@ -33,10 +33,10 @@
 	
 	framebuffer0: framebuffer@C6200000 {
 		compatible = "simple-framebuffer";
-		reg = <0x0 0xC6200000 0x0 (2560 * 1600 * 4)>;
-		width = <2560>;
-		height = <1600>;
-		stride = <(2560 * 4)>;
+		reg = <0x0 0xC6200000 0x0 (1600 * 2560 * 4)>;
+		width = <1600>;
+		height = <2560>;
+		stride = <(1600 * 4)>;
 		format = "a8r8g8b8";
 	};  
 
@@ -262,7 +262,7 @@
 	
 	reserved-memory {
                 framebuffer_mem: memory@C6200000 {
-			reg = < 0x0 0xC6200000 0x0 (2560 * 1600 * 4)>;
+			reg = < 0x0 0xC6200000 0x0 (1600 * 2560 * 4)>;
 			no-map;
 		};
 		gpu_mem: gpu-mem@8bf00000 {
