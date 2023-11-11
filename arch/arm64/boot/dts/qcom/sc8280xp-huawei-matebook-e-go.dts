@@ -66,15 +66,15 @@
 		#sound-dai-cells = <1>;
 	};
 	
-	// backlight: backlight {
-	// 	compatible = "pwm-backlight";
-	// 	pwms = <&pmc8280c_lpg 3 800000>;
-	// 	enable-gpios = <&pmc8280_1_gpios 8 GPIO_ACTIVE_HIGH>;
-	// 	power-supply = <&vreg_edp_bl>;
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pmc8280c_lpg 3 1000000>;
+		enable-gpios = <&pmc8280_1_gpios 8 GPIO_ACTIVE_HIGH>;
+		power-supply = <&vreg_edp_bl>;
 
-	// 	pinctrl-names = "default";
-	// 	pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
-	// };
+		pinctrl-names = "default";
+		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
+	};
 	
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -194,6 +194,23 @@
 
 		regulator-boot-on;
 	};	
+
+         vreg_edp_3p3: regulator-edp-3p3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VCC3LCD";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 25 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&edp_reg_en>;
+
+		regulator-boot-on;
+	};
+
 
 	vreg_wlan: regulator-wlan {
 		compatible = "regulator-fixed";
@@ -569,6 +586,67 @@
 		memory-region = <&gpu_mem>;
 		firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcdxkmsuc8280.mbn";
 	};
+};
+
+&mdss0 {
+	status = "okay";
+};
+
+&mdss0_dp0 {
+	status = "okay";
+};
+
+&mdss0_dp0_out {
+	data-lanes = <0 1>;
+	remote-endpoint = <&usb_0_qmpphy_dp_in>;
+};
+
+&mdss0_dp1 {
+	status = "okay";
+};
+
+&mdss0_dp1_out {
+	data-lanes = <0 1>;
+	remote-endpoint = <&usb_1_qmpphy_dp_in>;
+};
+
+&mdss0_dp3 {
+	compatible = "qcom,sc8280xp-edp";
+
+	data-lanes = <0 1 2 3>;
+
+	status = "okay";
+
+	aux-bus {
+		panel {
+			compatible = "edp-panel";
+
+			backlight = <&backlight>;
+			power-supply = <&vreg_edp_3p3>;
+
+			port {
+				edp_panel_in: endpoint {
+					remote-endpoint = <&mdss0_dp3_out>;
+				};
+			};
+		};
+	};
+
+	ports {
+		port@1 {
+			reg = <1>;
+			mdss0_dp3_out: endpoint {
+				remote-endpoint = <&edp_panel_in>;
+			};
+		};
+	};
+};
+
+&mdss0_dp3_phy {
+	vdda-phy-supply = <&vreg_l6b>;
+	vdda-pll-supply = <&vreg_l3b>;
+
+	status = "okay";
 };
 
 &i2c4 {
