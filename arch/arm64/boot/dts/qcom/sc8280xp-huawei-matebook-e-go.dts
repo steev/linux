@@ -1307,7 +1307,14 @@
 			bias-pull-down;
 		};
 	};
-
+	
+	edp_reg_en: edp-reg-en-state {
+		pins = "gpio25";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-disable;
+	};	
+	
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio107";
 		function = "gpio";
