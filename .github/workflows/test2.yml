@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CONFIG: laptop_defconfig
+      CONFIG: usbtest_defconfig
 
     steps:        
     - name: Checkout
