@@ -27,18 +27,8 @@
 		serial1 = &uart2;
 		i2c4 = &i2c4;
 		i2c21 = &i2c21;	
-		spi6 = &spi6;
-		display0 = &framebuffer0;			
+		spi6 = &spi6;			
 	};
-	
-	framebuffer0: framebuffer@C6200000 {
-		compatible = "simple-framebuffer";
-		reg = <0x0 0xC6200000 0x0 (1600 * 2560 * 4)>;
-		width = <1600>;
-		height = <2560>;
-		stride = <(1600 * 4)>;
-		format = "a8r8g8b8";
-	};  
 
 	wcd938x: audio-codec {
 		compatible = "qcom,wcd9380-codec";
