@@ -1594,6 +1594,8 @@ static int ti_sn_pwm_probe(struct auxiliary_device *adev,
 	pdata->pchip.of_xlate = of_pwm_single_xlate;
 	pdata->pchip.of_pwm_n_cells = 1;
 
+	devm_pm_runtime_enable(&adev->dev);
+
 	return pwmchip_add(&pdata->pchip);
 }
 
