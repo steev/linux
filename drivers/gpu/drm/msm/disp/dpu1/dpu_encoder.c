@@ -2494,7 +2494,6 @@ void dpu_encoder_phys_init(struct dpu_encoder_phys *phys_enc,
 	for (i = 0; i < ARRAY_SIZE(phys_enc->irq); i++)
 		phys_enc->irq[i] = -EINVAL;
 
-	atomic_set(&phys_enc->vblank_refcount, 0);
 	atomic_set(&phys_enc->pending_kickoff_cnt, 0);
 	atomic_set(&phys_enc->pending_ctlstart_cnt, 0);
 
