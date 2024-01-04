@@ -2011,6 +2011,7 @@ static const struct qca_device_data qca_soc_data_wcn3990 __maybe_unused = {
 		{ "vddch0", 450000 },
 	},
 	.num_vregs = 4,
+	.capabilities = QCA_CAP_WIDEBAND_SPEECH | QCA_CAP_VALID_LE_STATES,
 };
 
 static const struct qca_device_data qca_soc_data_wcn3991 __maybe_unused = {
