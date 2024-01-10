@@ -2647,10 +2647,14 @@
 			#dma-cells = <1>;
 			qcom,ee = <0>;
 			qcom,controlled-remotely;
+			num-channels = <16>;
+			qcom,num-ees = <4>;
 			iommus = <&apps_smmu 0x704 0x1>,
 				 <&apps_smmu 0x706 0x1>,
 				 <&apps_smmu 0x714 0x1>,
 				 <&apps_smmu 0x716 0x1>;
+			interconnects = <&aggre2_noc MASTER_CRYPTO 0 &mem_noc SLAVE_EBI1 0>;
+			interconnect-names = "memory";
 		};
 
 		crypto: crypto@1dfa000 {
@@ -3353,8 +3357,8 @@
 
 			qcom,qmp = <&aoss_qmp>;
 
-			power-domains = <&rpmhpd SDM845_CX>,
-					<&rpmhpd SDM845_MX>;
+			power-domains = <&rpmhpd SDM845_LCX>,
+					<&rpmhpd SDM845_LMX>;
 			power-domain-names = "lcx", "lmx";
 
 			memory-region = <&slpi_mem>;
