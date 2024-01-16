@@ -4763,6 +4763,8 @@
 			interconnects = <&mem_noc MASTER_GFX3D 0 &mem_noc SLAVE_EBI1 0>;
 			interconnect-names = "gfx-mem";
 
+			#cooling-cells = <2>;
+
 			status = "disabled";
 
 			gpu_opp_table: opp-table {
@@ -5602,10 +5604,23 @@
 			thermal-sensors = <&tsens0 11>;
 
 			trips {
-				gpu1_alert0: trip-point0 {
+                                gpu1_alert0: trip-point0 {
+                                        temperature = <85000>;
+                                        hysteresis = <2000>;
+                                        type = "passive";
+                                };
+
+				gpu1_alert1: trip-point1 {
 					temperature = <90000>;
 					hysteresis = <2000>;
 					type = "hot";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					trip = <&gpu1_alert0>;
+					cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
 				};
 			};
 		};
@@ -5617,12 +5632,25 @@
 			thermal-sensors = <&tsens0 12>;
 
 			trips {
-				gpu2_alert0: trip-point0 {
+                                gpu2_alert0: trip-point0 {
+                                        temperature = <85000>;
+                                        hysteresis = <2000>;
+                                        type = "passive";
+                                };
+
+				gpu2_alert1: trip-point1 {
 					temperature = <90000>;
 					hysteresis = <2000>;
 					type = "hot";
 				};
 			};
+
+			cooling-maps {
+ 				map0 {
+ 					trip = <&gpu2_alert0>;
+					cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+                                };
+                        };
 		};
 
 		aoss1-thermal {
