@@ -1021,8 +1021,6 @@ pm8008_bus: &i2c11 {
 };
 
 &pmk8280_vadc {
-	status = "okay";
-
 	channel@144 {
 		reg = <PM8350_ADC7_AMUX_THM1_100K_PU(1)>;
 		qcom,hw-settle-time = <200>;
