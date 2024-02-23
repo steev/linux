@@ -800,6 +800,8 @@ pm8008_bus: &i2c11 {
 };
 
 &pcie2a {
+	aspm-no-l0s;
+
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
 
@@ -819,6 +821,8 @@ pm8008_bus: &i2c11 {
 };
 
 &pcie3a {
+	aspm-no-l0s;
+
 	perst-gpios = <&tlmm 151 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
 
