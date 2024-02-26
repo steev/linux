@@ -4547,6 +4547,7 @@
 				 <0>,
 				 <0>;
 			power-domains = <&rpmhpd SC8280XP_MMCX>;
+			required-opps = <&rpmhpd_opp_low_svs>;
 
 			#clock-cells = <1>;
 			#power-domain-cells = <1>;
@@ -5818,6 +5819,7 @@
 				 <0>,
 				 <0>;
 			power-domains = <&rpmhpd SC8280XP_MMCX>;
+			required-opps = <&rpmhpd_opp_low_svs>;
 
 			#clock-cells = <1>;
 			#power-domain-cells = <1>;
