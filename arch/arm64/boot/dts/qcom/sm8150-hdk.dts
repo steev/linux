@@ -702,6 +702,10 @@
 	remote-endpoint = <&pm8150b_hs_in>;
 };
 
+&usb_1_dwc3_ss {
+	remote-endpoint = <&usb_1_qmpphy_usb_ss_in>;
+};
+
 &usb_2_dwc3 {
 	dr_mode = "host";
 };
