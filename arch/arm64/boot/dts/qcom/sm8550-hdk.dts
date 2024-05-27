@@ -940,7 +940,8 @@
 };
 
 &mdss_dp0_out {
-	data-lanes = <0 1>;
+	remote-endpoint = <&usb_dp_qmpphy_dp_in>;
+	data-lanes = <0 1 2 3>;
 };
 
 &pcie0 {
@@ -1271,6 +1272,9 @@
 &usb_dp_qmpphy {
 	vdda-phy-supply = <&vreg_l3e_1p2>;
 	vdda-pll-supply = <&vreg_l3f_0p88>;
+
+	mode-switch;
+	orientation-switch;
 
 	status = "okay";
 };
