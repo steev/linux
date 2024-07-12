@@ -277,6 +277,47 @@ err_attach:
 EXPORT_SYMBOL_GPL(dev_pm_domain_attach_list);
 
 /**
+ * dev_pm_domain_detach_list - devres-enabled version of dev_pm_domain_detach_list.
+ * @list: The list of PM domains to detach.
+ *
+ * This function reverse the actions from devm_pm_domain_attach_list().
+ * it will be invoked during the remove phase from drivers implicitly if driver
+ * uses devm_pm_domain_attach_list() to attach the PM domains.
+ */
+void devm_pm_domain_detach_list(void *_list)
+{
+	struct dev_pm_domain_list *list = _list;
+
+	dev_pm_domain_detach_list(list);
+}
+EXPORT_SYMBOL_GPL(devm_pm_domain_detach_list);
+
+/**
+ * devm_pm_domain_attach_list - devres-enabled version of dev_pm_domain_attach_list
+ *
+ * NOTE: this will also handle calling devm_pm_domain_detach_list() for
+ * you during remove phase.
+ *
+ * Returns the number of attached PM domains or a negative error code in case of
+ * a failure.
+ */
+int devm_pm_domain_attach_list(struct device *dev,
+			       const struct dev_pm_domain_attach_data *data,
+			       struct dev_pm_domain_list **list)
+{
+	int ret, num_pds = 0;
+
+	num_pds = dev_pm_domain_attach_list(dev, data, list);
+
+	ret = devm_add_action_or_reset(dev, devm_pm_domain_detach_list, (void *)list);
+	if (ret)
+		return ret;
+
+	return num_pds;
+}
+EXPORT_SYMBOL_GPL(devm_pm_domain_attach_list);
+
+/**
  * dev_pm_domain_detach - Detach a device from its PM domain.
  * @dev: Device to detach.
  * @power_off: Used to indicate whether we should power off the device.
