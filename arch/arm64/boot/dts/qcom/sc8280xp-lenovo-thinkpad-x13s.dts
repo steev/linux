@@ -1522,7 +1522,7 @@
 			pins = "gpio143";
 			function = "gpio";
 			drive-strength = <2>;
-			bias-pull-down;
+			bias-disable;
 		};
 
 		wake-n-pins {
@@ -1545,7 +1545,7 @@
 			pins = "gpio151";
 			function = "gpio";
 			drive-strength = <2>;
-			bias-pull-down;
+			bias-disable;
 		};
 
 		wake-n-pins {
@@ -1568,7 +1568,7 @@
 			pins = "gpio141";
 			function = "gpio";
 			drive-strength = <2>;
-			bias-pull-down;
+			bias-disable;
 		};
 
 		wake-n-pins {
