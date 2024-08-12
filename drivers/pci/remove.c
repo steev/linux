@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 #include <linux/pci.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
 #include "pci.h"
 
@@ -16,13 +17,26 @@ static void pci_free_resources(struct pci_dev *dev)
 
 static void pci_stop_dev(struct pci_dev *dev)
 {
+	struct platform_device *pdev;
+	struct device_node *child;
+
 	pci_pme_active(dev, false);
 
 	if (pci_dev_is_added(dev)) {
-		of_platform_depopulate(&dev->dev);
 		device_release_driver(&dev->dev);
 		pci_proc_detach_device(dev);
 		pci_remove_sysfs_dev_files(dev);
+
+		if (dev_of_node(&dev->dev)) {
+			for_each_child_of_node(dev_of_node(&dev->dev), child) {
+				pdev = of_find_device_by_node(child);
+				if (pdev) {
+					of_device_unregister(pdev);
+					of_node_clear_flag(child, OF_POPULATED);
+				}
+			}
+		}
+
 		of_pci_remove_node(dev);
 
 		pci_dev_assign_added(dev, false);
