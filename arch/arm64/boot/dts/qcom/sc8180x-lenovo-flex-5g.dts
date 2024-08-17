@@ -399,6 +399,8 @@
 
 		pinctrl-0 = <&kb_int_default>;
 		pinctrl-names = "default";
+
+		wakeup-source;
 	};
 
 	touchpad@2c {
@@ -410,6 +412,8 @@
 
 		pinctrl-0 = <&tp_int_default>;
 		pinctrl-names = "default";
+
+		wakeup-source;
 	};
 };
 
