@@ -1527,23 +1527,21 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 		if (IS_ERR(ctrl->audio_cgcr)) {
 			dev_err(dev, "Failed to get cgcr reset ctrl required for SW gating\n");
 			ret = PTR_ERR(ctrl->audio_cgcr);
-			goto err_init;
+			return ret;
 		}
 	}
 
 	ctrl->irq = of_irq_get(dev->of_node, 0);
 	if (ctrl->irq < 0) {
 		ret = ctrl->irq;
-		goto err_init;
+		return ret;
 	}
 
-	ctrl->hclk = devm_clk_get(dev, "iface");
+	ctrl->hclk = devm_clk_get_enabled(dev, "iface");
 	if (IS_ERR(ctrl->hclk)) {
 		ret = dev_err_probe(dev, PTR_ERR(ctrl->hclk), "unable to get iface clock\n");
-		goto err_init;
+		return ret;
 	}
-
-	clk_prepare_enable(ctrl->hclk);
 
 	ctrl->dev = dev;
 	dev_set_drvdata(&pdev->dev, ctrl);
@@ -1558,7 +1556,7 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 
 	ret = qcom_swrm_get_port_config(ctrl);
 	if (ret)
-		goto err_clk;
+		return ret;
 
 	params = &ctrl->bus.params;
 	params->max_dr_freq = DEFAULT_CLK_FREQ;
@@ -1586,7 +1584,7 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 					"soundwire", ctrl);
 	if (ret) {
 		dev_err(dev, "Failed to request soundwire irq\n");
-		goto err_clk;
+		return ret;
 	}
 
 	ctrl->wake_irq = of_irq_get(dev->of_node, 1);
@@ -1597,7 +1595,7 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 						"swr_wake_irq", ctrl);
 		if (ret) {
 			dev_err(dev, "Failed to request soundwire wake irq\n");
-			goto err_init;
+			return ret;
 		}
 	}
 
@@ -1612,7 +1610,7 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "Failed to register Soundwire controller (%d)\n",
 			ret);
-		goto err_clk;
+		return ret;
 	}
 
 	qcom_swrm_init(ctrl);
@@ -1642,9 +1640,6 @@ static int qcom_swrm_probe(struct platform_device *pdev)
 
 err_master_add:
 	sdw_bus_master_delete(&ctrl->bus);
-err_clk:
-	clk_disable_unprepare(ctrl->hclk);
-err_init:
 	return ret;
 }
 
@@ -1653,7 +1648,6 @@ static void qcom_swrm_remove(struct platform_device *pdev)
 	struct qcom_swrm_ctrl *ctrl = dev_get_drvdata(&pdev->dev);
 
 	sdw_bus_master_delete(&ctrl->bus);
-	clk_disable_unprepare(ctrl->hclk);
 }
 
 static int __maybe_unused swrm_runtime_resume(struct device *dev)
