@@ -9512,6 +9512,15 @@ exit:
 	return ret;
 }
 
+static void ath11k_mac_station_free_stats(struct ath11k_sta *arsta)
+{
+	kfree(arsta->tx_stats);
+	arsta->tx_stats = NULL;
+
+	kfree(arsta->rx_stats);
+	arsta->rx_stats = NULL;
+}
+
 static int ath11k_mac_station_remove(struct ath11k *ar,
 				     struct ieee80211_vif *vif,
 				     struct ieee80211_sta *sta)
@@ -9545,13 +9554,21 @@ static int ath11k_mac_station_remove(struct ath11k *ar,
 
 	ath11k_mac_dec_num_stations(arvif, sta);
 
-	kfree(arsta->tx_stats);
-	arsta->tx_stats = NULL;
-
-	kfree(arsta->rx_stats);
-	arsta->rx_stats = NULL;
+	ath11k_mac_station_free_stats(arsta);
 
 	return ret;
+}
+
+static void ath11k_mac_station_cleanup(void *data, struct ieee80211_sta *sta)
+{
+	ath11k_mac_station_free_stats(ath11k_sta_to_arsta(sta));
+}
+
+void ath11k_mac_station_cleanup_all(struct ath11k *ar)
+{
+	ieee80211_iterate_stations_atomic(ar->hw,
+					  ath11k_mac_station_cleanup,
+					  NULL);
 }
 
 static int ath11k_mac_op_sta_state(struct ieee80211_hw *hw,
