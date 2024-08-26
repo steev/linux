@@ -9531,7 +9531,9 @@ static int ath11k_mac_station_remove(struct ath11k *ar,
 		}
 	}
 
+	spin_lock_bh(&ab->base_lock);
 	ath11k_dp_peer_cleanup(ar, arvif->vdev_id, sta->addr);
+	spin_unlock_bh(&ab->base_lock);
 
 	ret = ath11k_peer_delete(ar, arvif->vdev_id, sta->addr);
 	if (ret)
