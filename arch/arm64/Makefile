@@ -166,9 +166,13 @@ BOOT_TARGETS	:= Image vmlinuz.efi image.fit
 PHONY += $(BOOT_TARGETS)
 
 ifeq ($(CONFIG_EFI_ZBOOT),)
-KBUILD_IMAGE	:= $(boot)/Image.gz
+  ifeq ($(CONFIG_COMPRESSED_INSTALL),y)
+    KBUILD_IMAGE := $(boot)/Image.gz
+  else
+    KBUILD_IMAGE := $(boot)/Image
+  endif
 else
-KBUILD_IMAGE	:= $(boot)/vmlinuz.efi
+  KBUILD_IMAGE := $(boot)/vmlinuz.efi
 endif
 
 all:	$(notdir $(KBUILD_IMAGE))
