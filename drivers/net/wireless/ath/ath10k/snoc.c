@@ -1635,10 +1635,10 @@ static int ath10k_fw_init(struct ath10k *ar)
 
 	ar_snoc->fw.dev = &pdev->dev;
 
-	iommu_dom = iommu_paging_domain_alloc(ar_snoc->fw.dev);
-	if (IS_ERR(iommu_dom)) {
+	iommu_dom = iommu_domain_alloc(&platform_bus_type);
+	if (!iommu_dom) {
 		ath10k_err(ar, "failed to allocate iommu domain\n");
-		ret = PTR_ERR(iommu_dom);
+		ret = -ENOMEM;
 		goto err_unregister;
 	}
 
