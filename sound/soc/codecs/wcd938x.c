@@ -1854,14 +1854,19 @@ static int wcd938x_get_swr_port(struct snd_kcontrol *kcontrol,
 	struct wcd938x_priv *wcd938x = snd_soc_component_get_drvdata(comp);
 	struct wcd938x_sdw_priv *wcd;
 	struct soc_mixer_control *mixer = (struct soc_mixer_control *)kcontrol->private_value;
+	struct sdw_port_config *port_config;
 	int dai_id = mixer->shift;
 	int portidx, ch_idx = mixer->reg;
 
 
 	wcd = wcd938x->sdw_priv[dai_id];
 	portidx = wcd->ch_info[ch_idx].port_num;
+	port_config = &wcd->port_config[portidx - 1];
 
-	ucontrol->value.integer.value[0] = wcd->port_enable[portidx];
+	if (port_config->ch_mask & wcd->ch_info[ch_idx].ch_mask)
+		ucontrol->value.integer.value[0] = true;
+	else
+		ucontrol->value.integer.value[0] = false;
 
 	return 0;
 }
@@ -1886,8 +1891,6 @@ static int wcd938x_set_swr_port(struct snd_kcontrol *kcontrol,
 		enable = true;
 	else
 		enable = false;
-
-	wcd->port_enable[portidx] = enable;
 
 	wcd938x_connect_port(wcd, portidx, ch_idx, enable);
 
