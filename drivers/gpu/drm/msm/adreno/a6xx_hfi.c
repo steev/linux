@@ -259,7 +259,8 @@ static int a6xx_hfi_send_perf_table(struct a6xx_gmu *gmu)
 		NULL, 0);
 }
 
-static void a618_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+/* noinline to avoid having multiple copies of 'msg' on stack */
+static noinline_for_stack void a618_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	/* Send a single "off" entry since the 618 GMU doesn't do bus scaling */
 	msg->bw_level_num = 1;
@@ -287,7 +288,7 @@ static void a618_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][0] =  0x60000001;
 }
 
-static void a619_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a619_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	msg->bw_level_num = 13;
 
@@ -346,7 +347,7 @@ static void a619_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[0][0] = 0x40000000;
 }
 
-static void a640_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a640_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	/*
 	 * Send a single "off" entry just to get things running
@@ -385,7 +386,7 @@ static void a640_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][2] =  0x60000001;
 }
 
-static void a650_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a650_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	/*
 	 * Send a single "off" entry just to get things running
@@ -416,7 +417,7 @@ static void a650_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][0] =  0x60000001;
 }
 
-static void a690_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a690_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	/*
 	 * Send a single "off" entry just to get things running
@@ -447,7 +448,7 @@ static void a690_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][0] =  0x60000001;
 }
 
-static void a660_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a660_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	/*
 	 * Send a single "off" entry just to get things running
@@ -478,7 +479,7 @@ static void a660_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][0] =  0x60000001;
 }
 
-static void adreno_7c3_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void adreno_7c3_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	/*
 	 * Send a single "off" entry just to get things running
@@ -509,7 +510,7 @@ static void adreno_7c3_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][0] =  0x60000001;
 }
 
-static void a730_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a730_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	msg->bw_level_num = 12;
 
@@ -565,7 +566,7 @@ static void a730_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][0] = 0x60000001;
 }
 
-static void a740_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a740_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	msg->bw_level_num = 1;
 
@@ -590,7 +591,7 @@ static void a740_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 	msg->cnoc_cmds_data[1][0] = 0x60000001;
 }
 
-static void a6xx_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
+static noinline_for_stack void a6xx_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
 {
 	/* Send a single "off" entry since the 630 GMU doesn't do bus scaling */
 	msg->bw_level_num = 1;
