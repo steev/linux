@@ -3001,6 +3001,14 @@ static unsigned long check_vendor_combination_bug(struct pci_dev *pdev)
 	if (dmi_match(DMI_BOARD_NAME, "LXKT-ZXEG-N6"))
 		return NVME_QUIRK_NO_APST;
 
+	/*
+	 * Qualcomm SC8280XP must shut down the PCIe host to enter S3.
+	 * Other Qualcomm platforms require more driver changes to restore the
+	 * link state after wakeup.
+	 */
+	if (pci_upstream_bridge(pdev)->vendor == PCI_VENDOR_ID_QCOM)
+		return NVME_QUIRK_SIMPLE_SUSPEND;
+
 	return 0;
 }
 
