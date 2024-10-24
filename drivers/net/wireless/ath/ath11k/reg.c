@@ -152,6 +152,9 @@ int ath11k_reg_update_chan_list(struct ath11k *ar, bool wait)
 		return -ENOMEM;
 
 	params->pdev_id = ar->pdev->pdev_id;
+	/* Note nallchans should be set before populating ch_param[],
+	 * otherwise __counted_by() might raise false positives.
+	 */
 	params->nallchans = num_channels;
 
 	ch = params->ch_param;
