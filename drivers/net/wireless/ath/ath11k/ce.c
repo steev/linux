@@ -620,6 +620,9 @@ ath11k_ce_alloc_ring(struct ath11k_base *ab, int nentries, int desc_sz)
 	if (ce_ring == NULL)
 		return ERR_PTR(-ENOMEM);
 
+	/* Note nentries should be set before populating skb[],
+	 * otherwise __counted_by() might raise false positives.
+	 */
 	ce_ring->nentries = nentries;
 	ce_ring->nentries_mask = nentries - 1;
 
