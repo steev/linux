@@ -162,7 +162,7 @@ struct ath11k_ce_ring {
 	u32 hal_ring_id;
 
 	/* keep last */
-	struct sk_buff *skb[];
+	struct sk_buff *skb[] __counted_by(nentries);
 };
 
 struct ath11k_ce_pipe {
