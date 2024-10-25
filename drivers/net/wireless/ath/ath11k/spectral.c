@@ -925,8 +925,6 @@ void ath11k_spectral_deinit(struct ath11k_base *ab)
 
 static inline int ath11k_spectral_debug_register(struct ath11k *ar)
 {
-	int ret;
-
 	ar->spectral.rfs_scan = relay_open("spectral_scan",
 					   ar->debug.debugfs_pdev,
 					   ATH11K_SPECTRAL_SUB_BUFF_SIZE(ar->ab),
@@ -942,40 +940,18 @@ static inline int ath11k_spectral_debug_register(struct ath11k *ar)
 						    0600,
 						    ar->debug.debugfs_pdev, ar,
 						    &fops_scan_ctl);
-	if (!ar->spectral.scan_ctl) {
-		ath11k_warn(ar->ab, "failed to open debugfs in pdev %d\n",
-			    ar->pdev_idx);
-		ret = -EINVAL;
-		goto debug_unregister;
-	}
 
 	ar->spectral.scan_count = debugfs_create_file("spectral_count",
 						      0600,
 						      ar->debug.debugfs_pdev, ar,
 						      &fops_scan_count);
-	if (!ar->spectral.scan_count) {
-		ath11k_warn(ar->ab, "failed to open debugfs in pdev %d\n",
-			    ar->pdev_idx);
-		ret = -EINVAL;
-		goto debug_unregister;
-	}
 
 	ar->spectral.scan_bins = debugfs_create_file("spectral_bins",
 						     0600,
 						     ar->debug.debugfs_pdev, ar,
 						     &fops_scan_bins);
-	if (!ar->spectral.scan_bins) {
-		ath11k_warn(ar->ab, "failed to open debugfs in pdev %d\n",
-			    ar->pdev_idx);
-		ret = -EINVAL;
-		goto debug_unregister;
-	}
 
 	return 0;
-
-debug_unregister:
-	ath11k_spectral_debug_unregister(ar);
-	return ret;
 }
 
 int ath11k_spectral_init(struct ath11k_base *ab)
