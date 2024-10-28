@@ -78,6 +78,7 @@ struct psci_0_1_function_ids get_psci_0_1_function_ids(void)
 
 static u32 psci_cpu_suspend_feature;
 static bool psci_system_reset2_supported;
+static u32 psci_s2ram_suspend_param;
 
 static inline bool psci_has_ext_power_state(void)
 {
@@ -519,10 +520,10 @@ static int psci_system_suspend_begin(suspend_state_t state)
 	return 0;
 }
 
-static const struct platform_suspend_ops psci_suspend_ops = {
-	.valid          = suspend_valid_only_mem,
-	.enter          = psci_system_suspend_enter,
-	.begin          = psci_system_suspend_begin,
+static const struct platform_suspend_ops psci_system_suspend_ops = {
+	.valid = suspend_valid_only_mem,
+	.enter = psci_system_suspend_enter,
+	.begin = psci_system_suspend_begin,
 };
 
 static void __init psci_init_system_reset2(void)
@@ -545,7 +546,7 @@ static void __init psci_init_system_suspend(void)
 	ret = psci_features(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND));
 
 	if (ret != PSCI_RET_NOT_SUPPORTED)
-		suspend_set_ops(&psci_suspend_ops);
+		suspend_set_ops(&psci_system_suspend_ops);
 }
 
 static void __init psci_init_cpu_suspend(void)
@@ -673,6 +674,17 @@ static int __init psci_probe(void)
 
 typedef int (*psci_initcall_t)(const struct device_node *);
 
+static int psci_cpu_suspend_s2ram_enter(suspend_state_t state)
+{
+	return psci_cpu_suspend_enter(psci_s2ram_suspend_param);
+}
+
+static const struct platform_suspend_ops psci_cpu_suspend_s2ram_ops = {
+	.valid = suspend_valid_only_mem,
+	.enter = psci_cpu_suspend_s2ram_enter,
+	.begin = psci_system_suspend_begin,
+};
+
 /*
  * PSCI init function for PSCI versions >=0.2
  *
@@ -685,6 +697,20 @@ static int __init psci_0_2_init(const struct device_node *np)
 	err = get_set_conduit_method(np);
 	if (err)
 		return err;
+
+	/*
+	 * Some firmwares expose S2RAM entry through a custom suspend param.
+	 *
+	 * If found, register a suspend handler instead of registering the
+	 * idle state with cpuidle.
+	 */
+	err = of_property_read_u32(np, "arm,psci-s2ram-param", &psci_s2ram_suspend_param);
+	if (!err) {
+		suspend_set_ops(&psci_cpu_suspend_s2ram_ops);
+	} else if (err != -EINVAL) {
+		pr_err("Couldn't read the S2RAM PSCI suspend param: %d\n",
+		       psci_s2ram_suspend_param);
+	}
 
 	/*
 	 * Starting with v0.2, the PSCI specification introduced a call
