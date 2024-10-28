@@ -98,6 +98,12 @@ properties:
       [1] Kernel documentation - ARM idle states bindings
         Documentation/devicetree/bindings/cpu/idle-states.yaml
 
+  arm,psci-s2ram-param:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    description:
+      power_state parameter denoting the S2RAM/S3-like system suspend state
+    maxItems: 1
+
 patternProperties:
   "^power-domain-":
     $ref: /schemas/power/power-domain.yaml#
