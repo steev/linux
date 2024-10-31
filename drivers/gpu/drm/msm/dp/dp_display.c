@@ -107,6 +107,8 @@ struct dp_display_private {
 	struct dp_event event_list[DP_EVENT_Q_MAX];
 	spinlock_t event_lock;
 
+	u8 lttpr_caps[DP_LTTPR_COMMON_CAP_SIZE];
+
 	bool wide_bus_supported;
 
 	struct dp_audio *audio;
@@ -358,11 +360,34 @@ static int dp_display_send_hpd_notification(struct dp_display_private *dp,
 	return 0;
 }
 
+static void dp_display_lttpr_init(struct dp_display_private *dp)
+{
+	int lttpr_count;
+
+	if (drm_dp_read_lttpr_common_caps(dp->aux, dp->panel->dpcd,
+					  dp->lttpr_caps))
+		return;
+
+	lttpr_count = drm_dp_lttpr_count(dp->lttpr_caps);
+
+	if (lttpr_count) {
+		drm_dp_lttpr_set_transparent_mode(dp->aux, true);
+
+		if (lttpr_count > 0) {
+			if (drm_dp_lttpr_set_transparent_mode(dp->aux, false) != 1)
+				drm_dp_lttpr_set_transparent_mode(dp->aux, true);
+		}
+	}
+}
+
 static int dp_display_process_hpd_high(struct dp_display_private *dp)
 {
 	struct drm_connector *connector = dp->dp_display.connector;
 	const struct drm_display_info *info = &connector->display_info;
 	int rc = 0;
+
+	if (!dp->dp_display.is_edp)
+		dp_display_lttpr_init(dp);
 
 	rc = dp_panel_read_sink_caps(dp->panel, connector);
 	if (rc)
