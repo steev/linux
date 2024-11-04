@@ -137,7 +137,7 @@ struct qcom_llcc_config {
 	const u32 *reg_offset;
 	const struct llcc_edac_reg_offset *edac_reg_offset;
 	int size;
-	bool need_llcc_cfg;
+	bool skip_llcc_cfg;
 	bool no_edac;
 	bool irq_configured;
 };
@@ -2650,28 +2650,24 @@ static const struct qcom_llcc_config qdu1000_cfg[] = {
 	{
 		.sct_data       = qdu1000_data_8ch,
 		.size		= ARRAY_SIZE(qdu1000_data_8ch),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
 	{
 		.sct_data       = qdu1000_data_4ch,
 		.size           = ARRAY_SIZE(qdu1000_data_4ch),
-		.need_llcc_cfg  = true,
 		.reg_offset     = llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
 	{
 		.sct_data       = qdu1000_data_4ch,
 		.size           = ARRAY_SIZE(qdu1000_data_4ch),
-		.need_llcc_cfg  = true,
 		.reg_offset     = llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
 	{
 		.sct_data       = qdu1000_data_2ch,
 		.size           = ARRAY_SIZE(qdu1000_data_2ch),
-		.need_llcc_cfg  = true,
 		.reg_offset     = llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
@@ -2681,7 +2677,6 @@ static const struct qcom_llcc_config sa8775p_cfg[] = {
 	{
 		.sct_data	= sa8775p_data,
 		.size		= ARRAY_SIZE(sa8775p_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
@@ -2691,7 +2686,6 @@ static const struct qcom_llcc_config sc7180_cfg[] = {
 	{
 		.sct_data	= sc7180_data,
 		.size		= ARRAY_SIZE(sc7180_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2701,7 +2695,6 @@ static const struct qcom_llcc_config sc7280_cfg[] = {
 	{
 		.sct_data	= sc7280_data,
 		.size		= ARRAY_SIZE(sc7280_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2711,7 +2704,6 @@ static const struct qcom_llcc_config sc8180x_cfg[] = {
 	{
 		.sct_data	= sc8180x_data,
 		.size		= ARRAY_SIZE(sc8180x_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2721,7 +2713,6 @@ static const struct qcom_llcc_config sc8280xp_cfg[] = {
 	{
 		.sct_data	= sc8280xp_data,
 		.size		= ARRAY_SIZE(sc8280xp_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2731,7 +2722,7 @@ static const struct qcom_llcc_config sdm845_cfg[] = {
 	{
 		.sct_data	= sdm845_data,
 		.size		= ARRAY_SIZE(sdm845_data),
-		.need_llcc_cfg	= false,
+		.skip_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 		.no_edac	= true,
@@ -2742,7 +2733,6 @@ static const struct qcom_llcc_config sm6350_cfg[] = {
 	{
 		.sct_data	= sm6350_data,
 		.size		= ARRAY_SIZE(sm6350_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2752,7 +2742,6 @@ static const struct qcom_llcc_config sm7150_cfg[] = {
 	{
 		.sct_data       = sm7150_data,
 		.size           = ARRAY_SIZE(sm7150_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2762,7 +2751,6 @@ static const struct qcom_llcc_config sm8150_cfg[] = {
 	{
 		.sct_data       = sm8150_data,
 		.size           = ARRAY_SIZE(sm8150_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2772,7 +2760,6 @@ static const struct qcom_llcc_config sm8250_cfg[] = {
 	{
 		.sct_data       = sm8250_data,
 		.size           = ARRAY_SIZE(sm8250_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2782,7 +2769,6 @@ static const struct qcom_llcc_config sm8350_cfg[] = {
 	{
 		.sct_data       = sm8350_data,
 		.size           = ARRAY_SIZE(sm8350_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v1_reg_offset,
 		.edac_reg_offset = &llcc_v1_edac_reg_offset,
 	},
@@ -2792,7 +2778,6 @@ static const struct qcom_llcc_config sm8450_cfg[] = {
 	{
 		.sct_data       = sm8450_data,
 		.size           = ARRAY_SIZE(sm8450_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
@@ -2802,7 +2787,6 @@ static const struct qcom_llcc_config sm8550_cfg[] = {
 	{
 		.sct_data       = sm8550_data,
 		.size           = ARRAY_SIZE(sm8550_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
@@ -2812,7 +2796,6 @@ static const struct qcom_llcc_config sm8650_cfg[] = {
 	{
 		.sct_data       = sm8650_data,
 		.size           = ARRAY_SIZE(sm8650_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 	},
@@ -2822,7 +2805,6 @@ static const struct qcom_llcc_config x1e80100_cfg[] = {
 	{
 		.sct_data	= x1e80100_data,
 		.size		= ARRAY_SIZE(x1e80100_data),
-		.need_llcc_cfg	= true,
 		.reg_offset	= llcc_v2_1_reg_offset,
 		.edac_reg_offset = &llcc_v2_1_edac_reg_offset,
 		.irq_configured = true,
@@ -3175,7 +3157,8 @@ static int _qcom_llcc_cfg_program(const struct llcc_slice_config *config,
 			return ret;
 	}
 
-	if (cfg->need_llcc_cfg) {
+	/* At least SDM845 disallows non-secure writes to these registers */
+	if (!cfg->skip_llcc_cfg) {
 		u32 disable_cap_alloc, retain_pc;
 
 		disable_cap_alloc = config->dis_cap_alloc << config->slice_id;
