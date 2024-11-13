@@ -9342,6 +9342,8 @@ static int ath11k_fw_stats_request(struct ath11k *ar,
 	spin_lock_bh(&ar->data_lock);
 	ar->fw_stats_done = false;
 	ath11k_fw_stats_pdevs_free(&ar->fw_stats.pdevs);
+	ar->fw_stats.num_vdev_recvd = 0;
+	ar->fw_stats.num_bcn_recvd = 0;
 	spin_unlock_bh(&ar->data_lock);
 
 	reinit_completion(&ar->fw_stats_complete);
