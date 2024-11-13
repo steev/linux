@@ -207,6 +207,9 @@ static int ath11k_debugfs_fw_stats_request(struct ath11k *ar,
 			break;
 		}
 		spin_unlock_bh(&ar->data_lock);
+
+		/* 100ms is empirical, change if required */
+		msleep(100);
 	}
 	return 0;
 }
