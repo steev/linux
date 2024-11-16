@@ -717,6 +717,29 @@ static void qca_generate_hsp_nvm_name(char *fwname, size_t max_size,
 		snprintf(fwname, max_size, "qca/hpnv%02x%s.%x", rom_ver, variant, bid);
 }
 
+static void qca_get_hsp_nvm_name_generic(struct qca_fw_config *cfg,
+					 struct qca_btsoc_version ver,
+					 u8 rom_ver, u16 bid)
+{
+	const char *variant;
+
+	/* hsp gf chip */
+	if ((le32_to_cpu(ver.soc_id) & QCA_HSP_GF_SOC_MASK) == QCA_HSP_GF_SOC_ID)
+		variant = "g";
+	else
+		variant = "";
+
+	if (bid == 0x0)
+		snprintf(cfg->fwname, sizeof(cfg->fwname), "qca/hpnv%02x%s.bin",
+			 rom_ver, variant);
+	else if (bid & 0xff00)
+		snprintf(cfg->fwname, sizeof(cfg->fwname), "qca/hpnv%02x%s.b%x",
+			 rom_ver, variant, bid);
+	else
+		snprintf(cfg->fwname, sizeof(cfg->fwname), "qca/hpnv%02x%s.b%02x",
+			 rom_ver, variant, bid);
+}
+
 static inline void qca_get_nvm_name_generic(struct qca_fw_config *cfg,
 					    const char *stem, u8 rom_ver, u16 bid)
 {
@@ -810,8 +833,15 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 	/* Give the controller some time to get ready to receive the NVM */
 	msleep(10);
 
-	if (soc_type == QCA_QCA2066 || soc_type == QCA_WCN7850)
+	switch (soc_type) {
+	case QCA_QCA2066:
+	case QCA_WCN6855:
+	case QCA_WCN7850:
 		qca_read_fw_board_id(hdev, &boardid);
+		break;
+	default:
+		break;
+	}
 
 	/* Download NVM configuration */
 	config.type = TLV_TYPE_NVM;
@@ -848,8 +878,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 				 "qca/msnv%02x.bin", rom_ver);
 			break;
 		case QCA_WCN6855:
-			snprintf(config.fwname, sizeof(config.fwname),
-				 "qca/hpnv%02x.bin", rom_ver);
+			qca_get_hsp_nvm_name_generic(&config, ver, rom_ver, boardid);
 			break;
 		case QCA_WCN7850:
 			qca_get_nvm_name_generic(&config, "hmt", rom_ver, boardid);
@@ -861,9 +890,18 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 		}
 	}
 
+download_nvm:
 	err = qca_download_firmware(hdev, &config, soc_type, rom_ver);
 	if (err < 0) {
 		bt_dev_err(hdev, "QCA Failed to download NVM (%d)", err);
+		if (err == -ENOENT && boardid != 0 &&
+		    soc_type == QCA_WCN6855) {
+			boardid = 0;
+			qca_get_hsp_nvm_name_generic(&config, ver,
+						     rom_ver, boardid);
+			bt_dev_warn(hdev, "QCA fallback to default NVM");
+			goto download_nvm;
+		}
 		return err;
 	}
 
