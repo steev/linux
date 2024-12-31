@@ -2912,6 +2912,8 @@
 				iommus = <&apps_smmu 0x080 0x0>;
 				phys = <&usb_0_hsphy>, <&usb_0_qmpphy>;
 				phy-names = "usb2-phy", "usb3-phy";
+				snps,dis-u1-entry-quirk;
+				snps,dis-u2-entry-quirk;
 			};
 		};
 
@@ -3001,6 +3003,8 @@
 				iommus = <&apps_smmu 0x0a0 0x0>;
 				phys = <&usb_1_hsphy>, <&usb_1_qmpphy>;
 				phy-names = "usb2-phy", "usb3-phy";
+				snps,dis-u1-entry-quirk;
+				snps,dis-u2-entry-quirk;
 			};
 		};
 
@@ -3064,6 +3068,8 @@
 				iommus = <&apps_smmu 0x020 0x0>;
 				phys = <&usb_2_hsphy>;
 				phy-names = "usb2-phy";
+				snps,dis-u1-entry-quirk;
+				snps,dis-u2-entry-quirk;
 			};
 		};
 
