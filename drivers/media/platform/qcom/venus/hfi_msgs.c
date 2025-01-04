@@ -33,8 +33,8 @@ static void event_seq_changed(struct venus_core *core, struct venus_inst *inst,
 	struct hfi_buffer_requirements *bufreq;
 	struct hfi_extradata_input_crop *crop;
 	struct hfi_dpb_counts *dpb_count;
+	u32 ptype, rem_bytes;
 	u8 *data_ptr;
-	u32 ptype;
 
 	inst->error = HFI_ERR_NONE;
 
@@ -56,66 +56,126 @@ static void event_seq_changed(struct venus_core *core, struct venus_inst *inst,
 	}
 
 	data_ptr = (u8 *)&pkt->ext_event_data[0];
+	rem_bytes = pkt->shdr.hdr.size - sizeof(*pkt);
+	if (rem_bytes - 4 < 0) {
+		inst->error = HFI_ERR_SESSION_INSUFFICIENT_RESOURCES;
+		goto done;
+	}
+
 	do {
 		ptype = *((u32 *)data_ptr);
 		switch (ptype) {
 		case HFI_PROPERTY_PARAM_FRAME_SIZE:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_framesize))
+				break;
 			frame_sz = (struct hfi_framesize *)data_ptr;
 			event.width = frame_sz->width;
 			event.height = frame_sz->height;
 			data_ptr += sizeof(*frame_sz);
+			rem_bytes -= sizeof(struct hfi_framesize);
 			break;
 		case HFI_PROPERTY_PARAM_PROFILE_LEVEL_CURRENT:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_profile_level))
+				break;
 			profile_level = (struct hfi_profile_level *)data_ptr;
 			event.profile = profile_level->profile;
 			event.level = profile_level->level;
 			data_ptr += sizeof(*profile_level);
+			rem_bytes -= sizeof(struct hfi_profile_level);
 			break;
 		case HFI_PROPERTY_PARAM_VDEC_PIXEL_BITDEPTH:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_bit_depth))
+				break;
 			pixel_depth = (struct hfi_bit_depth *)data_ptr;
 			event.bit_depth = pixel_depth->bit_depth;
 			data_ptr += sizeof(*pixel_depth);
+			rem_bytes -= sizeof(struct hfi_bit_depth);
 			break;
 		case HFI_PROPERTY_PARAM_VDEC_PIC_STRUCT:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_pic_struct))
+				break;
 			pic_struct = (struct hfi_pic_struct *)data_ptr;
 			event.pic_struct = pic_struct->progressive_only;
 			data_ptr += sizeof(*pic_struct);
+			rem_bytes -= sizeof(struct hfi_pic_struct);
 			break;
 		case HFI_PROPERTY_PARAM_VDEC_COLOUR_SPACE:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_colour_space))
+				break;
 			colour_info = (struct hfi_colour_space *)data_ptr;
 			event.colour_space = colour_info->colour_space;
 			data_ptr += sizeof(*colour_info);
+			rem_bytes -= sizeof(struct hfi_colour_space);
 			break;
 		case HFI_PROPERTY_CONFIG_VDEC_ENTROPY:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(u32))
+				break;
 			event.entropy_mode = *(u32 *)data_ptr;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
 			break;
 		case HFI_PROPERTY_CONFIG_BUFFER_REQUIREMENTS:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_buffer_requirements))
+				break;
 			bufreq = (struct hfi_buffer_requirements *)data_ptr;
 			event.buf_count = hfi_bufreq_get_count_min(bufreq, ver);
 			data_ptr += sizeof(*bufreq);
+			rem_bytes -= sizeof(struct hfi_buffer_requirements);
 			break;
 		case HFI_INDEX_EXTRADATA_INPUT_CROP:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_extradata_input_crop))
+				break;
 			crop = (struct hfi_extradata_input_crop *)data_ptr;
 			event.input_crop.left = crop->left;
 			event.input_crop.top = crop->top;
 			event.input_crop.width = crop->width;
 			event.input_crop.height = crop->height;
 			data_ptr += sizeof(*crop);
+			rem_bytes -= sizeof(struct hfi_extradata_input_crop);
 			break;
 		case HFI_PROPERTY_PARAM_VDEC_DPB_COUNTS:
+			if (rem_bytes < sizeof(u32))
+				break;
 			data_ptr += sizeof(u32);
+			rem_bytes -= sizeof(u32);
+			if (rem_bytes < sizeof(struct hfi_dpb_counts))
+				break;
 			dpb_count = (struct hfi_dpb_counts *)data_ptr;
 			event.buf_count = dpb_count->fw_min_cnt;
 			data_ptr += sizeof(*dpb_count);
+			rem_bytes -= sizeof(struct hfi_dpb_counts);
 			break;
 		default:
 			break;
