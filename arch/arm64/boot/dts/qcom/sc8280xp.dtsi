@@ -1764,8 +1764,6 @@
 			linux,pci-domain = <6>;
 			num-lanes = <1>;
 
-			msi-map = <0x0 &its 0xe0000 0x10000>;
-
 			interrupts = <GIC_SPI 141 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>,
