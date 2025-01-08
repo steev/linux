@@ -1040,7 +1040,7 @@ static void mhi_pci_recovery_work(struct work_struct *work)
 err_unprepare:
 	mhi_unprepare_after_power_down(mhi_cntrl);
 err_try_reset:
-	if (pci_reset_function(pdev))
+	if (pci_try_reset_function(pdev))
 		dev_err(&pdev->dev, "Recovery failed\n");
 }
 
