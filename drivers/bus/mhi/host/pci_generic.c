@@ -997,10 +997,8 @@ static void mhi_pci_runtime_put(struct mhi_controller *mhi_cntrl)
 	pm_runtime_put(mhi_cntrl->cntrl_dev);
 }
 
-static void mhi_pci_recovery_work(struct work_struct *work)
+static int __mhi_pci_recovery_work(struct mhi_pci_device *mhi_pdev)
 {
-	struct mhi_pci_device *mhi_pdev = container_of(work, struct mhi_pci_device,
-						       recovery_work);
 	struct mhi_controller *mhi_cntrl = &mhi_pdev->mhi_cntrl;
 	struct pci_dev *pdev = to_pci_dev(mhi_cntrl->cntrl_dev);
 	int err;
@@ -1035,13 +1033,25 @@ static void mhi_pci_recovery_work(struct work_struct *work)
 
 	set_bit(MHI_PCI_DEV_STARTED, &mhi_pdev->status);
 	mod_timer(&mhi_pdev->health_check_timer, jiffies + HEALTH_CHECK_PERIOD);
-	return;
+
+	return 0;
 
 err_unprepare:
 	mhi_unprepare_after_power_down(mhi_cntrl);
 err_try_reset:
-	if (pci_try_reset_function(pdev))
+	err = pci_try_reset_function(pdev);
+	if (err)
 		dev_err(&pdev->dev, "Recovery failed\n");
+
+	return err;
+}
+
+static void mhi_pci_recovery_work(struct work_struct *work)
+{
+	struct mhi_pci_device *mhi_pdev = container_of(work, struct mhi_pci_device,
+						       recovery_work);
+
+	__mhi_pci_recovery_work(mhi_pdev);
 }
 
 static void health_check(struct timer_list *t)
@@ -1400,15 +1410,10 @@ static int __maybe_unused mhi_pci_runtime_resume(struct device *dev)
 	return 0;
 
 err_recovery:
-	/* Do not fail to not mess up our PCI device state, the device likely
-	 * lost power (d3cold) and we simply need to reset it from the recovery
-	 * procedure, trigger the recovery asynchronously to prevent system
-	 * suspend exit delaying.
-	 */
-	queue_work(system_long_wq, &mhi_pdev->recovery_work);
+	err = __mhi_pci_recovery_work(mhi_pdev);
 	pm_runtime_mark_last_busy(dev);
 
-	return 0;
+	return err;
 }
 
 static int  __maybe_unused mhi_pci_suspend(struct device *dev)
