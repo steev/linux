@@ -4220,7 +4220,9 @@ static int ath11k_install_key(struct ath11k_vif *arvif,
 		return 0;
 
 	if (cmd == DISABLE_KEY) {
-		arg.key_cipher = WMI_CIPHER_NONE;
+		/* TODO: Check if FW expects  value other than NONE for del */
+		/* arg.key_cipher = WMI_CIPHER_NONE; */
+		arg.key_len = 0;
 		arg.key_data = NULL;
 		goto install;
 	}
