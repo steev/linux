@@ -83,7 +83,7 @@ struct pm8xxx_rtc {
 
 #ifdef CONFIG_EFI
 
-MODULE_IMPORT_NS("EFIVAR");
+MODULE_IMPORT_NS(EFIVAR);
 
 #define QCOM_UEFI_NAME	L"RTCInfo"
 #define QCOM_UEFI_GUID	EFI_GUID(0x882f8c2b, 0x9646, 0x435f, \
