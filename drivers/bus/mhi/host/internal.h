@@ -208,7 +208,6 @@ struct mhi_ring {
 	size_t el_size;
 	size_t len;
 	size_t elements;
-	size_t alloc_size;
 	void __iomem *db_addr;
 };
 

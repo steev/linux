@@ -159,21 +159,21 @@ static struct attribute *mhi_dev_attrs[] = {
 };
 ATTRIBUTE_GROUPS(mhi_dev);
 
-/* MHI protocol requires the transfer ring to be aligned with ring length */
-static int mhi_alloc_aligned_ring(struct mhi_controller *mhi_cntrl,
-				  struct mhi_ring *ring,
-				  u64 len)
+static void mhi_init_ring_base(struct mhi_ring *ring)
 {
-	ring->alloc_size = len + (len - 1);
-	ring->pre_aligned = dma_alloc_coherent(mhi_cntrl->cntrl_dev, ring->alloc_size,
-					       &ring->dma_handle, GFP_KERNEL);
-	if (!ring->pre_aligned)
-		return -ENOMEM;
-
-	ring->iommu_base = (ring->dma_handle + (len - 1)) & ~(len - 1);
+	ring->iommu_base = (ring->dma_handle + (ring->len - 1)) & ~(ring->len - 1);
 	ring->base = ring->pre_aligned + (ring->iommu_base - ring->dma_handle);
+}
 
-	return 0;
+/* MHI protocol requires the transfer ring to be aligned with ring length */
+static void mhi_init_ring(struct mhi_controller *mhi_cntrl, struct mhi_ring *ring,
+			  size_t el_size, size_t offset)
+{
+	ring->el_size = el_size;
+	ring->len = ring->el_size * ring->elements;
+	ring->pre_aligned = mhi_cntrl->ctrl_config_base + offset;
+	ring->dma_handle = mhi_cntrl->ctrl_config_dma + offset;
+	mhi_init_ring_base(ring);
 }
 
 void mhi_deinit_free_irq(struct mhi_controller *mhi_cntrl)
@@ -265,15 +265,9 @@ void mhi_deinit_dev_ctxt(struct mhi_controller *mhi_cntrl)
 	mhi_cmd = mhi_cntrl->mhi_cmd;
 	for (i = 0; i < NR_OF_CMD_RINGS; i++, mhi_cmd++) {
 		ring = &mhi_cmd->ring;
-		dma_free_coherent(mhi_cntrl->cntrl_dev, ring->alloc_size,
-				  ring->pre_aligned, ring->dma_handle);
 		ring->base = NULL;
 		ring->iommu_base = 0;
 	}
-
-	dma_free_coherent(mhi_cntrl->cntrl_dev,
-			  sizeof(*mhi_ctxt->cmd_ctxt) * NR_OF_CMD_RINGS,
-			  mhi_ctxt->cmd_ctxt, mhi_ctxt->cmd_ctxt_addr);
 
 	mhi_event = mhi_cntrl->mhi_event;
 	for (i = 0; i < mhi_cntrl->total_ev_rings; i++, mhi_event++) {
@@ -281,22 +275,122 @@ void mhi_deinit_dev_ctxt(struct mhi_controller *mhi_cntrl)
 			continue;
 
 		ring = &mhi_event->ring;
-		dma_free_coherent(mhi_cntrl->cntrl_dev, ring->alloc_size,
-				  ring->pre_aligned, ring->dma_handle);
 		ring->base = NULL;
 		ring->iommu_base = 0;
 	}
 
-	dma_free_coherent(mhi_cntrl->cntrl_dev, sizeof(*mhi_ctxt->er_ctxt) *
-			  mhi_cntrl->total_ev_rings, mhi_ctxt->er_ctxt,
-			  mhi_ctxt->er_ctxt_addr);
-
-	dma_free_coherent(mhi_cntrl->cntrl_dev, sizeof(*mhi_ctxt->chan_ctxt) *
-			  mhi_cntrl->max_chan, mhi_ctxt->chan_ctxt,
-			  mhi_ctxt->chan_ctxt_addr);
-
+	dma_free_coherent(mhi_cntrl->cntrl_dev, mhi_cntrl->ctrl_config_size,
+			  mhi_cntrl->ctrl_config_base, mhi_cntrl->ctrl_config_dma);
 	kfree(mhi_ctxt);
 	mhi_cntrl->mhi_ctxt = NULL;
+}
+
+/*
+ * Control Configuration Address Space Layout
+ *              +------------------------------------------+
+ *              |              Channel Context             |
+ *              +------------------------------------------+
+ *              |           Array of Channel Rings         |
+ *              +------------------------------------------+
+ *              |              Event Context               |
+ *              +------------------------------------------+
+ *              |           Array of Event Rings           |
+ *              +------------------------------------------+
+ *              |              Command Context             |
+ *              +------------------------------------------+
+ *              |           Array of Command Rings         |
+ *              +------------------------------------------+
+ */
+static int mhi_alloc_control_space(struct mhi_controller *mhi_cntrl, struct mhi_ctxt *mhi_ctxt)
+{
+	size_t chan_ctxt_offset, cmd_ctxt_offset, er_ctxt_offset;
+	size_t chan_ctxt_size, cmd_ctxt_size, er_ctxt_size;
+	size_t el_size = sizeof(struct mhi_ring_element);
+	u32 ev_rings = mhi_cntrl->total_ev_rings;
+	struct mhi_event *mhi_event;
+	size_t alloc_size, offset = 0;
+	struct mhi_chan *mhi_chan;
+	struct mhi_cmd *mhi_cmd;
+	struct mhi_ring *ring;
+	int i;
+
+	chan_ctxt_offset = offset;
+	chan_ctxt_size = sizeof(*mhi_ctxt->chan_ctxt) * mhi_cntrl->max_chan;
+	chan_ctxt_size = PAGE_ALIGN(chan_ctxt_size);
+	offset += chan_ctxt_size;
+	for (i = 0, mhi_chan = mhi_cntrl->mhi_chan; i < mhi_cntrl->max_chan; i++, mhi_chan++) {
+		ring = &mhi_chan->tre_ring;
+		if (!ring->elements)
+			continue;
+		alloc_size = ring->elements * el_size;
+		alloc_size = PAGE_ALIGN(alloc_size << 1);
+		/* Temporarily save offset here */
+		ring->pre_aligned = (void *)offset;
+		offset += alloc_size;
+	}
+
+	er_ctxt_offset = offset;
+	er_ctxt_size = sizeof(*mhi_ctxt->er_ctxt) * ev_rings;
+	er_ctxt_size = PAGE_ALIGN(er_ctxt_size);
+	offset += er_ctxt_size;
+	for (i = 0, mhi_event = mhi_cntrl->mhi_event; i < ev_rings; i++, mhi_event++) {
+		ring = &mhi_event->ring;
+		alloc_size = ring->elements * el_size;
+		alloc_size = PAGE_ALIGN(alloc_size << 1);
+		/* Temporarily save offset here */
+		ring->pre_aligned = (void *)offset;
+		offset += alloc_size;
+	}
+
+	cmd_ctxt_offset = offset;
+	cmd_ctxt_size = sizeof(*mhi_ctxt->cmd_ctxt) * NR_OF_CMD_RINGS;
+	cmd_ctxt_size = PAGE_ALIGN(cmd_ctxt_size);
+	offset += cmd_ctxt_size;
+	for (i = 0, mhi_cmd = mhi_cntrl->mhi_cmd; i < NR_OF_CMD_RINGS; i++, mhi_cmd++) {
+		ring = &mhi_cmd->ring;
+		alloc_size = CMD_EL_PER_RING * el_size;
+		alloc_size = PAGE_ALIGN(alloc_size << 1);
+		/* Temporarily save offset here */
+		ring->pre_aligned = (void *)offset;
+		offset += alloc_size;
+	}
+
+	mhi_cntrl->ctrl_config_size = offset;
+	mhi_cntrl->ctrl_config_base = dma_alloc_coherent(mhi_cntrl->cntrl_dev,
+							 mhi_cntrl->ctrl_config_size,
+							 &mhi_cntrl->ctrl_config_dma,
+							 GFP_KERNEL);
+	if (!mhi_cntrl->ctrl_config_base)
+		return -ENOMEM;
+
+	/* Setup channel ctxt */
+	mhi_ctxt->chan_ctxt = mhi_cntrl->ctrl_config_base + chan_ctxt_offset;
+	mhi_ctxt->chan_ctxt_addr = mhi_cntrl->ctrl_config_dma + chan_ctxt_offset;
+	for (i = 0, mhi_chan = mhi_cntrl->mhi_chan; i < mhi_cntrl->max_chan; i++, mhi_chan++) {
+		ring = &mhi_chan->tre_ring;
+		if (!ring->elements)
+			continue;
+		mhi_init_ring(mhi_cntrl, ring, el_size, (size_t)ring->pre_aligned);
+	}
+
+	/* Setup event context */
+	mhi_ctxt->er_ctxt = mhi_cntrl->ctrl_config_base + er_ctxt_offset;
+	mhi_ctxt->er_ctxt_addr = mhi_cntrl->ctrl_config_dma + er_ctxt_offset;
+	for (i = 0, mhi_event = mhi_cntrl->mhi_event; i < ev_rings; i++, mhi_event++) {
+		ring = &mhi_event->ring;
+		mhi_init_ring(mhi_cntrl, ring, el_size, (size_t)ring->pre_aligned);
+	}
+
+	/* Setup cmd context */
+	mhi_ctxt->cmd_ctxt = mhi_cntrl->ctrl_config_base + cmd_ctxt_offset;
+	mhi_ctxt->cmd_ctxt_addr = mhi_cntrl->ctrl_config_dma + cmd_ctxt_offset;
+	for (i = 0, mhi_cmd = mhi_cntrl->mhi_cmd; i < NR_OF_CMD_RINGS; i++, mhi_cmd++) {
+		ring = &mhi_cmd->ring;
+		ring->elements = CMD_EL_PER_RING;
+		mhi_init_ring(mhi_cntrl, ring, el_size, (size_t)ring->pre_aligned);
+	}
+
+	return 0;
 }
 
 int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
@@ -309,7 +403,7 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 	struct mhi_event *mhi_event;
 	struct mhi_cmd *mhi_cmd;
 	u32 tmp;
-	int ret = -ENOMEM, i;
+	int ret, i;
 
 	atomic_set(&mhi_cntrl->dev_wake, 0);
 	atomic_set(&mhi_cntrl->pending_pkts, 0);
@@ -318,14 +412,12 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 	if (!mhi_ctxt)
 		return -ENOMEM;
 
-	/* Setup channel ctxt */
-	mhi_ctxt->chan_ctxt = dma_alloc_coherent(mhi_cntrl->cntrl_dev,
-						 sizeof(*mhi_ctxt->chan_ctxt) *
-						 mhi_cntrl->max_chan,
-						 &mhi_ctxt->chan_ctxt_addr,
-						 GFP_KERNEL);
-	if (!mhi_ctxt->chan_ctxt)
-		goto error_alloc_chan_ctxt;
+	/* Allocate control configuration */
+	ret = mhi_alloc_control_space(mhi_cntrl, mhi_ctxt);
+	if (ret) {
+		kfree(mhi_ctxt);
+		return ret;
+	}
 
 	mhi_chan = mhi_cntrl->mhi_chan;
 	chan_ctxt = mhi_ctxt->chan_ctxt;
@@ -350,15 +442,6 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 		mhi_chan->tre_ring.db_addr = (void __iomem *)&chan_ctxt->wp;
 	}
 
-	/* Setup event context */
-	mhi_ctxt->er_ctxt = dma_alloc_coherent(mhi_cntrl->cntrl_dev,
-					       sizeof(*mhi_ctxt->er_ctxt) *
-					       mhi_cntrl->total_ev_rings,
-					       &mhi_ctxt->er_ctxt_addr,
-					       GFP_KERNEL);
-	if (!mhi_ctxt->er_ctxt)
-		goto error_alloc_er_ctxt;
-
 	er_ctxt = mhi_ctxt->er_ctxt;
 	mhi_event = mhi_cntrl->mhi_event;
 	for (i = 0; i < mhi_cntrl->total_ev_rings; i++, er_ctxt++,
@@ -379,12 +462,6 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 		er_ctxt->msivec = cpu_to_le32(mhi_event->irq);
 		mhi_event->db_cfg.db_mode = true;
 
-		ring->el_size = sizeof(struct mhi_ring_element);
-		ring->len = ring->el_size * ring->elements;
-		ret = mhi_alloc_aligned_ring(mhi_cntrl, ring, ring->len);
-		if (ret)
-			goto error_alloc_er;
-
 		/*
 		 * If the read pointer equals to the write pointer, then the
 		 * ring is empty
@@ -396,28 +473,10 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 		ring->ctxt_wp = &er_ctxt->wp;
 	}
 
-	/* Setup cmd context */
-	ret = -ENOMEM;
-	mhi_ctxt->cmd_ctxt = dma_alloc_coherent(mhi_cntrl->cntrl_dev,
-						sizeof(*mhi_ctxt->cmd_ctxt) *
-						NR_OF_CMD_RINGS,
-						&mhi_ctxt->cmd_ctxt_addr,
-						GFP_KERNEL);
-	if (!mhi_ctxt->cmd_ctxt)
-		goto error_alloc_er;
-
 	mhi_cmd = mhi_cntrl->mhi_cmd;
 	cmd_ctxt = mhi_ctxt->cmd_ctxt;
 	for (i = 0; i < NR_OF_CMD_RINGS; i++, mhi_cmd++, cmd_ctxt++) {
 		struct mhi_ring *ring = &mhi_cmd->ring;
-
-		ring->el_size = sizeof(struct mhi_ring_element);
-		ring->elements = CMD_EL_PER_RING;
-		ring->len = ring->el_size * ring->elements;
-		ret = mhi_alloc_aligned_ring(mhi_cntrl, ring, ring->len);
-		if (ret)
-			goto error_alloc_cmd;
-
 		ring->rp = ring->wp = ring->base;
 		cmd_ctxt->rbase = cpu_to_le64(ring->iommu_base);
 		cmd_ctxt->rp = cmd_ctxt->wp = cmd_ctxt->rbase;
@@ -428,43 +487,6 @@ int mhi_init_dev_ctxt(struct mhi_controller *mhi_cntrl)
 	mhi_cntrl->mhi_ctxt = mhi_ctxt;
 
 	return 0;
-
-error_alloc_cmd:
-	for (--i, --mhi_cmd; i >= 0; i--, mhi_cmd--) {
-		struct mhi_ring *ring = &mhi_cmd->ring;
-
-		dma_free_coherent(mhi_cntrl->cntrl_dev, ring->alloc_size,
-				  ring->pre_aligned, ring->dma_handle);
-	}
-	dma_free_coherent(mhi_cntrl->cntrl_dev,
-			  sizeof(*mhi_ctxt->cmd_ctxt) * NR_OF_CMD_RINGS,
-			  mhi_ctxt->cmd_ctxt, mhi_ctxt->cmd_ctxt_addr);
-	i = mhi_cntrl->total_ev_rings;
-	mhi_event = mhi_cntrl->mhi_event + i;
-
-error_alloc_er:
-	for (--i, --mhi_event; i >= 0; i--, mhi_event--) {
-		struct mhi_ring *ring = &mhi_event->ring;
-
-		if (mhi_event->offload_ev)
-			continue;
-
-		dma_free_coherent(mhi_cntrl->cntrl_dev, ring->alloc_size,
-				  ring->pre_aligned, ring->dma_handle);
-	}
-	dma_free_coherent(mhi_cntrl->cntrl_dev, sizeof(*mhi_ctxt->er_ctxt) *
-			  mhi_cntrl->total_ev_rings, mhi_ctxt->er_ctxt,
-			  mhi_ctxt->er_ctxt_addr);
-
-error_alloc_er_ctxt:
-	dma_free_coherent(mhi_cntrl->cntrl_dev, sizeof(*mhi_ctxt->chan_ctxt) *
-			  mhi_cntrl->max_chan, mhi_ctxt->chan_ctxt,
-			  mhi_ctxt->chan_ctxt_addr);
-
-error_alloc_chan_ctxt:
-	kfree(mhi_ctxt);
-
-	return ret;
 }
 
 int mhi_init_mmio(struct mhi_controller *mhi_cntrl)
@@ -475,6 +497,7 @@ int mhi_init_mmio(struct mhi_controller *mhi_cntrl)
 	struct mhi_event *mhi_event;
 	void __iomem *base = mhi_cntrl->regs;
 	struct device *dev = &mhi_cntrl->mhi_dev->dev;
+	dma_addr_t mhi_ctrl_limit = mhi_cntrl->ctrl_config_dma + mhi_cntrl->ctrl_config_size - 1;
 	struct {
 		u32 offset;
 		u32 val;
@@ -505,11 +528,11 @@ int mhi_init_mmio(struct mhi_controller *mhi_cntrl)
 		},
 		{
 			MHICTRLBASE_HIGHER,
-			upper_32_bits(mhi_cntrl->iova_start),
+			upper_32_bits(mhi_cntrl->ctrl_config_dma),
 		},
 		{
 			MHICTRLBASE_LOWER,
-			lower_32_bits(mhi_cntrl->iova_start),
+			lower_32_bits(mhi_cntrl->ctrl_config_dma),
 		},
 		{
 			MHIDATABASE_HIGHER,
@@ -521,11 +544,11 @@ int mhi_init_mmio(struct mhi_controller *mhi_cntrl)
 		},
 		{
 			MHICTRLLIMIT_HIGHER,
-			upper_32_bits(mhi_cntrl->iova_stop),
+			upper_32_bits(mhi_ctrl_limit),
 		},
 		{
 			MHICTRLLIMIT_LOWER,
-			lower_32_bits(mhi_cntrl->iova_stop),
+			lower_32_bits(mhi_ctrl_limit),
 		},
 		{
 			MHIDATALIMIT_HIGHER,
@@ -622,8 +645,6 @@ void mhi_deinit_chan_ctxt(struct mhi_controller *mhi_cntrl,
 	if (!chan_ctxt->rbase) /* Already uninitialized */
 		return;
 
-	dma_free_coherent(mhi_cntrl->cntrl_dev, tre_ring->alloc_size,
-			  tre_ring->pre_aligned, tre_ring->dma_handle);
 	vfree(buf_ring->base);
 
 	buf_ring->base = tre_ring->base = NULL;
@@ -649,26 +670,18 @@ int mhi_init_chan_ctxt(struct mhi_controller *mhi_cntrl,
 	struct mhi_ring *tre_ring;
 	struct mhi_chan_ctxt *chan_ctxt;
 	u32 tmp;
-	int ret;
 
 	buf_ring = &mhi_chan->buf_ring;
 	tre_ring = &mhi_chan->tre_ring;
-	tre_ring->el_size = sizeof(struct mhi_ring_element);
-	tre_ring->len = tre_ring->el_size * tre_ring->elements;
 	chan_ctxt = &mhi_cntrl->mhi_ctxt->chan_ctxt[mhi_chan->chan];
-	ret = mhi_alloc_aligned_ring(mhi_cntrl, tre_ring, tre_ring->len);
-	if (ret)
-		return -ENOMEM;
+	mhi_init_ring_base(tre_ring);
 
 	buf_ring->el_size = sizeof(struct mhi_buf_info);
 	buf_ring->len = buf_ring->el_size * buf_ring->elements;
 	buf_ring->base = vzalloc(buf_ring->len);
 
-	if (!buf_ring->base) {
-		dma_free_coherent(mhi_cntrl->cntrl_dev, tre_ring->alloc_size,
-				  tre_ring->pre_aligned, tre_ring->dma_handle);
+	if (!buf_ring->base)
 		return -ENOMEM;
-	}
 
 	tmp = le32_to_cpu(chan_ctxt->chcfg);
 	tmp &= ~CHAN_CTX_CHSTATE_MASK;

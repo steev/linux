@@ -325,6 +325,9 @@ struct mhi_controller_config {
  * @mhi_event: MHI event ring configurations table
  * @mhi_cmd: MHI command ring configurations table
  * @mhi_ctxt: MHI device context, shared memory between host and device
+ * @ctrl_config_size: Total allocated size of control configuration buffer
+ * @ctrl_config_dma: Base bus address of control configuration buffer
+ * @ctrl_config_base: Base CPU address of control configuration buffer
  * @pm_mutex: Mutex for suspend/resume operation
  * @pm_lock: Lock for protecting MHI power management state
  * @timeout_ms: Timeout in ms for state transitions
@@ -402,6 +405,10 @@ struct mhi_controller {
 	struct mhi_event *mhi_event;
 	struct mhi_cmd *mhi_cmd;
 	struct mhi_ctxt *mhi_ctxt;
+
+	size_t ctrl_config_size;
+	dma_addr_t ctrl_config_dma;
+	void *ctrl_config_base;
 
 	struct mutex pm_mutex;
 	rwlock_t pm_lock;
