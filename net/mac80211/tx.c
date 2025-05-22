@@ -40,6 +40,10 @@
 
 /* misc utils */
 
+static void ieee80211_8023_xmit(struct ieee80211_sub_if_data *sdata,
+				struct net_device *dev, struct sta_info *sta,
+				struct ieee80211_key *key, struct sk_buff *skb);
+
 static __le16 ieee80211_duration(struct ieee80211_tx_data *tx,
 				 struct sk_buff *skb, int group_addr,
 				 int next_frag_len)
@@ -4291,6 +4295,17 @@ void __ieee80211_subif_start_xmit(struct sk_buff *skb,
 
 	if (IS_ERR(sta))
 		sta = NULL;
+
+	if (sta && sdata->vif.type == NL80211_IFTYPE_AP_VLAN &&
+	    get_bss_sdata(sdata)->vif.offload_flags & IEEE80211_OFFLOAD_ENCAP_ENABLED &&
+	    !is_multicast_ether_addr(skb->data)) {
+		struct ieee80211_key *key = rcu_dereference(sta->ptk[sta->ptk_idx]);
+		if (!key)
+			key = rcu_dereference(get_bss_sdata(sdata)->default_unicast_key);
+		ieee80211_8023_xmit(sdata, dev, sta, key, skb);
+		rcu_read_unlock();
+		return;
+	}
 
 	skb_set_queue_mapping(skb, ieee80211_select_queue(sdata, sta, skb));
 	ieee80211_aggr_check(sdata, sta, skb);

@@ -121,6 +121,7 @@ struct ath11k_skb_cb {
 	u32 cipher;
 	struct ath11k *ar;
 	struct ieee80211_vif *vif;
+	u32 pkt_offset;
 } __packed;
 
 struct ath11k_skb_rxcb {

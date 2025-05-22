@@ -80,6 +80,43 @@ enum hal_encrypt_type ath11k_dp_tx_get_encrypt_type(u32 cipher)
 	}
 }
 
+#define HTT_META_DATA_ALIGNMENT	0x8
+
+static int ath11k_dp_metadata_align_skb(struct sk_buff *skb, u8 align_len)
+{
+	if (unlikely(skb_cow_head(skb, align_len)))
+		return -ENOMEM;
+
+	skb_push(skb, align_len);
+	memset(skb->data, 0, align_len);
+	return 0;
+}
+
+static int ath11k_dp_prepare_htt_metadata(struct sk_buff *skb,
+					 u8 *htt_metadata_size)
+{
+	u8 htt_desc_size;
+	/* Size rounded of multiple of 8 bytes */
+	u8 htt_desc_size_aligned;
+	int ret;
+	struct hal_tx_msdu_metadata *desc_ext;
+
+	htt_desc_size = sizeof(struct hal_tx_msdu_metadata);
+	htt_desc_size_aligned = ALIGN(htt_desc_size, HTT_META_DATA_ALIGNMENT);
+
+	ret = ath11k_dp_metadata_align_skb(skb, htt_desc_size_aligned);
+	if (unlikely(ret))
+		return ret;
+
+	desc_ext = (struct hal_tx_msdu_metadata *)skb->data;
+	desc_ext->info0 = le32_encode_bits(1, HAL_TX_MSDU_METADATA_INFO0_ENCRYPT_FLAG) |
+			  le32_encode_bits(0, HAL_TX_MSDU_METADATA_INFO0_ENCRYPT_TYPE) |
+			  le32_encode_bits(1,
+					   HAL_TX_MSDU_METADATA_INFO0_HOST_TX_DESC_POOL);
+	*htt_metadata_size = htt_desc_size_aligned;
+	return 0;
+}
+
 int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
 		 struct ath11k_sta *arsta, struct sk_buff *skb)
 {
@@ -98,6 +135,9 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
 	u32 ring_selector = 0;
 	u8 ring_map = 0;
 	bool tcl_ring_retry;
+	bool is_diff_encap = false;
+	u8 align_pad;
+	u8 htt_meta_size = 0;
 
 	if (unlikely(test_bit(ATH11K_FLAG_CRASH_FLUSH, &ar->ab->dev_flags)))
 		return -ESHUTDOWN;
@@ -190,7 +230,12 @@ tcl_ring_sel:
 
 	switch (ti.encap_type) {
 	case HAL_TCL_ENCAP_TYPE_NATIVE_WIFI:
-		ath11k_dp_tx_encap_nwifi(skb);
+		if ((arvif->vif->offload_flags & IEEE80211_OFFLOAD_ENCAP_ENABLED) &&
+		    (skb->protocol == cpu_to_be16(ETH_P_PAE) ||
+		     ieee80211_is_qos_nullfunc(hdr->frame_control)))
+			is_diff_encap = true;
+		else
+			ath11k_dp_tx_encap_nwifi(skb);
 		break;
 	case HAL_TCL_ENCAP_TYPE_RAW:
 		if (!test_bit(ATH11K_FLAG_RAW_MODE, &ab->dev_flags)) {
@@ -209,6 +254,33 @@ tcl_ring_sel:
 		goto fail_remove_idr;
 	}
 
+	/* Add metadata for software encryption of vlan group traffic */
+	if ((!test_bit(ATH11K_FLAG_HW_CRYPTO_DISABLED, &ar->ab->dev_flags) &&
+	     !(info->control.flags & IEEE80211_TX_CTL_HW_80211_ENCAP) &&
+	     !info->control.hw_key && ieee80211_has_protected(hdr->frame_control)) ||
+	    is_diff_encap) {
+		/* HW requirement is that metadata should always point to a
+		 * 8-byte aligned address. So we add alignment pad to start of
+		 * buffer. HTT Metadata should be ensured to be multiple of 8-bytes
+		 * to get 8-byte aligned start address along with align_pad added
+		 */
+		align_pad = ((unsigned long)skb->data) & (HTT_META_DATA_ALIGNMENT - 1);
+		ret = ath11k_dp_metadata_align_skb(skb, align_pad);
+		if (unlikely(ret))
+			goto fail_remove_idr;
+
+		ti.pkt_offset += align_pad;
+		ret = ath11k_dp_prepare_htt_metadata(skb, &htt_meta_size);
+		if (unlikely(ret))
+			goto fail_remove_idr;
+
+		ti.pkt_offset += htt_meta_size;
+		ti.meta_data_flags |= HTT_TCL_META_DATA_VALID_HTT;
+		ti.flags0 |= FIELD_PREP(HAL_TCL_DATA_CMD_INFO1_TO_FW, 1);
+		ti.encap_type = HAL_TCL_ENCAP_TYPE_RAW;
+		ti.encrypt_type = HAL_ENCRYPT_TYPE_OPEN;
+	}
+
 	ti.paddr = dma_map_single(ab->dev, skb->data, skb->len, DMA_TO_DEVICE);
 	if (unlikely(dma_mapping_error(ab->dev, ti.paddr))) {
 		atomic_inc(&ab->soc_stats.tx_err.misc_fail);
@@ -217,7 +289,8 @@ tcl_ring_sel:
 		goto fail_remove_idr;
 	}
 
-	ti.data_len = skb->len;
+	ti.data_len = skb->len - ti.pkt_offset;
+	skb_cb->pkt_offset = ti.pkt_offset;
 	skb_cb->paddr = ti.paddr;
 	skb_cb->vif = arvif->vif;
 	skb_cb->ar = ar;
@@ -273,6 +346,8 @@ fail_unmap_dma:
 	dma_unmap_single(ab->dev, ti.paddr, ti.data_len, DMA_TO_DEVICE);
 
 fail_remove_idr:
+	if (ti.pkt_offset)
+		skb_pull(skb, ti.pkt_offset);
 	spin_lock_bh(&tx_ring->tx_idr_lock);
 	idr_remove(&tx_ring->txbuf_idr,
 		   FIELD_GET(DP_TX_DESC_ID_MSDU_ID, ti.desc_id));
@@ -348,6 +423,10 @@ ath11k_dp_tx_htt_tx_complete_buf(struct ath11k_base *ab,
 		ieee80211_free_txskb(ar->hw, msdu);
 		return;
 	}
+
+	if (skb_cb->pkt_offset)
+		/* Removing the alignment and htt meta data */
+		skb_pull(msdu, skb_cb->pkt_offset);
 
 	memset(&info->status, 0, sizeof(info->status));
 

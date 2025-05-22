@@ -2491,4 +2491,164 @@ struct hal_reo_desc_thresh_reached_status {
  *		entries into this Ring has looped around the ring.
  */
 
+#define HAL_TX_MSDU_METADATA_INFO0_ENCRYPT_FLAG		BIT(8)
+#define HAL_TX_MSDU_METADATA_INFO0_ENCRYPT_TYPE		GENMASK(16, 15)
+#define HAL_TX_MSDU_METADATA_INFO0_HOST_TX_DESC_POOL	BIT(31)
+
+struct hal_tx_msdu_metadata {
+	__le32 info0;
+	__le32 rsvd0[6];
+} __packed;
+
+/* hal_tx_msdu_metadata
+ *
+ * valid_pwr
+ *		If set, tx pwr spec is valid
+ *
+ * valid_mcs_mask
+ *		If set, tx MCS mask is valid
+ *
+ * valid_nss_mask
+ *		If set, tx Nss mask is valid
+ *
+ * valid_preamble_type
+ *		If set, tx preamble spec is valid
+ *
+ * valid_retries
+ *		If set, tx retries spec is valid
+ *
+ * valid_bw_info
+ *		If set, tx dyn_bw and bw_mask are valid
+ *
+ * valid_guard_interval
+ *		If set, tx guard intv spec is valid
+ *
+ * valid_chainmask
+ *		If set, tx chainmask is valid
+ *
+ * valid_encrypt_type
+ *		If set, encrypt type is valid
+ *
+ * valid_key_flags
+ *		If set, key flags is valid
+ *
+ * valid_expire_tsf
+ *		If set, tx expire TSF spec is valid
+ *
+ * valid_chanfreq
+ *		If set, chanfreq is valid
+ *
+ * is_dsrc
+ *		If set, MSDU is a DSRC frame
+ *
+ * guard_interval
+ *		0.4us, 0.8us, 1.6us, 3.2us
+ *
+ * encrypt_type
+ *		0 = NO_ENCRYPT,
+ *		1 = ENCRYPT,
+ *		2 ~ 3 - Reserved
+ *
+ * retry_limit
+ *		Specify the maximum number of transmissions, including the
+ *		initial transmission, to attempt before giving up if no ack
+ *		is received.
+ *		If the tx rate is specified, then all retries shall use the
+ *		same rate as the initial transmission.
+ *		If no tx rate is specified, the target can choose whether to
+ *		retain the original rate during the retransmissions, or to
+ *		fall back to a more robust rate.
+ *
+ * use_dcm_11ax
+ *		If set, Use Dual subcarrier modulation.
+ *		Valid only for 11ax preamble types HE_SU
+ *		and HE_EXT_SU
+ *
+ * ltf_subtype_11ax
+ *		Takes enum values of htt_11ax_ltf_subtype_t
+ *		Valid only for 11ax preamble types HE_SU
+ *		and HE_EXT_SU
+ *
+ * dyn_bw
+ *		0 = static bw, 1 = dynamic bw
+ *
+ * bw_mask
+ *		Valid only if dyn_bw == 0 (static bw).
+ *
+ * host_tx_desc_pool
+ *		If set, Firmware allocates tx_descriptors
+ *		in WAL_BUFFERID_TX_HOST_DATA_EXP,instead
+ *		of WAL_BUFFERID_TX_TCL_DATA_EXP.
+ *		Use cases:
+ *		Any time firmware uses TQM-BYPASS for Data
+ *		TID, firmware expect host to set this bit.
+ *
+ * power
+ *		Unit of the power field is 0.5 dbm
+ *		signed value ranging from -64dbm to 63.5 dbm
+ *
+ * mcs_mask
+ *		mcs bit mask of 0 ~ 11
+ *		Setting more than one MCS isn't currently
+ *		supported by the target but is supported
+ *		in the interface in case in the future
+ *		the target supports specifications of
+ *		a limited set of MCS values.
+ *
+ * nss_mask
+ *		Nss bit mask 0 ~ 7
+ *		Setting more than one Nss isn't currently
+ *		supported by the target but is supported
+ *		in the interface in case in the future
+ *		the target supports specifications of
+ *		a limited set of Nss values.
+ *
+ * pream_type
+ *		Preamble types
+ *
+ * update_peer_cache
+ *		When set these custom values will be
+ *		used for all packets, until the next
+ *		update via this ext header.
+ *		This is to make sure not all packets
+ *		need to include this header.
+ *
+ * chain_mask
+ *		Specify which chains to transmit from
+ *
+ * key_flags
+ *		Key Index and related flags - used in mesh mode
+ *
+ * chanfreq
+ *		Channel frequency: This identifies the desired channel
+ *		frequency (in MHz) for tx frames. This is used by FW to help
+ *		determine when it is safe to transmit or drop frames for
+ *		off-channel operation.
+ *		The default value of zero indicates to FW that the corresponding
+ *		VDEV's home channel (if there is one) is the desired channel
+ *		frequency.
+ *
+ * expire_tsf_lo
+ *		tx expiry time (TSF) LSBs
+ *
+ * expire_tsf_hi
+ *		tx expiry time (TSF) MSBs
+ *
+ * learning_frame
+ *		When this flag is set, this frame will be dropped by FW
+ *		rather than being enqueued to the Transmit Queue Manager (TQM) HW.
+ *
+ * send_as_standalone
+ *		This will indicate if the msdu needs to be sent as a singleton PPDU,
+ *		i.e. with no A-MSDU or A-MPDU aggregation.
+ *		The scope is extended to other use-cases.
+ *
+ * is_host_opaque_valid
+ *		Set this bit to 1 if the host_opaque_cookie is populated
+ *		with valid information.
+ *
+ * host_opaque_cookie
+ *		Host opaque cookie for special frames
+ */
+
 #endif /* ATH11K_HAL_DESC_H */
