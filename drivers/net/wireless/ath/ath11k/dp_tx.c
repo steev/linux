@@ -700,6 +700,9 @@ void ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id)
 
 	ath11k_hal_srng_access_begin(ab, status_ring);
 
+	/* Make sure descriptor is read after the head pointer. */
+	dma_rmb();
+
 	while ((ATH11K_TX_COMPL_NEXT(tx_ring->tx_status_head) !=
 		tx_ring->tx_status_tail) &&
 	       (desc = ath11k_hal_srng_dst_get_next_entry(ab, status_ring))) {

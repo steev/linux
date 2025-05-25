@@ -3851,6 +3851,9 @@ int ath11k_dp_process_rx_err(struct ath11k_base *ab, struct napi_struct *napi,
 
 	ath11k_hal_srng_access_begin(ab, srng);
 
+	/* Make sure descriptor is read after the head pointer. */
+	dma_rmb();
+
 	while (budget &&
 	       (desc = ath11k_hal_srng_dst_get_next_entry(ab, srng))) {
 		struct hal_reo_dest_ring *reo_desc = (struct hal_reo_dest_ring *)desc;
@@ -4154,6 +4157,9 @@ int ath11k_dp_rx_process_wbm_err(struct ath11k_base *ab,
 
 	ath11k_hal_srng_access_begin(ab, srng);
 
+	/* Make sure descriptor is read after the head pointer. */
+	dma_rmb();
+
 	while (budget) {
 		rx_desc = ath11k_hal_srng_dst_get_next_entry(ab, srng);
 		if (!rx_desc)
@@ -4280,6 +4286,9 @@ int ath11k_dp_process_rxdma_err(struct ath11k_base *ab, int mac_id, int budget)
 
 	ath11k_hal_srng_access_begin(ab, srng);
 
+	/* Make sure descriptor is read after the head pointer. */
+	dma_rmb();
+
 	while (quota-- &&
 	       (desc = ath11k_hal_srng_dst_get_next_entry(ab, srng))) {
 		ath11k_hal_rx_reo_ent_paddr_get(ab, desc, &paddr, &desc_bank);
@@ -4352,6 +4361,9 @@ void ath11k_dp_process_reo_status(struct ath11k_base *ab)
 	spin_lock_bh(&srng->lock);
 
 	ath11k_hal_srng_access_begin(ab, srng);
+
+	/* Make sure descriptor is read after the head pointer. */
+	dma_rmb();
 
 	while ((reo_desc = ath11k_hal_srng_dst_get_next_entry(ab, srng))) {
 		tag = FIELD_GET(HAL_SRNG_TLV_HDR_TAG, *reo_desc);
@@ -5168,6 +5180,9 @@ static void ath11k_dp_rx_mon_dest_process(struct ath11k *ar, int mac_id,
 	rx_bufs_used = 0;
 	rx_mon_stats = &pmon->rx_mon_stats;
 
+	/* Make sure descriptor is read after the head pointer. */
+	dma_rmb();
+
 	while ((ring_entry = ath11k_hal_srng_dst_peek(ar->ab, mon_dst_srng))) {
 		struct sk_buff *head_msdu, *tail_msdu;
 
@@ -5630,6 +5645,10 @@ static int ath11k_dp_full_mon_process_rx(struct ath11k_base *ab, int mac_id,
 	spin_lock_bh(&mon_dst_srng->lock);
 
 	ath11k_hal_srng_access_begin(ar->ab, mon_dst_srng);
+
+	/* Make sure descriptor is read after the head pointer. */
+	dma_rmb();
+
 	while ((ring_entry = ath11k_hal_srng_dst_peek(ar->ab, mon_dst_srng))) {
 		head_msdu = NULL;
 		tail_msdu = NULL;
