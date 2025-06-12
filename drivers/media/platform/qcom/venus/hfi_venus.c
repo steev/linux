@@ -1687,6 +1687,7 @@ void venus_hfi_destroy(struct venus_core *core)
 	venus_interface_queues_release(hdev);
 	mutex_destroy(&hdev->lock);
 	kfree(hdev);
+	devm_free_irq(core->dev, core->irq, core);
 	core->ops = NULL;
 }
 
