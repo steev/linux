@@ -166,6 +166,7 @@ struct vfe_device {
 	struct camss_video_ops video_ops;
 	struct device *genpd;
 	struct device_link *genpd_link;
+	bool enumeration_complete;
 };
 
 struct camss_subdev_resources;

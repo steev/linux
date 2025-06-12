@@ -1060,6 +1060,9 @@ int vfe_get(struct vfe_device *vfe)
 {
 	int ret;
 
+	if (!vfe->enumeration_complete)
+		return -EAGAIN;
+
 	mutex_lock(&vfe->power_lock);
 
 	if (vfe->power_count == 0) {
@@ -1120,6 +1123,9 @@ error_pm_domain:
  */
 void vfe_put(struct vfe_device *vfe)
 {
+	if (!vfe->enumeration_complete)
+		return;
+
 	mutex_lock(&vfe->power_lock);
 
 	if (vfe->power_count == 0) {
@@ -2078,6 +2084,8 @@ int msm_vfe_register_entities(struct vfe_device *vfe,
 			goto error_link;
 		}
 	}
+
+	vfe->enumeration_complete = true;
 
 	return 0;
 
