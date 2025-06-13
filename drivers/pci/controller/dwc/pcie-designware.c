@@ -687,7 +687,11 @@ int dw_pcie_wait_for_link(struct dw_pcie *pci)
 	u32 offset, val;
 	int retries;
 
-	/* Check if the link is up or not */
+	/*
+	 * Check if the link is up or not. As per PCIe r6.0, sec 6.6.1, software
+	 * must allow at least 1.0 s following exit from a Conventional Reset of
+	 * a device, before determining that the device is broken.
+	 */
 	for (retries = 0; retries < LINK_WAIT_MAX_RETRIES; retries++) {
 		if (dw_pcie_link_up(pci))
 			break;
