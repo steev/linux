@@ -60,11 +60,16 @@
 #define dw_pcie_cap_set(_pci, _cap) \
 	set_bit(DW_PCIE_CAP_ ## _cap, &(_pci)->caps)
 
-/* Parameters for the waiting for link up routine */
-#define LINK_WAIT_MAX_RETRIES		10
-#define LINK_WAIT_SLEEP_MS		90
+/*
+ * Parameters for waiting for a link to be established. As per PCIe r6.0,
+ * sec 6.6.1, software must allow at least 1.0 s following exit from a
+ * Conventional Reset of a device, before determining that the device is broken.
+ * Therefore LINK_WAIT_MAX_RETRIES * LINK_WAIT_SLEEP_MS should equal 1.0 s.
+ */
+#define LINK_WAIT_MAX_RETRIES		100
+#define LINK_WAIT_SLEEP_MS		10
 
-/* Parameters for the waiting for iATU enabled routine */
+/* Parameters for waiting for iATU enabled routine */
 #define LINK_WAIT_MAX_IATU_RETRIES	5
 #define LINK_WAIT_IATU			9
 
