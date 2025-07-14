@@ -1574,8 +1574,6 @@ static irqreturn_t qcom_pcie_global_irq_thread(int irq, void *data)
 		pci_lock_rescan_remove();
 		pci_rescan_bus(pp->bridge->bus);
 		pci_unlock_rescan_remove();
-
-		qcom_pcie_icc_opp_update(pcie);
 	} else {
 		dev_WARN_ONCE(dev, 1, "Received unknown event. INT_STATUS: 0x%08x\n",
 			      status);
@@ -1611,6 +1609,7 @@ static int pcie_qcom_notify(struct notifier_block *nb, unsigned long action,
 	switch (action) {
 	case BUS_NOTIFY_BIND_DRIVER:
 		qcom_pcie_enable_aspm(pdev);
+		qcom_pcie_icc_opp_update(pcie);
 		break;
 	}
 
