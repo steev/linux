@@ -115,6 +115,10 @@
 /* For dup_mmap(). */
 #include "../mm/internal.h"
 
+#ifdef CONFIG_SCHED_BORE
+#include <linux/sched/bore.h>
+#endif // CONFIG_SCHED_BORE
+
 #include <trace/events/sched.h>
 
 #define CREATE_TRACE_POINTS
@@ -2313,6 +2317,10 @@ __latent_entropy struct task_struct *copy_process(
 	 * Need tasklist lock for parent etc handling!
 	 */
 	write_lock_irq(&tasklist_lock);
+#ifdef CONFIG_SCHED_BORE
+	if (likely(p->pid))
+		sched_clone_bore(p, current, clone_flags, p->start_time);
+#endif // CONFIG_SCHED_BORE
 
 	/* CLONE_PARENT re-uses the old parent */
 	if (clone_flags & (CLONE_PARENT|CLONE_THREAD)) {
