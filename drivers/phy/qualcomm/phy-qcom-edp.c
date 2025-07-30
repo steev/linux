@@ -85,6 +85,8 @@ struct qcom_edp_phy_cfg {
 	const u8 *aux_cfg;
 	const struct qcom_edp_swing_pre_emph_cfg *swing_pre_emph_cfg;
 	const struct phy_ver_ops *ver_ops;
+	const char * const *clks;
+	int num_clks;
 };
 
 struct qcom_edp {
@@ -103,8 +105,10 @@ struct qcom_edp {
 
 	struct phy_configure_opts_dp dp_opts;
 
-	struct clk_bulk_data clks[2];
 	struct regulator_bulk_data supplies[2];
+
+	struct clk_bulk_data *clks;
+	int num_clks;
 
 	bool is_edp;
 };
@@ -218,7 +222,7 @@ static int qcom_edp_phy_init(struct phy *phy)
 	if (ret)
 		return ret;
 
-	ret = clk_bulk_prepare_enable(ARRAY_SIZE(edp->clks), edp->clks);
+	ret = clk_bulk_prepare_enable(edp->num_clks, edp->clks);
 	if (ret)
 		goto out_disable_supplies;
 
@@ -524,6 +528,10 @@ static int qcom_edp_com_configure_pll_v4(const struct qcom_edp *edp)
 	return 0;
 }
 
+static const char * const qcom_edp_clks_v4[] = {
+	"aux", "cfg_ahb",
+};
+
 static const struct phy_ver_ops qcom_edp_phy_ops_v4 = {
 	.com_power_on		= qcom_edp_phy_power_on_v4,
 	.com_resetsm_cntrl	= qcom_edp_phy_com_resetsm_cntrl_v4,
@@ -537,17 +545,23 @@ static const struct qcom_edp_phy_cfg sa8775p_dp_phy_cfg = {
 	.aux_cfg = edp_phy_aux_cfg_v5,
 	.swing_pre_emph_cfg = &edp_phy_swing_pre_emph_cfg_v5,
 	.ver_ops = &qcom_edp_phy_ops_v4,
+	.clks = qcom_edp_clks_v4,
+	.num_clks = ARRAY_SIZE(qcom_edp_clks_v4),
 };
 
 static const struct qcom_edp_phy_cfg sc7280_dp_phy_cfg = {
 	.aux_cfg = edp_phy_aux_cfg_v4,
 	.ver_ops = &qcom_edp_phy_ops_v4,
+	.clks = qcom_edp_clks_v4,
+	.num_clks = ARRAY_SIZE(qcom_edp_clks_v4),
 };
 
 static const struct qcom_edp_phy_cfg sc8280xp_dp_phy_cfg = {
 	.aux_cfg = edp_phy_aux_cfg_v4,
 	.swing_pre_emph_cfg = &dp_phy_swing_pre_emph_cfg,
 	.ver_ops = &qcom_edp_phy_ops_v4,
+	.clks = qcom_edp_clks_v4,
+	.num_clks = ARRAY_SIZE(qcom_edp_clks_v4),
 };
 
 static const struct qcom_edp_phy_cfg sc8280xp_edp_phy_cfg = {
@@ -555,6 +569,8 @@ static const struct qcom_edp_phy_cfg sc8280xp_edp_phy_cfg = {
 	.aux_cfg = edp_phy_aux_cfg_v4,
 	.swing_pre_emph_cfg = &edp_phy_swing_pre_emph_cfg,
 	.ver_ops = &qcom_edp_phy_ops_v4,
+	.clks = qcom_edp_clks_v4,
+	.num_clks = ARRAY_SIZE(qcom_edp_clks_v4),
 };
 
 static int qcom_edp_phy_power_on_v6(const struct qcom_edp *edp)
@@ -730,10 +746,16 @@ static const struct phy_ver_ops qcom_edp_phy_ops_v6 = {
 	.com_configure_ssc	= qcom_edp_com_configure_ssc_v6,
 };
 
+static const char * const qcom_edp_clks_v6[] = {
+	"aux", "cfg_ahb", "refclk",
+};
+
 static struct qcom_edp_phy_cfg x1e80100_phy_cfg = {
 	.aux_cfg = edp_phy_aux_cfg_v4,
 	.swing_pre_emph_cfg = &dp_phy_swing_pre_emph_cfg,
 	.ver_ops = &qcom_edp_phy_ops_v6,
+	.clks = qcom_edp_clks_v6,
+	.num_clks = ARRAY_SIZE(qcom_edp_clks_v6),
 };
 
 static int qcom_edp_phy_power_on(struct phy *phy)
@@ -885,7 +907,7 @@ static int qcom_edp_phy_exit(struct phy *phy)
 {
 	struct qcom_edp *edp = phy_get_drvdata(phy);
 
-	clk_bulk_disable_unprepare(ARRAY_SIZE(edp->clks), edp->clks);
+	clk_bulk_disable_unprepare(edp->num_clks, edp->clks);
 	regulator_bulk_disable(ARRAY_SIZE(edp->supplies), edp->supplies);
 
 	return 0;
@@ -1066,7 +1088,7 @@ static int qcom_edp_phy_probe(struct platform_device *pdev)
 	struct phy_provider *phy_provider;
 	struct device *dev = &pdev->dev;
 	struct qcom_edp *edp;
-	int ret;
+	int ret, i;
 
 	edp = devm_kzalloc(dev, sizeof(*edp), GFP_KERNEL);
 	if (!edp)
@@ -1092,9 +1114,16 @@ static int qcom_edp_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(edp->pll))
 		return PTR_ERR(edp->pll);
 
-	edp->clks[0].id = "aux";
-	edp->clks[1].id = "cfg_ahb";
-	ret = devm_clk_bulk_get(dev, ARRAY_SIZE(edp->clks), edp->clks);
+	edp->clks = devm_kcalloc(dev, edp->cfg->num_clks, sizeof(*edp->clks), GFP_KERNEL);
+	if (IS_ERR(edp->clks))
+		return PTR_ERR(edp->clks);
+
+	for (i = 0; i < edp->cfg->num_clks; i++)
+		edp->clks[i].id = edp->cfg->clks[i];
+
+	edp->num_clks = edp->cfg->num_clks;
+
+	ret = devm_clk_bulk_get(dev, edp->num_clks, edp->clks);
 	if (ret)
 		return ret;
 
