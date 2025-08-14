@@ -886,6 +886,9 @@
 &mdss_dp3 {
 	/delete-property/ #sound-dai-cells;
 
+	pinctrl-0 = <&edp_hpd_default>;
+	pinctrl-names = "default";
+
 	status = "okay";
 
 	aux-bus {
@@ -1069,6 +1072,12 @@
 		pins = "gpio74";
 		function = "gpio";
 		drive-strength = <2>;
+		bias-disable;
+	};
+
+	edp_hpd_default: edp-hpd-default-state {
+		pins = "gpio119";
+		function = "edp0_hot";
 		bias-disable;
 	};
 
