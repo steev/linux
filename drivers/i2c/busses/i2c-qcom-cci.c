@@ -466,21 +466,12 @@ static const struct i2c_algorithm cci_algo = {
 	.functionality = cci_func,
 };
 
-static int cci_enable_clocks(struct cci *cci)
-{
-	return clk_bulk_prepare_enable(cci->nclocks, cci->clocks);
-}
-
-static void cci_disable_clocks(struct cci *cci)
-{
-	clk_bulk_disable_unprepare(cci->nclocks, cci->clocks);
-}
-
 static int __maybe_unused cci_suspend_runtime(struct device *dev)
 {
 	struct cci *cci = dev_get_drvdata(dev);
 
-	cci_disable_clocks(cci);
+	clk_bulk_disable_unprepare(cci->nclocks, cci->clocks);
+
 	return 0;
 }
 
@@ -489,11 +480,12 @@ static int __maybe_unused cci_resume_runtime(struct device *dev)
 	struct cci *cci = dev_get_drvdata(dev);
 	int ret;
 
-	ret = cci_enable_clocks(cci);
+	ret = clk_bulk_prepare_enable(cci->nclocks, cci->clocks);
 	if (ret)
 		return ret;
 
 	cci_init(cci);
+
 	return 0;
 }
 
@@ -592,7 +584,7 @@ static int cci_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, -EINVAL, "not enough clocks in DT\n");
 	cci->nclocks = ret;
 
-	ret = cci_enable_clocks(cci);
+	ret = clk_bulk_prepare_enable(cci->nclocks, cci->clocks);
 	if (ret < 0)
 		return ret;
 
@@ -651,7 +643,7 @@ error_i2c:
 error:
 	disable_irq(cci->irq);
 disable_clocks:
-	cci_disable_clocks(cci);
+	clk_bulk_disable_unprepare(cci->nclocks, cci->clocks);
 
 	return ret;
 }
