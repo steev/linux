@@ -17,16 +17,12 @@ properties:
   compatible:
     const: leds-group-multicolor
 
-  leds:
-    description:
-      An aray of monochromatic leds
-    $ref: /schemas/types.yaml#/definitions/phandle-array
-
 required:
   - leds
 
 allOf:
   - $ref: leds-class-multicolor.yaml#
+  - $ref: /schemas/leds/leds-consumer.yaml#
 
 unevaluatedProperties: false
 

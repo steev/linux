@@ -10,6 +10,9 @@ maintainers:
   - Jacopo Mondi <jacopo@jmondi.org>
   - Sakari Ailus <sakari.ailus@linux.intel.com>
 
+allOf:
+  - $ref: /schemas/leds/leds-consumer.yaml#
+
 properties:
   flash-leds:
     $ref: /schemas/types.yaml#/definitions/phandle-array
