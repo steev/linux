@@ -391,6 +391,15 @@
 		reg = <0x0 0x80000000 0x0 0x0>;
 	};
 
+	cci_opp_table: opp-table-cci {
+		compatible = "operating-points-v2";
+
+		opp-37500000 {
+			opp-hz = /bits/ 64 <37500000>;
+			required-opps = <&rpmhpd_opp_low_svs>;
+		};
+	};
+
 	cpu0_opp_table: opp-table-cpu0 {
 		compatible = "operating-points-v2";
 		opp-shared;
@@ -3880,6 +3889,7 @@
 				      "cpas_ahb",
 				      "cci";
 
+			operating-points-v2 = <&cci_opp_table>;
 			power-domains = <&camcc TITAN_TOP_GDSC>;
 
 			pinctrl-0 = <&cci0_default>;
@@ -3921,6 +3931,7 @@
 				      "cpas_ahb",
 				      "cci";
 
+			operating-points-v2 = <&cci_opp_table>;
 			power-domains = <&camcc TITAN_TOP_GDSC>;
 
 			pinctrl-0 = <&cci1_default>;
@@ -3961,6 +3972,8 @@
 				      "slow_ahb_src",
 				      "cpas_ahb",
 				      "cci";
+
+			operating-points-v2 = <&cci_opp_table>;
 			power-domains = <&camcc TITAN_TOP_GDSC>;
 
 			pinctrl-0 = <&cci2_default>;
@@ -4002,6 +4015,7 @@
 				      "cpas_ahb",
 				      "cci";
 
+			operating-points-v2 = <&cci_opp_table>;
 			power-domains = <&camcc TITAN_TOP_GDSC>;
 
 			pinctrl-0 = <&cci3_default>;
