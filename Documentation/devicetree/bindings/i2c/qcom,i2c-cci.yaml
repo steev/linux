@@ -54,6 +54,8 @@ properties:
   interrupts:
     maxItems: 1
 
+  operating-points-v2: true
+
   power-domains:
     maxItems: 1
 
