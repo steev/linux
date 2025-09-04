@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/pm_opp.h>
 #include <linux/pm_runtime.h>
 
 #define CCI_HW_VERSION				0x0
@@ -121,6 +122,7 @@ struct cci_data {
 	struct i2c_adapter_quirks quirks;
 	u16 queue_size[NUM_QUEUES];
 	struct hw_params params[3];
+	bool fast_mode_plus_supported;
 };
 
 struct cci {
@@ -466,9 +468,22 @@ static const struct i2c_algorithm cci_algo = {
 	.functionality = cci_func,
 };
 
+static unsigned long cci_desired_clk_rate(struct cci *cci)
+{
+	if (cci->data->fast_mode_plus_supported)
+		return 37500000ULL;
+
+	return 19200000ULL;
+}
+
 static int __maybe_unused cci_suspend_runtime(struct device *dev)
 {
 	struct cci *cci = dev_get_drvdata(dev);
+	int ret;
+
+	ret = dev_pm_opp_set_rate(dev, 0);
+	if (ret)
+		return ret;
 
 	clk_bulk_disable_unprepare(cci->nclocks, cci->clocks);
 
@@ -481,6 +496,10 @@ static int __maybe_unused cci_resume_runtime(struct device *dev)
 	int ret;
 
 	ret = clk_bulk_prepare_enable(cci->nclocks, cci->clocks);
+	if (ret)
+		return ret;
+
+	ret = dev_pm_opp_set_rate(dev, cci_desired_clk_rate(cci));
 	if (ret)
 		return ret;
 
@@ -586,6 +605,19 @@ static int cci_probe(struct platform_device *pdev)
 
 	ret = clk_bulk_prepare_enable(cci->nclocks, cci->clocks);
 	if (ret < 0)
+		return ret;
+
+	ret = devm_pm_opp_set_clkname(dev, "cci");
+	if (ret)
+		return ret;
+
+	/* OPP table is optional */
+	ret = devm_pm_opp_of_add_table(dev);
+	if (ret && ret != -ENODEV)
+		return dev_err_probe(dev, ret, "invalid OPP table in device tree\n");
+
+	ret = dev_pm_opp_set_rate(dev, cci_desired_clk_rate(cci));
+	if (ret)
 		return ret;
 
 	/* Interrupt */
@@ -775,6 +807,7 @@ static const struct cci_data cci_v2_data = {
 		.trdhld = 3,
 		.tsp = 3
 	},
+	.fast_mode_plus_supported = true,
 };
 
 static const struct of_device_id cci_dt_match[] = {
