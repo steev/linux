@@ -575,9 +575,9 @@ static int move_core_to_power_save_mode(struct venus_core *core,
 }
 
 static void
-min_loaded_core(struct venus_inst *inst, u32 *min_coreid, u32 *min_load, bool low_power)
+min_loaded_core(struct venus_inst *inst, u32 *min_coreid, u64 *min_load, bool low_power)
 {
-	u32 mbs_per_sec, load, core1_load = 0, core2_load = 0;
+	u64 mbs_per_sec, load, core1_load = 0, core2_load = 0;
 	u32 cores_max = core_num_max(inst);
 	struct venus_core *core = inst->core;
 	struct venus_inst *inst_pos;
@@ -632,8 +632,9 @@ static int decide_core(struct venus_inst *inst)
 {
 	const u32 ptype = HFI_PROPERTY_CONFIG_VIDEOCORES_USAGE;
 	struct venus_core *core = inst->core;
-	u32 min_coreid, min_load, cur_inst_load;
-	u32 min_lp_coreid, min_lp_load, cur_inst_lp_load;
+	u32 min_coreid, min_lp_coreid;
+	u64 min_load, cur_inst_load;
+	u64 min_lp_load, cur_inst_lp_load;
 	struct hfi_videocores_usage_type cu;
 	unsigned long max_freq;
 	int ret = 0;
