@@ -723,7 +723,7 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	probe_data.ignore_clocks_and_resets = true;
 	ret = dwc3_core_probe(&probe_data);
 	if (ret)  {
-		ret = dev_err_probe(dev, ret, "failed to register DWC3 Core\n");
+		dev_err_probe(dev, ret, "failed to register DWC3 Core\n");
 		goto clk_disable;
 	}
 
