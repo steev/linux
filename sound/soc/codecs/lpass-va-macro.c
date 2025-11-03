@@ -1663,6 +1663,7 @@ static void va_macro_remove(struct platform_device *pdev)
 {
 	struct va_macro *va = dev_get_drvdata(&pdev->dev);
 
+	clk_put(va->fsgen);
 	if (va->has_npl_clk)
 		clk_disable_unprepare(va->npl);
 
