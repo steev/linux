@@ -1265,6 +1265,27 @@ static void qcom_pcie_phy_exit(struct qcom_pcie *pcie)
 			phy_exit(port->phy);
 }
 
+static void qcom_pcie_program_t_pwr_on(struct dw_pcie *pci)
+{
+	u16 offset;
+	u32 val;
+
+	offset = dw_pcie_find_ext_capability(pci, PCI_EXT_CAP_ID_L1SS);
+	if (offset) {
+		dw_pcie_dbi_ro_wr_en(pci);
+
+		val = readl(pci->dbi_base + offset + PCI_L1SS_CAP);
+		/* Program T power ON value to 80us */
+		val &= ~(PCI_L1SS_CAP_P_PWR_ON_SCALE | PCI_L1SS_CAP_P_PWR_ON_VALUE);
+		val |= FIELD_PREP(PCI_L1SS_CAP_P_PWR_ON_SCALE, 1);
+		val |= FIELD_PREP(PCI_L1SS_CAP_P_PWR_ON_VALUE, 8);
+
+		writel(val, pci->dbi_base + offset + PCI_L1SS_CAP);
+
+		dw_pcie_dbi_ro_wr_dis(pci);
+	}
+}
+
 static void qcom_pcie_phy_power_off(struct qcom_pcie *pcie)
 {
 	struct qcom_pcie_port *port;
@@ -1328,6 +1349,8 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
 		if (ret)
 			goto err_disable_phy;
 	}
+
+	qcom_pcie_program_t_pwr_on(pci);
 
 	qcom_ep_reset_deassert(pcie);
 
