@@ -253,12 +253,9 @@ static struct pstore_info efi_pstore_info = {
 	.erase		= efi_pstore_erase,
 };
 
-static int efivars_pstore_init(void)
+static int efivars_pstore_setup(void)
 {
 	if (!efivar_supports_writes())
-		return 0;
-
-	if (pstore_disable)
 		return 0;
 
 	/*
@@ -285,8 +282,35 @@ static int efivars_pstore_init(void)
 	return 0;
 }
 
+static int efivars_pstore_ops_notifier(struct notifier_block *nb,
+				 unsigned long event, void *data)
+{
+	if (event == EFIVAR_OPS_RDWR && !efi_pstore_info.bufsize)
+		efivars_pstore_setup();
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block efivars_pstore_ops_notifier_block = {
+	.notifier_call = efivars_pstore_ops_notifier,
+};
+
+static int efivars_pstore_init(void)
+{
+	if (pstore_disable)
+		return 0;
+
+	blocking_notifier_chain_register(&efivar_ops_nh,
+					&efivars_pstore_ops_notifier_block);
+
+	return efivars_pstore_setup();
+}
+
 static void efivars_pstore_exit(void)
 {
+	blocking_notifier_chain_unregister(&efivar_ops_nh,
+					&efivars_pstore_ops_notifier_block);
+
 	if (!efi_pstore_info.bufsize)
 		return;
 
