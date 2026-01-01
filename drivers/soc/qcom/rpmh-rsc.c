@@ -25,6 +25,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/suspend.h>
 #include <linux/wait.h>
 
 #include <clocksource/arm_arch_timer.h>
@@ -1028,6 +1029,25 @@ static int rpmh_probe_tcs_config(struct platform_device *pdev, struct rsc_drv *d
 	return 0;
 }
 
+static int rpmh_rsc_s2idle_begin(void)
+{
+	pm_set_suspend_via_firmware();
+
+	return 0;
+}
+
+static int rpmh_rsc_s2idle_prepare_late(void)
+{
+	pm_set_resume_via_firmware();
+
+	return 0;
+}
+
+static const struct platform_s2idle_ops rpmh_rsc_s2idle_ops = {
+	.begin = rpmh_rsc_s2idle_begin,
+	.prepare_late = rpmh_rsc_s2idle_prepare_late,
+};
+
 static int rpmh_rsc_probe(struct platform_device *pdev)
 {
 	struct device_node *dn = pdev->dev.of_node;
@@ -1121,6 +1141,9 @@ static int rpmh_rsc_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, drv);
 	drv->dev = &pdev->dev;
+
+	if (of_machine_is_compatible("qcom,sc8280xp"))
+		s2idle_set_ops(&rpmh_rsc_s2idle_ops);
 
 	ret = devm_of_platform_populate(&pdev->dev);
 	if (ret && pdev->dev.pm_domain) {
