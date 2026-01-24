@@ -811,6 +811,20 @@
 	};
 };
 
+&i2c8 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	embedded-controller@28 {
+		compatible = "lenovo,thinkpad-x13s-ec";
+		reg = <0x28>;
+		interrupts-extended = <&tlmm 176 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-0 = <&ec_int_n_default>;
+		pinctrl-names = "default";
+		wakeup-source;
+	};
+};
+
 &i2c11 {
 	clock-frequency = <400000>;
 
@@ -1576,6 +1590,12 @@
 			drive-strength = <2>;
 			bias-disable;
 		};
+	};
+
+	ec_int_n_default: ec-int-n-state {
+		pins = "gpio176";
+		functions = "gpio";
+		bias-disable;
 	};
 
 	edp_reg_en: edp-reg-en-state {
