@@ -257,16 +257,27 @@ static int qcom_adreno_smmu_set_ttbr0_cfg(const void *cookie,
 	struct io_pgtable *pgtable = io_pgtable_ops_to_pgtable(smmu_domain->pgtbl_ops);
 	struct arm_smmu_cfg *cfg = &smmu_domain->cfg;
 	struct arm_smmu_cb *cb = &smmu_domain->smmu->cbs[cfg->cbndx];
+	int ret;
+
+	ret = pm_runtime_resume_and_get(smmu_domain->smmu->dev);
+	if (ret < 0) {
+		dev_err(smmu_domain->smmu->dev, "failed to get runtime PM: %d\n", ret);
+		return -ENODEV;
+	}
 
 	/* The domain must have split pagetables already enabled */
-	if (cb->tcr[0] & ARM_SMMU_TCR_EPD1)
-		return -EINVAL;
+	if (cb->tcr[0] & ARM_SMMU_TCR_EPD1) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* If the pagetable config is NULL, disable TTBR0 */
 	if (!pgtbl_cfg) {
 		/* Do nothing if it is already disabled */
-		if ((cb->tcr[0] & ARM_SMMU_TCR_EPD0))
-			return -EINVAL;
+		if ((cb->tcr[0] & ARM_SMMU_TCR_EPD0)) {
+			ret = -EINVAL;
+			goto out;
+		}
 
 		/* Set TCR to the original configuration */
 		cb->tcr[0] = arm_smmu_lpae_tcr(&pgtable->cfg);
@@ -275,8 +286,10 @@ static int qcom_adreno_smmu_set_ttbr0_cfg(const void *cookie,
 		u32 tcr = cb->tcr[0];
 
 		/* Don't call this again if TTBR0 is already enabled */
-		if (!(cb->tcr[0] & ARM_SMMU_TCR_EPD0))
-			return -EINVAL;
+		if (!(cb->tcr[0] & ARM_SMMU_TCR_EPD0)) {
+			ret = -EINVAL;
+			goto out;
+		}
 
 		tcr |= arm_smmu_lpae_tcr(pgtbl_cfg);
 		tcr &= ~(ARM_SMMU_TCR_EPD0 | ARM_SMMU_TCR_EPD1);
@@ -288,6 +301,8 @@ static int qcom_adreno_smmu_set_ttbr0_cfg(const void *cookie,
 
 	arm_smmu_write_context_bank(smmu_domain->smmu, cb->cfg->cbndx);
 
+out:
+	pm_runtime_put_autosuspend(smmu_domain->smmu->dev);
 	return 0;
 }
 
