@@ -179,6 +179,25 @@ void vgic_v3_fold_lr_state(struct kvm_vcpu *vcpu)
 			      irq->active))
 				continue;
 
+			bool was_in_lr = false;
+
+			for (int i = 0; i < cpuif->used_lrs; i++) {
+				u32 intid;
+
+				if (vcpu->kvm->arch.vgic.vgic_model == KVM_DEV_TYPE_ARM_VGIC_V3)
+					intid = cpuif->vgic_lr[i] & ICH_LR_VIRTUAL_ID_MASK;
+				else
+					intid = cpuif->vgic_lr[i] & GICH_LR_VIRTUALID;
+
+				if (intid == irq->intid) {
+					was_in_lr = true;
+					break;
+				}
+			}
+
+			if (was_in_lr)
+				continue;
+
 			lr = vgic_v3_compute_lr(vcpu, irq) & ~ICH_LR_ACTIVE_BIT;
 		}
 

@@ -135,6 +135,20 @@ void vgic_v2_fold_lr_state(struct kvm_vcpu *vcpu)
 			      irq->active))
 				continue;
 
+			bool was_in_lr = false;
+
+			for (int i = 0; i < cpuif->used_lrs; i++) {
+				u32 intid = cpuif->vgic_lr[i] & GICH_LR_VIRTUALID;
+
+				if (intid == irq->intid) {
+					was_in_lr = true;
+					break;
+				}
+			}
+
+			if (was_in_lr)
+				continue;
+
 			lr = vgic_v2_compute_lr(vcpu, irq) & ~GICH_LR_ACTIVE_BIT;
 		}
 
