@@ -5629,7 +5629,7 @@
 
 		pdc: interrupt-controller@b220000 {
 			compatible = "qcom,sc7280-pdc", "qcom,pdc";
-			reg = <0 0x0b220000 0 0x30000>;
+			reg = <0 0x0b220000 0 0x10000>;
 			qcom,pdc-ranges = <0 480 40>, <40 140 14>, <54 263 1>,
 					  <55 306 4>, <59 312 3>, <62 374 2>,
 					  <64 434 2>, <66 438 3>, <69 86 1>,
