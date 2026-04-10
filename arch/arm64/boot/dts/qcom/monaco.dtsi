@@ -4811,8 +4811,7 @@
 
 		pdc: interrupt-controller@b220000 {
 			compatible = "qcom,qcs8300-pdc", "qcom,pdc";
-			reg = <0x0 0xb220000 0x0 0x10000>,
-			      <0x0 0x17c000f0 0x0 0x64>;
+			reg = <0x0 0xb220000 0x0 0x10000>;
 			interrupt-parent = <&intc>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
