@@ -11,6 +11,7 @@
 
 #include "nhi.h"
 #include "nhi_regs.h"
+#include "pci.h"
 #include "tb.h"
 
 /* Ice Lake specific NHI operations */
@@ -176,6 +177,8 @@ static int icl_nhi_resume(struct tb_nhi *nhi)
 
 static void icl_nhi_shutdown(struct tb_nhi *nhi)
 {
+	nhi_pci_shutdown(nhi);
+
 	icl_nhi_force_power(nhi, false);
 }
 
@@ -186,4 +189,10 @@ const struct tb_nhi_ops icl_nhi_ops = {
 	.runtime_suspend = icl_nhi_suspend,
 	.runtime_resume = icl_nhi_resume,
 	.shutdown = icl_nhi_shutdown,
+	.pre_nvm_auth = nhi_pci_start_dma_port,
+	.post_nvm_auth = nhi_pci_complete_dma_port,
+	.request_ring_irq = nhi_pci_ring_request_msix,
+	.release_ring_irq = nhi_pci_ring_release_msix,
+	.is_present = nhi_pci_is_present,
+	.init_interrupts = nhi_pci_init_msi,
 };
