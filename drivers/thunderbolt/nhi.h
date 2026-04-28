@@ -29,6 +29,7 @@ enum nhi_mailbox_cmd {
 
 int nhi_mailbox_cmd(struct tb_nhi *nhi, enum nhi_mailbox_cmd cmd, u32 data);
 enum nhi_fw_mode nhi_mailbox_mode(struct tb_nhi *nhi);
+bool tb_apple_add_links(struct tb_nhi *nhi);
 
 /**
  * struct tb_nhi_ops - NHI specific optional operations

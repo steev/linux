@@ -496,12 +496,11 @@ static inline struct tb_xdomain *tb_service_parent(struct tb_service *svc)
  */
 struct tb_nhi {
 	spinlock_t lock;
-	struct pci_dev *pdev;
+	struct device *dev;
 	const struct tb_nhi_ops *ops;
 	void __iomem *iobase;
 	struct tb_ring **tx_rings;
 	struct tb_ring **rx_rings;
-	struct ida msix_ida;
 	bool going_away;
 	bool iommu_dma_protection;
 	struct work_struct interrupt_work;
@@ -681,7 +680,7 @@ void tb_ring_poll_complete(struct tb_ring *ring);
  */
 static inline struct device *tb_ring_dma_device(struct tb_ring *ring)
 {
-	return &ring->nhi->pdev->dev;
+	return ring->nhi->dev;
 }
 
 bool usb4_usb3_port_match(struct device *usb4_port_dev,
