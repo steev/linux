@@ -169,6 +169,19 @@ config ARM_SUN8I_A33_MBUS_DEVFREQ
 	  This adds the DEVFREQ driver for the MBUS controller in some
 	  Allwinner sun8i (A33 through H3) and sun50i (A64 and H5) SoCs.
 
+config SCMI_QCOM_MEMLAT_DEVFREQ
+	tristate "Qualcomm Technologies Inc. SCMI client driver"
+	depends on QCOM_SCMI_GENERIC_EXT || COMPILE_TEST
+	select DEVFREQ_GOV_REMOTE
+	help
+	  This driver uses the MEMLAT (memory latency) algorithm string
+	  hosted on QCOM SCMI Vendor Protocol to detect memory latency
+	  workloads and control frequency/level of the various memory
+	  buses (DDR/LLCC/DDR_QOS).
+
+	  This driver defines/documents the parameter IDs used while configuring
+	  the memory buses.
+
 source "drivers/devfreq/event/Kconfig"
 
 endif # PM_DEVFREQ
