@@ -52,7 +52,7 @@ properties:
       - const: ref
       - const: com_aux
       - const: usb3_pipe
-      - const: cfg_ahb
+      - enum: [ p2rr2p_pipe, cfg_ahb ]
 
   power-domains:
     maxItems: 1
@@ -192,6 +192,7 @@ allOf:
           enum:
             - qcom,sc7180-qmp-usb3-dp-phy
             - qcom,sdm845-qmp-usb3-dp-phy
+            - qcom,x1e80100-qmp-usb3-dp-phy
     then:
       properties:
         clocks:
