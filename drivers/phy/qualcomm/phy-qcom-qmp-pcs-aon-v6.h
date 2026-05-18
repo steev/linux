@@ -8,5 +8,7 @@
 
 /* Only for QMP V6 PHY - PCS_AON registers */
 #define QPHY_V6_PCS_AON_CLAMP_ENABLE			0x00
+/* Valid only for USB43DP variants */
+#define QPHY_V6_PCS_AON_USB4_CLAMP_ENABLE		0x04
 
 #endif
