@@ -8,6 +8,8 @@
 #   $INSTALL_PATH/dtbs/$KERNELRELEASE
 # ==========================================================================
 
+.NOTPARALLEL:
+
 PHONY := __dtbs_install
 __dtbs_install:
 
