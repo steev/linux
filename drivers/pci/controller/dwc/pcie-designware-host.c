@@ -1320,5 +1320,7 @@ err_stop_link:
 err_deinit:
 	if (pci->pp.ops->deinit)
 		pci->pp.ops->deinit(&pci->pp);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(dw_pcie_resume_noirq);
