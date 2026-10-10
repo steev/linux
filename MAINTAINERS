@@ -27197,6 +27197,12 @@ S:	Maintained
 F:	Documentation/devicetree/bindings/embedded-controller/lenovo,thinkpad-t14s-ec.yaml
 F:	drivers/platform/arm64/lenovo-thinkpad-t14s.c
 
+THINKPAD X13S EMBEDDED CONTROLLER DRIVER
+M:	Alex Robinson <alex@ironrobin.net>
+S:	Maintained
+F:	Documentation/devicetree/bindings/embedded-controller/lenovo,thinkpad-x13s-ec.yaml
+F:	drivers/platform/arm64/lenovo-thinkpad-x13s.c
+
 THINKPAD LMI DRIVER
 M:	Mark Pearson <mpearson-lenovo@squebb.ca>
 L:	platform-driver-x86@vger.kernel.org
