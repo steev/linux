@@ -2167,12 +2167,74 @@ static const struct of_device_id spmi_pmic_arb_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, spmi_pmic_arb_match_table);
 
+/*
+ * After a power cycle and the boot kernel, the PMIC interrupt state no longer
+ * matches the restored kernel. Set the interrupt up again from scratch.
+ */
+static void qpnpint_restore_irq(struct spmi_pmic_arb_bus *bus, unsigned int virq)
+{
+	struct irq_data *d = irq_domain_get_irq_data(bus->domain, virq);
+	u32 type;
+
+	/* Already activated as far as the core is concerned, so redo it here */
+	qpnpint_irq_domain_activate(bus->domain, d, false);
+
+	type = irqd_get_trigger_type(d);
+	if (type != IRQ_TYPE_NONE)
+		irq_set_irq_type(virq, type);
+
+	/*
+	 * Follow the masked state only: when enabling an interrupt, the core
+	 * unmasks it only if it has marked it masked, so a lazily disabled
+	 * interrupt has to be left unmasked.
+	 */
+	if (!irqd_irq_masked(d))
+		qpnpint_irq_unmask(d);
+}
+
+static int spmi_pmic_arb_restore_noirq(struct device *dev)
+{
+	struct spmi_pmic_arb *pmic_arb = dev_get_drvdata(dev);
+	struct spmi_pmic_arb_bus *bus;
+	irq_hw_number_t hwirq;
+	unsigned int virq;
+	u16 apid, ppid;
+	int i, id;
+
+	for (i = 0; i < pmic_arb->buses_available; i++) {
+		bus = pmic_arb->buses[i];
+
+		for (apid = bus->min_apid; apid <= bus->max_apid; apid++) {
+			if (bus->apid_data[apid].irq_ee != pmic_arb->ee)
+				continue;
+
+			ppid = bus->apid_data[apid].ppid;
+			for (id = 0; id <= FIELD_MAX(HWIRQ_IRQID_MASK); id++) {
+				hwirq = spec_to_hwirq(ppid >> 8, ppid & 0xFF, id, apid);
+				virq = irq_find_mapping(bus->domain, hwirq);
+				if (virq)
+					qpnpint_restore_irq(bus, virq);
+			}
+
+			/* Drop whatever the arbiter still holds for this peripheral */
+			writel_relaxed(0xFF, pmic_arb->ver_ops->irq_clear(bus, apid));
+		}
+	}
+
+	return 0;
+}
+
+static const struct dev_pm_ops spmi_pmic_arb_pm_ops = {
+	.restore_noirq = pm_sleep_ptr(spmi_pmic_arb_restore_noirq),
+};
+
 static struct platform_driver spmi_pmic_arb_driver = {
 	.probe		= spmi_pmic_arb_probe,
 	.remove		= spmi_pmic_arb_remove,
 	.driver		= {
 		.name	= "spmi_pmic_arb",
 		.of_match_table = spmi_pmic_arb_match_table,
+		.pm	= pm_sleep_ptr(&spmi_pmic_arb_pm_ops),
 	},
 };
 module_platform_driver(spmi_pmic_arb_driver);
