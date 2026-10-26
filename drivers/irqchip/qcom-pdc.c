@@ -18,6 +18,7 @@
 #include <linux/of_irq.h>
 #include <linux/soc/qcom/irq.h>
 #include <linux/spinlock.h>
+#include <linux/syscore_ops.h>
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/firmware/qcom/qcom_scm.h>
@@ -26,6 +27,7 @@
 #define IRQ_ENABLE_BANK_MAX		BITS_TO_BYTES(PDC_MAX_IRQS)
 #define IRQ_ENABLE_BANK_INDEX_MASK	GENMASK(31, 5)
 #define IRQ_ENABLE_BANK_BIT_MASK	GENMASK(4, 0)
+#define IRQ_ENABLE_BANKS		(PDC_MAX_IRQS / 32)
 
 /* Secure DRV register to configure the PDC mode via qcom_scm_io_writel() */
 #define PDC_GPIO_INT_CTL_ENABLE		0xb2045e8
@@ -120,6 +122,8 @@ struct pdc_irq_cfg {
  * @enable_intr:    pointer to enable function based on PDC version
  * @unmask_gpio:    pointer to GPIO irq unmask function
  * @clear_gpio:     pointer to GPIO irq clear function
+ * @saved_cfg:      IRQ_CFG registers saved across system sleep
+ * @saved_en:       IRQ_ENABLE_BANK registers saved across system sleep
  */
 struct pdc_desc {
 	void __iomem			*base;
@@ -141,6 +145,9 @@ struct pdc_desc {
 	void (*enable_intr)(int pin_out, bool on);
 	void (*unmask_gpio)(int pin_out, bool on);
 	void (*clear_gpio)(int pin_out);
+
+	u32				saved_cfg[PDC_MAX_IRQS];
+	u32				saved_en[IRQ_ENABLE_BANKS];
 };
 
 static const struct pdc_regs pdc_v3_2 = {
@@ -652,6 +659,79 @@ static int pdc_setup_pin_mapping(struct device *dev)
 	return 0;
 }
 
+static u32 pdc_last_bank(void)
+{
+	u32 last = 0;
+	int n;
+
+	for (n = 0; n < pdc->region_cnt; n++)
+		last = max(last, pdc->region[n].pin_base + pdc->region[n].cnt - 1);
+
+	return FIELD_GET(IRQ_ENABLE_BANK_INDEX_MASK, last);
+}
+
+/*
+ * The boot kernel of a hibernation restore may leave the PDC set up for its
+ * own interrupts. Restore ours, keeping the latched GPIO status for wakeups.
+ */
+static int qcom_pdc_syscore_suspend(void *data)
+{
+	int n, i, pin;
+
+	for (n = 0; n < pdc->region_cnt; n++) {
+		for (i = 0; i < pdc->region[n].cnt; i++) {
+			pin = pdc->region[n].pin_base + i;
+			pdc->saved_cfg[pin] = pdc_reg_read(pdc->regs->irq_cfg_reg, pin);
+		}
+	}
+
+	if (pdc->regs->irq_en_reg) {
+		for (i = 0; i <= pdc_last_bank(); i++)
+			pdc->saved_en[i] = pdc_reg_read(pdc->regs->irq_en_reg, i);
+	}
+
+	return 0;
+}
+
+static void qcom_pdc_syscore_resume(void *data)
+{
+	u32 sts, cfg;
+	int n, i, pin;
+
+	for (n = 0; n < pdc->region_cnt; n++) {
+		for (i = 0; i < pdc->region[n].cnt; i++) {
+			pin = pdc->region[n].pin_base + i;
+			cfg = pdc->saved_cfg[pin];
+
+			if (pdc->mode == PDC_SECONDARY_MODE && pdc_pin_is_gpio(pin)) {
+				sts = BIT(pdc->cfg_fields->gpio_irq_sts);
+				cfg &= ~sts;
+				cfg |= pdc_reg_read(pdc->regs->irq_cfg_reg, pin) & sts;
+			}
+
+			pdc_reg_write(pdc->regs->irq_cfg_reg, pin, cfg);
+		}
+	}
+
+	if (pdc->regs->irq_en_reg) {
+		for (i = 0; i <= pdc_last_bank(); i++) {
+			if (pdc->x1e_quirk)
+				pdc_x1e_irq_enable_write(i, pdc->saved_en[i]);
+			else
+				pdc_reg_write(pdc->regs->irq_en_reg, i, pdc->saved_en[i]);
+		}
+	}
+}
+
+static const struct syscore_ops qcom_pdc_syscore_ops = {
+	.suspend = qcom_pdc_syscore_suspend,
+	.resume = qcom_pdc_syscore_resume,
+};
+
+static struct syscore qcom_pdc_syscore = {
+	.ops = &qcom_pdc_syscore_ops,
+};
+
 static int qcom_pdc_probe(struct platform_device *pdev, struct device_node *parent)
 {
 	struct irq_domain *parent_domain, *pdc_domain;
@@ -753,6 +833,8 @@ static int qcom_pdc_probe(struct platform_device *pdev, struct device_node *pare
 	}
 
 	irq_domain_update_bus_token(pdc_domain, DOMAIN_BUS_WAKEUP);
+
+	register_syscore(&qcom_pdc_syscore);
 
 	return 0;
 }
