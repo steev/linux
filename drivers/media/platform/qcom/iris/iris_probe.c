@@ -415,9 +415,49 @@ exit:
 	return ret;
 }
 
+/*
+ * Neither the firmware nor its TrustZone authentication survive hibernation,
+ * so do not let the image hold an initialized core.
+ */
+static int iris_pm_freeze(struct device *dev)
+{
+	struct iris_core *core = dev_get_drvdata(dev);
+	int ret;
+
+	scoped_guard(mutex, &core->lock) {
+		if (!list_empty(&core->instances)) {
+			dev_err(dev, "cannot hibernate while the device is open\n");
+			return -EBUSY;
+		}
+	}
+
+	/* Keep a system error from loading the firmware again */
+	disable_delayed_work_sync(&core->sys_error_handler);
+	iris_core_deinit(core);
+
+	ret = pm_runtime_force_suspend(dev);
+	if (ret)
+		enable_delayed_work(&core->sys_error_handler);
+
+	return ret;
+}
+
+static int iris_pm_thaw(struct device *dev)
+{
+	struct iris_core *core = dev_get_drvdata(dev);
+
+	enable_delayed_work(&core->sys_error_handler);
+
+	return pm_runtime_force_resume(dev);
+}
+
 static const struct dev_pm_ops iris_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
+	.suspend = pm_sleep_ptr(pm_runtime_force_suspend),
+	.resume = pm_sleep_ptr(pm_runtime_force_resume),
+	.freeze = pm_sleep_ptr(iris_pm_freeze),
+	.thaw = pm_sleep_ptr(iris_pm_thaw),
+	.poweroff = pm_sleep_ptr(pm_runtime_force_suspend),
+	.restore = pm_sleep_ptr(iris_pm_thaw),
 	SET_RUNTIME_PM_OPS(iris_pm_suspend, iris_pm_resume, NULL)
 };
 
