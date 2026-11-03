@@ -387,7 +387,8 @@ static efi_status_t qsee_uefi_get_variable(struct qcuefi_client *qcuefi, const e
 	if (rsp_data->length > rsp_size)
 		return EFI_DEVICE_ERROR;
 
-	if (rsp_data->data_offset + rsp_data->data_size > rsp_data->length)
+	if (rsp_data->data_offset > rsp_data->length ||
+	    rsp_data->data_size > rsp_data->length - rsp_data->data_offset)
 		return EFI_DEVICE_ERROR;
 
 	/*
