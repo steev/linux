@@ -26,5 +26,7 @@ struct q6dsp_clk_desc {
 };
 
 int q6dsp_clock_dev_probe(struct platform_device *pdev);
+void q6dsp_clock_dsp_down(struct device *dev);
+void q6dsp_clock_dsp_up(struct device *dev);
 
 #endif  /* __Q6DSP_AUDIO_CLOCKS_H__ */
