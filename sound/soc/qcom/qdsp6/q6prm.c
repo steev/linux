@@ -8,13 +8,17 @@
 #include <linux/of.h>
 #include <linux/delay.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/jiffies.h>
 #include <linux/soc/qcom/apr.h>
 #include <dt-bindings/soc/qcom,gpr.h>
 #include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
 #include "q6apm.h"
+#include "q6dsp-lpass-clocks.h"
 #include "q6prm.h"
 #include "audioreach.h"
+
+struct q6prm_clkctl;
 
 struct q6prm {
 	struct device *dev;
@@ -22,7 +26,37 @@ struct q6prm {
 	wait_queue_head_t wait;
 	struct gpr_ibasic_rsp_result_t result;
 	struct mutex lock;
+	struct q6prm_clkctl *clkctl;
 };
+
+/*
+ * The q6prm GPR device is removed whenever the DSP stops, but clock consumers
+ * hold their clk handles across a DSP restart. The clock controller device is
+ * therefore created only once, under the remoteproc device, and kept until the
+ * module is unloaded. Its clock ops reach the q6prm instance of the running
+ * DSP through @prm, which is NULL while the DSP is down.
+ */
+struct q6prm_clkctl {
+	struct list_head node;
+	struct device_node *np;
+	struct platform_device *pdev;
+	struct q6prm *prm;
+};
+
+static DEFINE_MUTEX(q6prm_clkctl_lock);
+static LIST_HEAD(q6prm_clkctl_list);
+
+/* Called with q6prm_clkctl_lock held */
+static struct q6prm *q6prm_clkctl_get_prm(struct device *dev)
+{
+	struct q6prm_clkctl *ctl;
+
+	list_for_each_entry(ctl, &q6prm_clkctl_list, node)
+		if (ctl->np == dev->of_node)
+			return ctl->prm;
+
+	return NULL;
+}
 
 #define PRM_CMD_REQUEST_HW_RSC		0x0100100F
 #define PRM_CMD_RSP_REQUEST_HW_RSC	0x02001002
@@ -63,9 +97,8 @@ static int q6prm_send_cmd_sync(struct q6prm *prm, struct gpr_pkt *pkt, uint32_t 
 					NULL, &prm->wait, pkt, rsp_opcode);
 }
 
-static int q6prm_set_hw_core_req(struct device *dev, uint32_t hw_block_id, bool enable)
+static int q6prm_set_hw_core_req(struct q6prm *prm, uint32_t hw_block_id, bool enable)
 {
-	struct q6prm *prm = dev_get_drvdata(dev->parent);
 	struct apm_module_param_data *param_data;
 	struct prm_cmd_request_hw_core *req;
 	gpr_device_t *gdev = prm->gdev;
@@ -105,21 +138,35 @@ static int q6prm_set_hw_core_req(struct device *dev, uint32_t hw_block_id, bool 
 int q6prm_vote_lpass_core_hw(struct device *dev, uint32_t hw_block_id,
 			     const char *client_name, uint32_t *client_handle)
 {
-	return q6prm_set_hw_core_req(dev, hw_block_id, true);
+	struct q6prm *prm;
 
+	guard(mutex)(&q6prm_clkctl_lock);
+
+	prm = q6prm_clkctl_get_prm(dev);
+	if (!prm)
+		return -EBUSY;
+
+	return q6prm_set_hw_core_req(prm, hw_block_id, true);
 }
 EXPORT_SYMBOL_GPL(q6prm_vote_lpass_core_hw);
 
 int q6prm_unvote_lpass_core_hw(struct device *dev, uint32_t hw_block_id, uint32_t client_handle)
 {
-	return q6prm_set_hw_core_req(dev, hw_block_id, false);
+	struct q6prm *prm;
+
+	guard(mutex)(&q6prm_clkctl_lock);
+
+	prm = q6prm_clkctl_get_prm(dev);
+	if (!prm)
+		return -EBUSY;
+
+	return q6prm_set_hw_core_req(prm, hw_block_id, false);
 }
 EXPORT_SYMBOL_GPL(q6prm_unvote_lpass_core_hw);
 
-static int q6prm_request_lpass_clock(struct device *dev, int clk_id, int clk_attr, int clk_root,
+static int q6prm_request_lpass_clock(struct q6prm *prm, int clk_id, int clk_attr, int clk_root,
 				     unsigned int freq)
 {
-	struct q6prm *prm = dev_get_drvdata(dev->parent);
 	struct apm_module_param_data *param_data;
 	struct prm_cmd_request_rsc *req;
 	gpr_device_t *gdev = prm->gdev;
@@ -148,10 +195,9 @@ static int q6prm_request_lpass_clock(struct device *dev, int clk_id, int clk_att
 	return q6prm_send_cmd_sync(prm, pkt, PRM_CMD_RSP_REQUEST_HW_RSC);
 }
 
-static int q6prm_release_lpass_clock(struct device *dev, int clk_id, int clk_attr, int clk_root,
+static int q6prm_release_lpass_clock(struct q6prm *prm, int clk_id, int clk_attr, int clk_root,
 			  unsigned int freq)
 {
-	struct q6prm *prm = dev_get_drvdata(dev->parent);
 	struct apm_module_param_data *param_data;
 	struct prm_cmd_release_rsc *rel;
 	gpr_device_t *gdev = prm->gdev;
@@ -180,10 +226,18 @@ static int q6prm_release_lpass_clock(struct device *dev, int clk_id, int clk_att
 int q6prm_set_lpass_clock(struct device *dev, int clk_id, int clk_attr, int clk_root,
 			  unsigned int freq)
 {
-	if (freq)
-		return q6prm_request_lpass_clock(dev, clk_id, clk_attr, clk_root, freq);
+	struct q6prm *prm;
 
-	return q6prm_release_lpass_clock(dev, clk_id, clk_attr, clk_root, freq);
+	guard(mutex)(&q6prm_clkctl_lock);
+
+	prm = q6prm_clkctl_get_prm(dev);
+	if (!prm)
+		return -EBUSY;
+
+	if (freq)
+		return q6prm_request_lpass_clock(prm, clk_id, clk_attr, clk_root, freq);
+
+	return q6prm_release_lpass_clock(prm, clk_id, clk_attr, clk_root, freq);
 }
 EXPORT_SYMBOL_GPL(q6prm_set_lpass_clock);
 
@@ -212,10 +266,76 @@ static int prm_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 	return 0;
 }
 
+/*
+ * The GPR device sits on a chain of rpmsg and remoteproc devices that are all
+ * torn down when the DSP stops. Its closest platform device ancestor is the
+ * remoteproc platform device, which stays across DSP restarts.
+ */
+static struct device *q6prm_clkctl_parent(struct device *dev)
+{
+	for (dev = dev->parent; dev; dev = dev->parent)
+		if (dev_is_platform(dev))
+			return dev;
+
+	return NULL;
+}
+
+static int q6prm_clkctl_attach(struct q6prm *prm)
+{
+	struct device *dev = prm->dev;
+	struct q6prm_clkctl *ctl = NULL, *iter;
+	struct device_node *np;
+
+	np = of_get_child_by_name(dev->of_node, "clock-controller");
+	if (!np)
+		return 0;
+
+	scoped_guard(mutex, &q6prm_clkctl_lock) {
+		list_for_each_entry(iter, &q6prm_clkctl_list, node) {
+			if (iter->np == np) {
+				ctl = iter;
+				break;
+			}
+		}
+
+		if (ctl) {
+			of_node_put(np);
+		} else {
+			ctl = kzalloc_obj(*ctl);
+			if (!ctl) {
+				of_node_put(np);
+				return -ENOMEM;
+			}
+
+			ctl->np = np;
+			list_add(&ctl->node, &q6prm_clkctl_list);
+		}
+
+		ctl->prm = prm;
+	}
+
+	/* Created on first probe, once its clock ops can already reach the DSP */
+	if (!ctl->pdev) {
+		ctl->pdev = of_platform_device_create(ctl->np, NULL,
+						      q6prm_clkctl_parent(dev));
+		if (!ctl->pdev) {
+			scoped_guard(mutex, &q6prm_clkctl_lock)
+				ctl->prm = NULL;
+			return dev_err_probe(dev, -ENODEV,
+					     "Failed to create clock controller\n");
+		}
+	}
+
+	prm->clkctl = ctl;
+
+	return 0;
+}
+
 static int prm_probe(gpr_device_t *gdev)
 {
 	struct device *dev = &gdev->dev;
 	struct q6prm *cc;
+	int ret;
 
 	cc = devm_kzalloc(dev, sizeof(*cc), GFP_KERNEL);
 	if (!cc)
@@ -230,7 +350,29 @@ static int prm_probe(gpr_device_t *gdev)
 	if (!q6apm_is_adsp_ready())
 		return -EPROBE_DEFER;
 
-	return devm_of_platform_populate(dev);
+	ret = q6prm_clkctl_attach(cc);
+	if (ret)
+		return ret;
+
+	if (cc->clkctl)
+		q6dsp_clock_dsp_up(&cc->clkctl->pdev->dev);
+
+	return 0;
+}
+
+static void prm_remove(gpr_device_t *gdev)
+{
+	struct q6prm *prm = dev_get_drvdata(&gdev->dev);
+	struct q6prm_clkctl *ctl = prm->clkctl;
+
+	if (!ctl)
+		return;
+
+	/* Fail new clock requests first, then mark what the DSP dropped */
+	scoped_guard(mutex, &q6prm_clkctl_lock)
+		ctl->prm = NULL;
+
+	q6dsp_clock_dsp_down(&ctl->pdev->dev);
 }
 
 #ifdef CONFIG_OF
@@ -243,6 +385,7 @@ MODULE_DEVICE_TABLE(of, prm_device_id);
 
 static gpr_driver_t prm_driver = {
 	.probe = prm_probe,
+	.remove = prm_remove,
 	.gpr_callback = prm_callback,
 	.driver = {
 		.name = "qcom-prm",
@@ -250,6 +393,27 @@ static gpr_driver_t prm_driver = {
 	},
 };
 
-module_gpr_driver(prm_driver);
+static int __init q6prm_init(void)
+{
+	return apr_driver_register(&prm_driver);
+}
+module_init(q6prm_init);
+
+static void __exit q6prm_exit(void)
+{
+	struct q6prm_clkctl *ctl, *tmp;
+
+	apr_driver_unregister(&prm_driver);
+
+	list_for_each_entry_safe(ctl, tmp, &q6prm_clkctl_list, node) {
+		if (ctl->pdev)
+			of_platform_device_destroy(&ctl->pdev->dev, NULL);
+		of_node_put(ctl->np);
+		list_del(&ctl->node);
+		kfree(ctl);
+	}
+}
+module_exit(q6prm_exit);
+
 MODULE_DESCRIPTION("Q6 Proxy Resource Manager");
 MODULE_LICENSE("GPL");
