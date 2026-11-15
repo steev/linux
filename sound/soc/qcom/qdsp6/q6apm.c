@@ -26,6 +26,8 @@ struct apm_graph_mgmt_cmd {
 } __packed;
 
 #define APM_GRAPH_MGMT_PSIZE(p, n) ALIGN(struct_size(p, sub_graph_id_list, n), 8)
+#define Q6APM_SPF_POLL_MS	100
+#define Q6APM_SPF_READY_MS	5000
 
 static struct q6apm *g_apm;
 
@@ -152,6 +154,47 @@ static int q6apm_get_apm_state(struct q6apm *apm)
 	q6apm_send_cmd_sync(apm, pkt, APM_CMD_RSP_GET_SPF_STATE);
 
 	return apm->state;
+}
+
+/*
+ * Right after the DSP boots, the SPF drops commands without replying. Poll
+ * GET_SPF_STATE with a short timeout per try instead of the 5 s one of
+ * q6apm_send_cmd_sync(), so a dropped command does not stall the probe.
+ */
+static bool q6apm_wait_spf_ready(struct q6apm *apm)
+{
+	unsigned long timeout = jiffies + msecs_to_jiffies(Q6APM_SPF_READY_MS);
+	gpr_device_t *gdev = apm->gdev;
+
+	do {
+		struct gpr_pkt *pkt __free(kfree) =
+			audioreach_alloc_apm_cmd_pkt(0, APM_CMD_GET_SPF_STATE, 0);
+		long rc;
+
+		if (IS_ERR(pkt))
+			return false;
+
+		pkt->hdr.dest_domain = audioreach_gpr_dest_domain(gdev);
+
+		mutex_lock(&apm->lock);
+		apm->result.opcode = 0;
+		apm->state = 0;
+		rc = gpr_send_pkt(gdev, pkt);
+		if (rc >= 0)
+			rc = wait_event_timeout(apm->wait,
+					apm->result.opcode == APM_CMD_RSP_GET_SPF_STATE,
+					msecs_to_jiffies(Q6APM_SPF_POLL_MS));
+		mutex_unlock(&apm->lock);
+
+		if (apm->state)
+			return true;
+
+		/* A timeout has already waited, anything else backs off */
+		if (rc)
+			msleep(Q6APM_SPF_POLL_MS);
+	} while (time_before(jiffies, timeout));
+
+	return false;
 }
 
 bool q6apm_is_adsp_ready(void)
@@ -906,7 +949,12 @@ static int apm_probe(gpr_device_t *gdev)
 	dev_set_drvdata(dev, apm);
 	g_apm = apm;
 
-	q6apm_get_apm_state(apm);
+	/*
+	 * Once the component is registered a card can bind and send commands
+	 * at once, so wait for the SPF first.
+	 */
+	if (!q6apm_wait_spf_ready(apm))
+		dev_warn(dev, "SPF not ready\n");
 
 	ret = snd_soc_register_component(dev, &q6apm_audio_component, NULL, 0);
 	if (ret < 0) {
