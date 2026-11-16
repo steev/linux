@@ -339,7 +339,7 @@ static int qcom_tpm_qsee_probe(struct auxiliary_device *aux_dev,
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to query TPM type\n");
 
-	if (tpm_type != QCOM_TPM_TYPE_FTPM) {
+	if (tpm_type != QCOM_TPM_TYPE_FTPM && tpm_type != QCOM_TPM_TYPE_DTPM) {
 		dev_err(dev, "unsupported TPM type %#llx (%s)\n",
 			tpm_type, qcom_tpm_type_name(tpm_type));
 		return -ENODEV;
@@ -348,6 +348,9 @@ static int qcom_tpm_qsee_probe(struct auxiliary_device *aux_dev,
 	ret = qcom_tpm_qsee_query_info(qtpm);
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to query TPM app info\n");
+
+	dev_info(dev, "%s backend, control area at %pa\n",
+		 qcom_tpm_type_name(tpm_type), &qtpm->control_area_phys);
 
 	qtpm->control_area = devm_ioremap_wc(dev, qtpm->control_area_phys,
 					     QCOM_TPM_QSEE_CONTROL_AREA_SIZE);
