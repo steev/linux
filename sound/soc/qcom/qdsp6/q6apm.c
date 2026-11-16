@@ -882,6 +882,19 @@ int q6apm_graph_stop(struct q6apm_graph *graph)
 }
 EXPORT_SYMBOL_GPL(q6apm_graph_stop);
 
+bool q6apm_is_graph_started(struct q6apm *apm, uint32_t graph_id)
+{
+	struct audioreach_graph *graph;
+	bool started;
+
+	mutex_lock(&apm->lock);
+	graph = idr_find(&apm->graph_idr, graph_id);
+	started = graph && graph->start_count > 0;
+	mutex_unlock(&apm->lock);
+
+	return started;
+}
+
 int q6apm_graph_flush(struct q6apm_graph *graph)
 {
 	return audioreach_graph_mgmt_cmd(graph->ar_graph, APM_CMD_GRAPH_FLUSH);
