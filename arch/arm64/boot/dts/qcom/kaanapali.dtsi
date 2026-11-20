@@ -2039,6 +2039,8 @@
 
 			iommus = <&apps_smmu 0x536 0x0>;
 			dma-coherent;
+			interconnects = <&gem_noc MASTER_GPU_TCU QCOM_ICC_TAG_ALWAYS
+					 &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>;
 		};
 
 		qupv3_4: geniqup@1ac0000 {
